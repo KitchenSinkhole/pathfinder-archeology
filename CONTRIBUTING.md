@@ -62,7 +62,7 @@ pathfinder/
 │   ├── routes.ini          # URL routing table
 │   ├── pathfinder.ini      # Feature flags, login settings
 │   ├── cron.ini            # Cron job schedules
-│   ├── environment.ini     # Secrets — NOT in git, create from template
+│   ├── environment.ini     # Environment-specific credentials and API/SSO settings
 │   ├── Controller/         # HTTP request handlers
 │   ├── Model/
 │   │   ├── Pathfinder/     # User-created data (maps, systems, characters …)
@@ -154,7 +154,7 @@ protected $fieldConf = [
 | `PF` | Pathfinder application data (read/write) |
 | `UNIVERSE` | Static EVE universe data (read-only) |
 
-Connection credentials go in `app/environment.ini` (not committed).
+Connection credentials are configured in `app/environment.ini`.
 
 ---
 
@@ -207,9 +207,9 @@ Pathfinder uses a layered INI configuration system (Fat-Free Framework hive):
 | `app/cron.ini` | Cron expressions and job bindings | ✅ |
 | `app/plugin.ini` | Third-party plugin hooks | ✅ |
 | `app/requirements.ini` | System requirement checks | ✅ |
-| `app/environment.ini` | DB credentials, API keys, SSO secrets | ❌ create locally |
+| `app/environment.ini` | DB credentials, API keys, SSO secrets | ✅ |
 
-`app/environment.ini` must be created from the documented template — see `README.md` for required keys.
+`app/environment.ini` is the committed base config with placeholder/default values. Keep secrets out of this tracked file: create `conf/environment.ini` for local overrides (the `conf/` directory is gitignored), or provide values via environment variables.
 
 ---
 
@@ -226,8 +226,8 @@ Or scheduled with system cron / a process manager.
 | Job | Schedule | Purpose |
 |---|---|---|
 | `deleteEolConnections` | every 5 min | Remove end-of-life wormholes |
-| `importSystemData` | every 30 min | Sync system stats from CCP ESI |
-| `updateSovereigntyData` | every 30 min | Sync sovereignty maps |
+| `importSystemData` | hourly at minute 30 | Sync system stats from CCP ESI |
+| `updateSovereigntyData` | hourly at minute 30 | Sync sovereignty maps |
 | `deleteSignatures` | every 30 min | Expire old signatures |
 | `cleanUpCharacterData` | hourly | Ban/kick timed-out characters |
 | `deactivateMapData` | hourly | Mark old private maps inactive |
@@ -254,12 +254,12 @@ Session data is stored in the `PF` database (or Redis). Role/Right models contro
 1. **PHP** ≥ 7.2, **MySQL/MariaDB**, **Redis** (optional but recommended)
 2. **Composer**: `composer install`
 3. **Node.js + npm**: `npm install`
-4. **Configure**: copy and fill in `app/environment.ini`
-5. **Build assets**: `gulp build` (or `gulp watch` during development)
+4. **Configure**: copy `app/environment.ini` to `conf/environment.ini` (or otherwise configure environment variables) and fill in your local settings there
+5. **Build assets**: `npm run gulp -- production` (or `npm run gulp` for development/watch mode)
 6. **Register CCP application** at [developers.eveonline.com](https://developers.eveonline.com) to get SSO credentials
 7. Point a web server (Apache/nginx) at the project root; `index.php` handles all routes
 
-See `README.md` for full step-by-step instructions and server configuration examples.
+For a detailed setup walkthrough, use the Docker-compose guide linked from `README.md`.
 
 ---
 
@@ -273,5 +273,5 @@ See `README.md` for full step-by-step instructions and server configuration exam
 | Add a new UI panel | `js/app/ui/module/` + a template in `public/templates/` |
 | Add or change a cron task | `app/Cron/` + `app/cron.ini` |
 | Change EVE universe sync logic | `app/Cron/Universe.php`, `app/Model/Universe/` |
-| Modify styling | `sass/` → run `gulp css` |
+| Modify styling | `sass/` → run `npm run gulp -- production` (or `npm run gulp` while iterating) |
 | Debug a backend request | `logs/` (Monolog output), `app/Lib/Monolog.php` |
