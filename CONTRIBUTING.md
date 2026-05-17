@@ -209,7 +209,7 @@ Pathfinder uses a layered INI configuration system (Fat-Free Framework hive):
 | `app/requirements.ini` | System requirement checks | ✅ |
 | `app/environment.ini` | DB credentials, API keys, SSO secrets | ✅ |
 
-`app/environment.ini` is committed with environment sections and placeholder/default values. Update it with your local credentials and deployment settings.
+`app/environment.ini` is the committed base config with placeholder/default values. Keep secrets out of this tracked file: create `conf/environment.ini` for local overrides (the `conf/` directory is gitignored), or provide values via environment variables.
 
 ---
 
