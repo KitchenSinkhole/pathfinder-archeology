@@ -305,3 +305,29 @@ Stage D added [04-cron-and-background.md](04-cron-and-background.md). All cron-j
 - [x] Map-history pipeline (Monolog → socket server → NDJSON files → truncate cron) traced end-to-end.
 - [x] Per-request activity-log buffer flush (`LogController::logActivities` via `Controller::unload`) documented.
 - [x] Open questions list non-empty (8 in 04).
+
+---
+
+## Stage E update
+
+Stage E added [05-external-integrations.md](05-external-integrations.md). External-integration rows in the matrix above now link to it.
+
+### External integration coverage (Stage E)
+
+- **CCP SSO** — full OAuth2 + JWT flow (authorize → callback → token exchange → JWK verify → character upsert), refresh-token handling on `CharacterModel::getAccessToken()`, cookie-based re-login, admin-scope variant.
+- **CCP ESI** — full opKey → swagger `operationId` inventory (≈38 distinct call sites), grouped by call site (SSO callback, character poll, route/autopilot, structure resolve, universe upsert paths, sov/FW cron, static-data setup).
+- **EVE-Scout** — single `getTheraConnections` endpoint, verbose-logging quirk documented.
+- **GitHub API** — `getProjectReleases` + `markdownToHtml`; quirks (repo-slug mismatch, body truncation, unauthenticated rate limit).
+- **Outbound mail** — SwiftMailer / SMTP wiring through Monolog `mail` handler, `templates/mail/basic*.html`; noted that nothing in tree currently subscribes the `mail` handler.
+- **Static-data import** — SQL dump + Pochven/Zarzakh patch SQLs + ESI walking via `Cron\Universe::setup` + `Ccp\Universe::setupCategory/Group`.
+
+### Stage E self-check
+
+- [x] Every file under `app/Lib/Api/` read.
+- [x] `app/Controller/Ccp/Sso.php` and `app/Controller/Ccp/Universe.php` walked end-to-end.
+- [x] `app/Controller/Api/GitHub.php` documented.
+- [x] Every `*Client()->send(...)` call site in `app/` accounted for in §3.1 / §4 / §5 of [05](05-external-integrations.md).
+- [x] Mail template files in `public/templates/mail/` read and variable list captured.
+- [x] `export/sql/`, `export/csv/` contents and patch-SQL purpose documented.
+- [x] `vendor/monoliyoda/pathfinder_esi` is not present in tree — flagged as Open Question 1 in [05](05-external-integrations.md).
+- [x] Open questions list non-empty (5 in 05).
