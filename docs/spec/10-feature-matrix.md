@@ -26,11 +26,11 @@ Each row is **one feature** at a granularity a product manager would recognise (
 
 | Feature | Scope | UI | API | DB | Cron | Ext | Status |
 |---|---|---|---|---|---|---|---|
-| EVE SSO login (OAuth2 + JWT) | global | `view/login.html`, `templates/modules/sso.html` | `/sso/*` → `Ccp\Sso` | character, character_auth | — | CCP SSO | → C, E |
-| "Remember me" character cookies | global | login tile grid | — | — | — | — | `COOKIE_EXPIRE=30d`; `AppController` reads `COOKIE_PREFIX_CHARACTER` |
-| Multi-character switching | per-user | char-switch tooltip (`tooltip/character_switch.html`) | `/api/User/*` | character, user | — | ESI | → C |
-| Account settings dialog | per-user | `dialog/account_settings.js` | `/api/User/*` | user | — | — | → C, H |
-| Delete account | per-user | `dialog/delete_account.js`, `dialog/delete_account.html` | `/api/User/*` | user (cascade) | `deleteAuthenticationData` | — | logs to `account_delete.log` |
+| EVE SSO login (OAuth2 + JWT) | global | `view/login.html`, `templates/modules/sso.html` | `/sso/*` → `Ccp\Sso` | character, character_auth | — | CCP SSO | surface in [03](03-backend-api.md#controllerccpsso--get-ssoaction); flow → E |
+| "Remember me" character cookies | global | login tile grid | `/api/User/getCookieCharacter` | character_auth | — | — | `COOKIE_EXPIRE=30d`; `AppController` reads `COOKIE_PREFIX_CHARACTER`; no auto-login (see [03](03-backend-api.md)) |
+| Multi-character switching | per-user | char-switch tooltip (`tooltip/character_switch.html`) | `/api/User/getCookieCharacter`, `/api/User/logout` | character, user | — | ESI | [03](03-backend-api.md#apiuser-controller--mixed-action-level-checks) |
+| Account settings dialog | per-user | `dialog/account_settings.js` | `/api/User/saveAccount`, `/api/User/getCaptcha` | user, corp, ally, character | — | — | captcha-gated; [03](03-backend-api.md#apiuser-controller--mixed-action-level-checks) |
+| Delete account | per-user | `dialog/delete_account.js`, `dialog/delete_account.html` | `/api/User/deleteAccount`, `/api/User/getCaptcha` | user (cascade) | `deleteAuthenticationData` | — | captcha-gated; logs to `account_delete.log` |
 | Maintenance mode whitelist | global | landing | — | — | — | — | `[PATHFINDER.LOGIN] MODE_MAINTENANCE=1` + `CHARACTER`/`CORPORATION`/`ALLIANCE` |
 | Registration enable/disable | global | landing | — | — | — | — | `[PATHFINDER.REGISTRATION] STATUS` |
 | Subdomain session sharing | global | — | — | — | — | — | `[PATHFINDER.LOGIN] SESSION_SHARING` |
@@ -163,11 +163,16 @@ Each row is **one feature** at a granularity a product manager would recognise (
 
 | Feature | Scope | UI | API | DB | Cron | Ext | Status |
 |---|---|---|---|---|---|---|---|
-| Roles (admin, corp, alliance, user) | global | admin | `/api/Access/*` | role | — | — | → C |
-| Rights | global | admin | `/api/Access/*` | right, role_right | — | — | → C |
-| Map access lists (char/corp/alliance) | per-map | map settings | `/api/Access/*` | map_access | — | — | → C |
-| Character status (active, banned, …) | per-user | — | server | character_status | — | — | → C |
-| Admin gate | global | — | `Controller\Admin->dispatch` | role | — | — | → C |
+| Roles (MEMBER / CORPORATION / SUPER) | global | admin | — (resolved at login) | role | — | — | [09 § Roles](09-permissions-and-admin.md#roles) |
+| Rights (map_*: create/update/delete/import/export/share) | global | admin settings | (per-action checks; admin edits via `/admin/settings/save/<corpId>`) | right, corporation_right | — | — | [09 § Rights](09-permissions-and-admin.md#rights) |
+| Map access lists (char/corp/alliance) | per-map | map settings dialog | `/api/Access/search`, `PATCH /api/rest/Map/<id>` | character_map, corporation_map, alliance_map | — | — | [09 § Map access control](09-permissions-and-admin.md#map-access-control) |
+| Character status (per-map: corporation/alliance/own) | per-user | header / local | server | character_status, character_map | — | — | [09 § Character statuses](09-permissions-and-admin.md#character-statuses) |
+| Admin gate (role + admin ESI scopes) | global | — | `Controller\Admin->dispatch` | role | — | — | [09 § Admin panel](09-permissions-and-admin.md#admin-panel----admin) |
+| Kick character (5m / 1h / 24h timeout) | corp/super | `admin/members.html` | `GET /admin/members/kick/<id>/<min>` | character | — | — | [09 § Character statuses](09-permissions-and-admin.md#character-statuses); GET-only, no CSRF |
+| Ban character | corp/super | `admin/members.html` | `GET /admin/members/ban/<id>/<value>` | character | — | — | [09 § Character statuses](09-permissions-and-admin.md#character-statuses); GET-only, no CSRF |
+| Admin map activate/deactivate | corp/super | `admin/maps.html` | `GET /admin/maps/active/<id>/<value>` | map | — | — | [09 § Admin panel](09-permissions-and-admin.md#admin-panel----admin) |
+| Admin hard-delete map | corp/super | `admin/maps.html` | `GET /admin/maps/delete/<id>` | map | — | — | bypasses cron soft-delete; [09](09-permissions-and-admin.md#admin-panel----admin) |
+| Corporation right config | corp/super | `admin/settings.html` | `GET /admin/settings/save/<corpId>` | corporation_right | — | — | [09 § Rights](09-permissions-and-admin.md#rights) |
 
 ## 11. Logging & history
 
@@ -238,3 +243,30 @@ Each row is **one feature** at a granularity a product manager would recognise (
 ## Open questions (Stage A)
 
 See the bottom of [00-overview.md](00-overview.md) and [01-config-and-deployment.md](01-config-and-deployment.md). Stage I will close them out alongside the rest of the spec.
+
+---
+
+## Stage C update
+
+Stage C added [03-backend-api.md](03-backend-api.md) and [09-permissions-and-admin.md](09-permissions-and-admin.md). Permissions / admin rows above were rewritten; SSO and account rows were linked to the new doc.
+
+### API endpoint coverage (Stage C)
+
+Every controller action listed in [03-backend-api.md](03-backend-api.md) covers:
+
+- 5 page routes: `/`, `/setup`, `/sso/*`, `/map*`, `/admin*`
+- 26 AJAX actions across 8 `Api\*` controllers (`Access`, `GitHub`, `Map`, `Setup`, `Statistic`, `System`, `Universe`, `User`)
+- 30+ REST verbs across 11 `Api\Rest\*` resource controllers (`Connection`, `Log`, `Map`, `Route`, `Signature`, `SignatureHistory`, `Structure`, `System`, `SystemGraph`, `SystemSearch`, `SystemThera`)
+- 1 beacon endpoint: `POST /api/Map/updateUnloadData`
+
+### Stage C self-check
+
+- [x] Every file under `app/Controller/` read and summarised (page controllers, `Api/*`, `Api/Rest/*`, `Ccp/Sso`).
+- [x] Every public action method appears in [03-backend-api.md](03-backend-api.md).
+- [x] Every right in `RightModel` and role in `RoleModel` appears in [09-permissions-and-admin.md](09-permissions-and-admin.md).
+- [x] Admin dispatch table fully enumerated.
+- [x] Cross-links to [02-data-model.md](02-data-model.md) for model references.
+- [x] Open questions list non-empty (six in 03, seven in 09).
+- [x] Feature matrix updated — auth, account, and permission rows now link forward to Stage C docs; admin action rows added.
+
+Stage E will pick up the SSO OAuth2 flow internals, ESI endpoint inventory, GitHub changelog plumbing, and outbound mail; Stage D will pick up the WebSocket transport used by `Api\Map::getAccessData` / `updateData` / `updateUserData`.
