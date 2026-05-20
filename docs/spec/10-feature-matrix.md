@@ -14,7 +14,7 @@ Each row is **one feature** at a granularity a product manager would recognise (
 | Scope (private / corp / alliance / global / admin) | Stage A |
 | UI surface | Stage F/G/H |
 | API endpoints | Stage C |
-| DB tables | Stage B |
+| DB tables | Stage B → [02-data-model.md](02-data-model.md) |
 | Cron interactions | Stage D |
 | External integrations | Stage E |
 | Permissions | Stage C |
