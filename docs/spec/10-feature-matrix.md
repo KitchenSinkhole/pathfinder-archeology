@@ -270,3 +270,38 @@ Every controller action listed in [03-backend-api.md](03-backend-api.md) covers:
 - [x] Feature matrix updated — auth, account, and permission rows now link forward to Stage C docs; admin action rows added.
 
 Stage E will pick up the SSO OAuth2 flow internals, ESI endpoint inventory, GitHub changelog plumbing, and outbound mail; Stage D will pick up the WebSocket transport used by `Api\Map::getAccessData` / `updateData` / `updateUserData`.
+
+---
+
+## Stage D update
+
+Stage D added [04-cron-and-background.md](04-cron-and-background.md). All cron-job and realtime-transport rows in the matrix above are now backed by that doc.
+
+### Cron coverage (Stage D)
+
+13 active jobs across 6 classes:
+
+- `Cron\MapUpdate` — `deactivateMapData` (@hourly), `deleteMapData` (@downtime), `deleteEolConnections` (@5m), `deleteExpiredConnections` (@hourly), `deleteSignatures` (@30m)
+- `Cron\CharacterUpdate` — `deleteLogData` (@instant), `cleanUpCharacterData` (@hourly), `deleteAuthenticationData` (@downtime)
+- `Cron\Cache` — `deleteExpiredCacheData` (@downtime)
+- `Cron\StatisticsUpdate` — `deleteStatisticsData` (@weekly)
+- `Cron\MapHistory` — `truncateMapHistoryLogFiles` (@30m)
+- `Cron\CcpSystemsUpdate` — `importSystemData` (@halfPastHour)
+- `Cron\Universe` — `updateSovereigntyData` (@halfPastHour); plus disabled `updateUniverseSystems`, `setup`
+
+### Realtime transport coverage (Stage D)
+
+- PHP client (`Lib\Socket\{AbstractSocket,TcpSocket,NullSocket,SocketInterface}`) + factory binding in `Lib\Config`.
+- Browser SharedWorker (`js/app/map/worker.js`, `js/app/worker/map.js`) and `MsgWorker` envelope.
+- Server-side socket-server process: out of this repo (noted as open question 1 in Stage D).
+- Task vocabulary catalogued: `mapUpdate`, `mapAccess`, `mapConnectionAccess`, `mapDeleted`, `characterUpdate`, `characterLogout`, `healthCheck`, `logData` (+ client→server `subscribe` / `unsubscribe`).
+
+### Stage D self-check
+
+- [x] Every job in `cron.ini` appears in [04-cron-and-background.md](04-cron-and-background.md), including the two commented-out WIP jobs.
+- [x] Every `app/Cron/*.php` file read.
+- [x] Every `app/Lib/Socket/*.php` file read.
+- [x] All `$f3->webSocket()->write(` call sites in `app/` enumerated to derive the task vocabulary.
+- [x] Map-history pipeline (Monolog → socket server → NDJSON files → truncate cron) traced end-to-end.
+- [x] Per-request activity-log buffer flush (`LogController::logActivities` via `Controller::unload`) documented.
+- [x] Open questions list non-empty (8 in 04).
