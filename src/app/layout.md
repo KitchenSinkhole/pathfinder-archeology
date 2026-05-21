@@ -1,0 +1,22 @@
+## RootLayout
+
+**Purpose:** Top-level App Router layout. Wraps every route in the HTML/body shell, sets page metadata, applies the Geist sans-serif font, and imports global Tailwind tokens.
+**File:** `src/app/layout.tsx`
+
+### Props
+
+| Prop | Type | Required | Description |
+|---|---|---|---|
+| children | ReactNode | yes | Page subtree rendered inside `<body>`. |
+
+### Renders
+`<html lang="en">` with the Geist font CSS variable and a `font-sans` class, wrapping `<body>{children}</body>`. Imports `./globals.css` (shadcn-generated Tailwind v4 tokens) once at the root.
+
+### Exports
+- Default: `RootLayout`
+- Named: `metadata` — `next.Metadata` for the document `<title>` and description.
+
+### Depends on
+- `next/font/google` — Geist font.
+- `@/lib/utils` — `cn` className helper.
+- `./globals.css` — Tailwind v4 base + shadcn theme tokens.

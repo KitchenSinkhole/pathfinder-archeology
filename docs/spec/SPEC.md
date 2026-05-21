@@ -506,7 +506,7 @@ Every row in [10 §§ 1–14](10-feature-matrix.md) **not** flagged in §15 or a
 | Static-data sync | SQL dump in `export/sql/eve_universe.sql.zip` + ESI walk + patch SQLs for Pochven/Zarzakh | Streaming SDE + ESI deltas. §6.4 |
 | Auth + refresh-token rotation | Bespoke `Sso::verifyAccessToken`; refresh tokens not persisted on rotation | Auth.js v5 + EVE provider; refresh persisted on every rotation. §7 |
 | Auth cookies ("Remember me") | Selector+validator pair, undocumented on-wire format | Auth.js session cookie; legacy selector read once during migration window. §7 |
-| Static config | Six `.ini` files (`config`, `environment`, `pathfinder`, `plugin`, `requirements`, `cron`) | Env vars + a `pathfinder.config.ts` for type-safe app constants. Drop `requirements.ini` (Node version pinned in `package.json`). |
+| Static config | Six `.ini` files (`config`, `environment`, `pathfinder`, `plugin`, `requirements`, `cron`) | Env vars + a `aperture.config.ts` for type-safe app constants. Drop `requirements.ini` (Node version pinned in `package.json`). |
 | Map history storage | NDJSON files under `history/`, truncated by cron, leaked on hard-delete | `pf_map_event` table partitioned by month, `ON DELETE CASCADE` from `pf_map`, `AFTER INSERT` trigger → `pg_notify`. Subsumes `activity_log` and `connection_log` too. §6.5 |
 | Soft-delete pattern | Generic `active` boolean on every operational table; reaped by `deleteMapData` cron | Replaced by explicit `visible` flag on `pf_map_system`, `deleted_at` two-phase lifecycle on `pf_map` only, hard-delete on `pf_map_connection`. §6.5 |
 | Per-system stats | 24-column circular buffer (`value1`…`value24`) on `system_jumps`/`system_kills_*` | Narrow time-series `pf_system_stats (system_id, hour_bucket, …)`. §6.5 |

@@ -18,7 +18,7 @@ Infrastructure and the §11 Phase-0 deliverables that constrain every later phas
 
 ### Stage 0 — Project scaffold
 **Goal:** A clean Next.js 16 + React 19 + TS 6 repo with Drizzle, Auth.js v5, shadcn/ui, sonner, Tiptap, xyflow, TanStack Table installed; `docker compose` brings up Postgres 18 with `pgcrypto` and `pg_partman`; `pnpm dev` boots an empty App Router page; `pnpm typecheck`, `pnpm lint`, `pnpm test` (Vitest) all pass; CI runs the same.
-**Touches:** `package.json`, `next.config.ts`, `tsconfig.json`, `docker-compose.yml`, `pathfinder.config.ts`, `.env.example`, `src/app/layout.tsx`, `.github/workflows/ci.yml`.
+**Touches:** `package.json`, `next.config.ts`, `tsconfig.json`, `docker-compose.yml`, `aperture.config.ts`, `.env.example`, `src/app/layout.tsx`, `.github/workflows/ci.yml`.
 **Done when:** Empty app runs locally and in CI against a containerized Postgres.
 
 ### Stage 1 — Universe schema & SDE ingest

@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Postgres image (pgcrypto + pg_partman)
+        run: docker build -t aperture-postgres:ci ./docker/postgres
+
+      - name: Start Postgres
+        run: |
+          docker run -d --name aperture-pg \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=aperture \
+            -p 5432:5432 \
+            aperture-postgres:ci
+          for i in $(seq 1 30); do
+            docker exec aperture-pg pg_isready -U postgres -d aperture && exit 0
+            sleep 2
+          done
+          echo "Postgres failed to become ready" >&2
+          docker logs aperture-pg
+          exit 1
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm typecheck
+
+      - run: pnpm lint
+
+      - run: pnpm test
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/aperture

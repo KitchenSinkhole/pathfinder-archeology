@@ -1,0 +1,21 @@
+import type { ReactNode } from 'react';
+import type { Metadata } from 'next';
+import { Geist } from 'next/font/google';
+
+import { cn } from '@/lib/utils';
+import './globals.css';
+
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
+
+export const metadata: Metadata = {
+  title: 'Aperture',
+  description: 'Collaborative wormhole mapping for EVE Online',
+};
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en" className={cn('font-sans', geist.variable)}>
+      <body>{children}</body>
+    </html>
+  );
+}

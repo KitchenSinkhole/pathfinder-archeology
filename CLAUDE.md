@@ -184,7 +184,7 @@ There are exactly three pathways. Pick the right one; do not invent a fourth.
 - **Admin gating** uses the `pf_character.authz_level` enum, not a second Auth.js provider.
 
 ### Config
-- Env vars + a typed `pathfinder.config.ts` for app constants. Do not reintroduce `.ini` files.
+- Env vars + a typed `aperture.config.ts` for app constants. Do not reintroduce `.ini` files.
 - Do not gate behavior on runtime config that should be a hard-coded constant (see job cadences above).
 
 ### Lifecycle patterns
