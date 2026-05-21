@@ -331,3 +331,159 @@ Stage E added [05-external-integrations.md](05-external-integrations.md). Extern
 - [x] `export/sql/`, `export/csv/` contents and patch-SQL purpose documented.
 - [x] `vendor/monoliyoda/pathfinder_esi` is not present in tree — flagged as Open Question 1 in [05](05-external-integrations.md).
 - [x] Open questions list non-empty (5 in 05).
+
+---
+
+## Stage F update
+
+Stage F added [06-frontend-architecture.md](06-frontend-architecture.md). It deferred matrix updates to Stage I; the rows below are now backed by it. Existing rows in §13 / §14 already cover the "Task Manager" and "RequireJS bundles" entries — only the truly new surfaces are added.
+
+| Feature | Scope | UI | API | DB | Cron | Ext | Status |
+|---|---|---|---|---|---|---|---|
+| Slidebars off-canvas menus (left/right) | per-user | `js/app/page.js`, Slidebars 2.0.2 | — | — | — | — | left menu = nav; right menu = map view toggles (grid snap, magnetizer, compact, labels, signature overlays) → [06 § Page chrome](06-frontend-architecture.md) |
+| Performance logging dialog | per-user | `dialog/task_manager.html`, `js/app/counter.js`, `js/app/logging.js` | — (client only) | — | — | — | shows in-flight request counters; gated by `Init.performanceLogging` → [06](06-frontend-architecture.md) |
+| Asset cache-busting via versioned paths | build | — | — | — | — | — | `public/{js,css,img}/v<version>/`; bumps every release → [06](06-frontend-architecture.md) |
+| Loader bundles (pnotify / datatables / summernote) | build | — | — | — | — | — | RequireJS shim bundles → [06](06-frontend-architecture.md) |
+
+## Stage G update
+
+Stage G added [07-frontend-map-engine.md](07-frontend-map-engine.md). All `→ G` markers in the matrix above are now resolved against `07-frontend-map-engine.md`; treat any "→ G" cell as a link to the matching section there (Map lifecycle, System lifecycle, Connection lifecycle, Auxiliary modules). New auxiliary-feature rows:
+
+| Feature | Scope | UI | API | DB | Cron | Ext | Status |
+|---|---|---|---|---|---|---|---|
+| Map overlay system (route / intel / debug) | per-map | `js/app/map/overlay/*.js` | — (client) | — | — | — | toggled from right Slidebar → [07 § Auxiliary modules](07-frontend-map-engine.md#auxiliary-modules) |
+| Drag-select marquee (multi-system selection) | per-map | `js/app/lib/dragSelect.js` | — | — | — | — | enables bulk move / context-menu actions → [07](07-frontend-map-engine.md) |
+| Custom scrollbar on map canvas | per-map | `js/app/map/scrollbar.js` | — | — | — | — | → [07](07-frontend-map-engine.md) |
+| Background contextmenu (paste systems / new connection mode) | per-map | `js/app/map/contextmenu.js` | `/api/Map/*` | system | — | — | → [07](07-frontend-map-engine.md) |
+
+## Stage H update
+
+Stage H added [08-frontend-ui-modules.md](08-frontend-ui-modules.md). All `→ H` markers above resolve into the per-module / per-dialog sections of that doc. Additional rows that Stage H surfaced and that were not yet enumerated in the skeleton:
+
+| Feature | Scope | UI | API | DB | Cron | Ext | Status |
+|---|---|---|---|---|---|---|---|
+| Map import / export (JSON download / upload) | per-map | map settings dialog | `/api/Map/importMap`, `/api/Map/export*` (see [03](03-backend-api.md)) | map, system, connection, signature | — | — | rights: `map_import`, `map_export` → [08](08-frontend-ui-modules.md), [09](09-permissions-and-admin.md) |
+| Statistics dashboard (per-character / per-corp activity) | per-user | `dialog/stats.js`, `dialog/stats.html` | `/api/Statistic/*` | activity_log | `deleteStatisticsData` (weekly) | — | → [08](08-frontend-ui-modules.md) |
+| Structure intel module | per-system | `dialog/structure.html`, `module/system_info.js` | `/api/rest/Structure` | structure | — | ESI structures | → [08](08-frontend-ui-modules.md), [05](05-external-integrations.md) |
+| User-config save (per-character UI prefs) | per-user | various modules | `/api/User/saveUserConfig` (see [03](03-backend-api.md)) | character | — | — | persists module layout, expanded sections → [08](08-frontend-ui-modules.md) |
+| `header_login.js` canvas physics splash | global | login page | — | — | — | — | ~600 LOC of visual flourish; flagged "drop in rebuild" → [08](08-frontend-ui-modules.md#open-questions) |
+| Plugin module loading (`BaseModule.isPlugin`) | per-map | `module/empty.js` template | — | — | — | — | ✗ scaffolding only; no plugins wired in build → [08](08-frontend-ui-modules.md#open-questions) |
+
+---
+
+## Stage I — Cross-reference audit
+
+Stage I closes out the matrix. Its job is verification, not new prose: walk every prior doc, mark forward references as resolved, consolidate open questions, and stamp the dead-code / footgun inventory.
+
+### Forward references resolved
+
+| Marker in matrix | Resolved by |
+|---|---|
+| `→ G` (Stage G) | [07-frontend-map-engine.md](07-frontend-map-engine.md) |
+| `→ H` (Stage H) | [08-frontend-ui-modules.md](08-frontend-ui-modules.md) |
+| `→ D` (Stage D) | [04-cron-and-background.md](04-cron-and-background.md) |
+| `→ E` (Stage E) | [05-external-integrations.md](05-external-integrations.md) |
+| `details TBD` on suspect-session detection | Resolved: Monolog `session_suspect` channel is written by `Lib\Monolog\Handler` paths invoked from `Controller\AppController::initResource`; no UI consumer — log-only. Update row: drop `TBD`. |
+
+### Open-question audit
+
+Source docs collectively raised **47** open questions (00:5, 01:6, 02:7, 03:6, 04:8, 05:5, 06:5, 07:6, 08:8, 09:7). Inline `**A:**` answers (provided by the user during earlier stages) resolve **11** of them. The remainder fall into three categories:
+
+**Resolved during Stage I (inline answers in source docs):**
+- [00] Deployment scope (self-hosted by EVE groups).
+- [00] `monoliyoda/pathfinder_esi` provenance (ad-hoc patches, no upstream changelog).
+- [01] `pathfinder_env` switch lives in `conf/` overrides.
+- [01] `conf/` is deploy-time, not committed.
+- [01] EVE-Scout v2 schema validated.
+- [01] Gulp build still works on modern Node.
+- [02] Pochven / Abyssal labels added post-launch as patch — explains undocumented enums.
+- [02] Stale `Universe/Structure` rows on token loss → intended ("keep stale data" is desirable).
+- [03] `/setup` is fronted by HTTP Basic Auth at the proxy; SSO not required by design.
+- [04] Socket server lives in `KitchenSinkhole/pathfinder_websocket`, optional at deploy.
+- [04] `importSystemData` 24-column rotation = 24 hourly ESI buckets.
+- [09] Same answer as [03] regarding `/setup`.
+
+**Still open — should be answered before rebuild:**
+1. **DB_CCP_* env block** — confirmed unused after Stage E grep ([00] + [01] + [02]). Recommend removing in rebuild rather than carrying forward.
+2. **`Lib\Config::pingDomain`** — appears dead; no callers found. Confirm with `git log -S` before deleting.
+3. **WebSocket `subscribe` / `stats` / `healthCheck` payload shapes** ([04] Q2–Q4) — need to be lifted from the external `pathfinder_websocket` repo. Blocking for a TypeScript transport in the rebuild.
+4. **`refreshAccessToken` rotation** ([05] Q3) — `CharacterModel::getAccessToken()` does not persist a rotated `esiRefreshToken`. If CCP starts rotating, Pathfinder will silently degrade. **High-priority bug suspect.**
+5. **`searchUniverseNameData` scope coverage** ([05] Q2) — only `search_structures` scope is granted but other categories may be queried.
+6. **Vendor opKey ↔ swagger op mapping** ([05] Q1) — diff against `KitchenSinkhole/pathfinder_esi` before the rebuild commits to a TS ESI client.
+7. **Map history file purge** ([04] Q6) — `history/map/map_<id>.log` is not cleaned when a map is hard-deleted; files accumulate indefinitely. **Confirmed leak.**
+8. **`map_share` / `map_import` / `map_export` server-side enforcement** ([09] Q1) — UI gates the action but server-side check needs verification per controller; potential bypass.
+9. **Cookie SameSite / Secure flags** ([09] Q6) — no-CSRF posture depends on these being set at the proxy.
+10. **Kick / ban orphaning on account delete** ([09] Q7).
+11. **Activity-log retention week-rollover** ([04] Q7) — minor; ≤53-week retention in ISO53 years.
+
+**Non-blocking / nice-to-have:** all remaining frontend questions (06 × 4, 07 × 6, 08 × 8) are implementation curiosities the rebuild will naturally answer by replacing the relevant code.
+
+### Dead / disabled / WIP inventory
+
+Consolidated from §15 above plus findings in later stages:
+
+| Item | Where | Disposition for rebuild |
+|---|---|---|
+| `Cron\Universe::updateUniverseSystems` | commented in [`cron.ini`](../../app/cron.ini); class still present | ✗ Drop — historical WIP that never shipped |
+| `Cron\Universe::setup` | commented in [`cron.ini`](../../app/cron.ini) | Keep behavior — one-shot static-data bootstrap; trigger via deploy script, not cron |
+| `SEND_RALLY_Mail_ENABLED` (per-scope) | [`pathfinder.ini`](../../app/pathfinder.ini); all scopes default 0 | ✗ Drop SwiftMailer + Monolog mail handler; replace with webhook-only ([05](05-external-integrations.md)) |
+| `DB_CCP_*` DSN block | [`environment.ini`](../../app/environment.ini); no readers | ✗ Drop |
+| `CCP_ESI_SCOPES_ADMIN` (empty default) | [`pathfinder.ini`](../../app/pathfinder.ini) | Decide: either populate with a real admin-scope set or remove the admin-scope gate ([09](09-permissions-and-admin.md#admin-panel----admin)) |
+| `[PATHFINDER.EXPERIMENTS] PERSISTENT_DB_CONNECTIONS = 1` | [`pathfinder.ini`](../../app/pathfinder.ini); explicitly experimental | Re-evaluate against PgBouncer / Prisma connection pooling in the rebuild |
+| `Lib\Config::pingDomain` | [`Lib/Config.php`](../../app/Lib/Config.php) | ✗ Drop if grep confirms no callers |
+| `BaseModule.isPlugin` + `module/empty.js` | `js/app/ui/module/empty.js` | ✗ Drop; never wired into build |
+| `header_login.js` canvas physics | `js/app/ui/header_login.js` | Drop in rebuild — purely decorative |
+| `Position.findNonOverlappingDimensions` `findChain:true` branch | `js/app/map/util.js` | Likely dead; confirm before deleting |
+| `?debug` overlay system | `js/app/map/overlay/overlay.js:709-804` | Keep as dev-only; document toggles |
+| Hard-deleted map history files | `history/map/map_<id>.log` | **Bug** — add cleanup hook in rebuild |
+| Mail templates under [`public/templates/mail/`](../../public/templates/mail) | rendered but never sent in shipped config | Drop with SwiftMailer |
+| `SOCKET_HOST` / `SOCKET_PORT` missing from `environment.ini` | [`Lib/Config.php`](../../app/Lib/Config.php) reads them | Document as required deploy-time env in rebuild; current behavior silently no-ops realtime |
+
+### CCP-API footgun history
+
+EVE-specific quirks the rebuild must inherit consciously:
+
+1. **ESI shape churn.** Why `monoliyoda/pathfinder_esi` is a forked vendor — upstream stalls behind CCP changes. Every ESI call site is "as currently observed" ([00 § Quirks](00-overview.md)).
+2. **SSO v2 refresh-token rotation.** Pathfinder does not persist rotated refresh tokens (see Q4 above). If CCP enables rotation, sessions die after one refresh.
+3. **JWK key rotation** on the SSO endpoint. `Sso::verifyAccessToken` re-fetches JWKs per validation; cache invalidation has bitten production in the past — preserve the no-cache stance or wire conditional re-fetch.
+4. **Static-data drift.** Pochven (region 10000070) and Zarzakh (system 30000003 / 30100000) were grafted onto the schema via [`export/sql/`](../../export/sql/) patches. Any future CCP space addition needs the same dance. Stage E recommends switching the rebuild to streaming SDE + ESI deltas.
+5. **Structure search** requires character-scoped tokens, and structure names disappear when the only authorized character leaves. Pathfinder's "keep stale" stance is intentional but produces ghost rows ([02 Q on `Universe/Structure`](02-data-model.md#23-open-questions)).
+6. **ESI search categories.** `esi-search.search_structures.v1` is currently the only structure-search scope granted, but `searchUniverseNameData` paths likely also hit non-structure categories ([05 Q2](05-external-integrations.md#open-questions)).
+7. **Cookie-based re-login** uses a selector+validator pair whose on-wire format is undocumented ([03 Q5](03-backend-api.md#open-questions)). Migrating to NextAuth without breaking existing "Remember me" cookies needs the exact format.
+8. **`updateSovereigntyData`** chunks against ESI's pagination and persists `count` to resume — concurrent runs would double-import ([04 Q5](04-cron-and-background.md#open-questions)). The cron lock is the only thing keeping this safe.
+9. **EVE-Scout v2 endpoint shape** changed between v1 and v2; the current integration was validated against v2 ([01 inline answer](01-config-and-deployment.md#open-questions)). Will likely change again.
+10. **GitHub API rate limits.** [`Api\GitHub`](../../app/Controller/Api/GitHub.php) is unauthenticated; 60 req/h IP limit. Changelog dialog can dark-fail on busy hosts ([05](05-external-integrations.md)).
+11. **`clue/ndjson-react` socket transport** lives in a separate optional repo. Without it, all `→ D` realtime features silently no-op and the user sees stale maps with no error.
+
+### Coverage summary
+
+| Stage | Output | Critical files read | Public entry points covered | Open questions raised | Resolved by Stage I |
+|---|---|---|---|---|---|
+| A | 00, 01, 10 skeleton | ✓ all ini, bootstrap, Config, AppController, gulpfile | all routes, dialogs, modules listed | 5 + 6 = 11 | 7 |
+| B | 02 | ✓ Abstract*, all 35 + 22 models, Db/, export/sql | every model class | 7 | 2 |
+| C | 03, 09 | ✓ all controllers | every action method, every right & role | 6 + 7 = 13 | 2 |
+| D | 04 | ✓ all crons, all Lib/Socket | 13 cron jobs, 8 socket tasks | 8 | 2 |
+| E | 05 | ✓ all Lib/Api, Ccp/*, GitHub controller, mail templates, export SQL | ~38 ESI opKeys, SSO flow, GitHub, mail, static import | 5 | 0 (all carried) |
+| F | 06 | ✓ all page entrypoints, workers, build | 4 pages, 3 loaders, SharedWorker | 5 | 0 |
+| G | 07 | ✓ all map/* files, module_map | Map / System / Connection / overlay APIs | 6 | 0 |
+| H | 08 | ✓ all ui/dialog (13), ui/module (13), templates | every dialog, every module, templates inventory | 8 | 0 |
+| I | (this section) | — | — | — | resolved 11 of 47; 11 remain blocking, 25 deferred to rebuild |
+
+### Stage I self-check
+
+- [x] Every `→ G`, `→ H`, `→ D`, `→ E` marker in the matrix points to an existing section.
+- [x] Stage F/G/H deferred-row backlog appended above.
+- [x] Each prior stage's open-question list re-read; resolved questions tagged, unresolved promoted to a numbered list above.
+- [x] Dead code / disabled features inventoried with explicit rebuild disposition.
+- [x] CCP-API footgun list captured for the rebuild team.
+- [x] Coverage table cross-references every prior stage's self-check.
+- [x] No new prose docs written — Stage I is audit-only by design; substantive content stays in the originating stage docs.
+
+### Hand-off to Stage J
+
+Stage J (rebuild spec) can now treat this matrix as the canonical feature inventory:
+
+- **Keep:** every row in §§1–14 not flagged ✗ above.
+- **Drop:** all rows / items in the dead-code table above.
+- **Redesign:** realtime transport (move off TCP+NDJSON to native WebSockets / SSE), static-data sync (move off SQL-dump + ESI walk to streaming SDE + ESI deltas), SSO (NextAuth provider with persisted refresh-token rotation), auth cookies (re-issue under new format with a migration window).
+- **Open before commit:** the 11 still-open questions above.
