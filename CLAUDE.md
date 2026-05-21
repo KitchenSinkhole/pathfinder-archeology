@@ -133,7 +133,7 @@ All shared domain types live in `src/types/index.ts`. Do not define project-doma
 These rules come straight from [docs/spec/SPEC.md](docs/spec/SPEC.md) §§5–7. Treat them as load-bearing — deviations need an explicit reason recorded in a plan doc.
 
 ### Stack
-- **Next.js 15+ App Router**, **React 19**, **TypeScript 5+**, **Drizzle ORM**, **Postgres 16**, **Auth.js v5**, **Node 22 LTS**.
+- **Next.js 16+ App Router**, **React 19**, **TypeScript 6+**, **Drizzle ORM**, **Postgres 18**, **Auth.js v5**, **Node 24 LTS**.
 - **No Redis.** Sessions are stateless JWT. Background queue is Postgres-backed (`graphile-worker`). Realtime fanout is Postgres `LISTEN/NOTIFY`. Hot caches are in-process LRU.
 - UI primitives: **shadcn/ui**, **TanStack Table**, **Tiptap**, **sonner** (toasts). Map canvas: **xyflow (react-flow)** — do **not** reach for jsPlumb or imperative DOM map libraries.
 

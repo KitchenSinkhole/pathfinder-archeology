@@ -80,7 +80,7 @@ Every dialog and module listed under [08 § Module / dialog inventory](08-fronte
 
 ## 5. Target architecture
 
-**Stack:** Next.js 15+ (App Router) · React 19 · TypeScript 5+ · Drizzle ORM · Postgres 16 · Auth.js v5 · Node 22 LTS. No Redis — sessions are stateless JWT, the background queue is Postgres-backed (§5.3), realtime fanout is `LISTEN/NOTIFY` (§5.2), and hot caches are in-process LRU (§6.2).
+**Stack:** Next.js 16+ (App Router) · React 19 · TypeScript 6+ · Drizzle ORM · Postgres 18 · Auth.js v5 · Node 24 LTS. No Redis — sessions are stateless JWT, the background queue is Postgres-backed (§5.3), realtime fanout is `LISTEN/NOTIFY` (§5.2), and hot caches are in-process LRU (§6.2).
 
 ### 5.1 Routes
 
@@ -513,7 +513,7 @@ Every row in [10 §§ 1–14](10-feature-matrix.md) **not** flagged in §15 or a
 | Sessions | MySQL-backed in PF DB | Stateless JWT. No Redis, no DB session table. |
 | Background queue | None (F3-Cron) | `graphile-worker` on Postgres. `LISTEN/NOTIFY` dispatch. No Redis. §5.3 |
 | Map engine | jsPlumb + 3,441-LOC `map.js` | Re-authored on `react-flow` (xyflow). §5.4 |
-| Build pipeline | Gulp 4 on Node 12 EOL | Next.js native build (Turbopack). |
+| Build pipeline | Gulp 4 on Node 12 EOL | Next.js 16 native build (Turbopack). |
 
 ### 8.4 Decide before commit
 
