@@ -163,10 +163,13 @@ Compose file ships this two-service stack as the supported self-host bundle. If 
 
 Source: [02-data-model.md](02-data-model.md).
 
-### 6.1 ORM and DB
+### 6.1 ORM, DB, and naming conventions
 
 - **Drizzle** for schemas, queries, and migrations. The Cortex `$fieldConf` style maps cleanly onto Drizzle's per-column declaration. JSON columns use Postgres `jsonb`.
-- **Postgres**, single instance, **single schema** (the historical `pathfinder` / `universe` split exists only because MySQL cannot FK across DSNs — that constraint is gone). Universe data (~10.5K systems, ~70 regions, well under 100MB) lives in the same schema as user data with `universe_*` table prefixes; user data uses `pf_*` prefixes where naming clarity matters.
+- **Postgres**, single instance, **single schema** (the historical `pathfinder` / `universe` split exists only because MySQL cannot FK across DSNs — that constraint is gone).
+- **Table-name prefixes are mandatory, no exceptions:** every user-data table starts with `pf_`, every static CCP-data table starts with `universe_`. This avoids the legacy ambiguity where two `system` tables existed in different schemas.
+- **Column casing:** `snake_case` in the database; TS-side surfaces use `camelCase` via Drizzle's `name:` mapping. Pick one and stick to it.
+- **All time columns are `timestamptz`.** No naked `timestamp`, no MySQL-style implicit-UTC `DATETIME`.
 - `pf_map_system.system_id` → `universe_system.id` is a real FK with `ON DELETE RESTRICT`. All cross-domain joins are native; no schema-name gymnastics, no application-level loader for what should be a SQL join.
 
 ### 6.2 Postgres-native wins
@@ -203,88 +206,274 @@ Replace [02 § 21 Bootstrap data files](02-data-model.md#21-bootstrap-data-files
 
 This kills the "patch SQL when CCP adds a region" dance ([10 footgun #4](10-feature-matrix.md#ccp-api-footgun-history)).
 
+**Stargate adjacency as a real edge table.** Legacy `system_neighbour` stores neighbours as a pipe-delimited `VARCHAR512` ([02 § 19.1](02-data-model.md#191-systemneighbourmodel--system_neighbour) — known smell). Replace with a proper directed edge table:
+
+```
+universe_stargate_edge (
+  from_system_id int → universe_system.id ON DELETE CASCADE,
+  to_system_id   int → universe_system.id ON DELETE CASCADE,
+  PRIMARY KEY (from_system_id, to_system_id)
+)
+CREATE INDEX ON universe_stargate_edge (to_system_id);
+```
+
+Server-side character-location tracking (§5.3) looks up gate-adjacency directly via PK. Route planning uses a Postgres recursive CTE or in-app BFS. SDE delta becomes plain `INSERT` / `DELETE` rows — no whole-table rebuild, no string parsing. The denormalized `regionId` / `constellationId` / `trueSec` columns from `system_neighbour` are dropped (they already live on `universe_system`).
+
+**Wormhole dogma overrides as a DB table.** Legacy patches the (often-missing) ESI dogma attribute 3974 via the side-channel `export/csv/wormhole.csv` ([02 § 17.3](02-data-model.md#173-typemodel--type), [02 § 21](02-data-model.md#21-bootstrap-data-files)). Replace with:
+
+```
+universe_type_override (
+  type_id    int → universe_type.id ON DELETE CASCADE,
+  attr_id    int,
+  value      double precision NOT NULL,
+  reason     text,                          -- 'esi-missing-3974' | 'admin' | 'sde-correction'
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (type_id, attr_id)
+)
+```
+
+Effective dogma value is read via a view: `universe_type_attribute_effective` returns `COALESCE(override.value, type_attribute.value)`. `wormhole.csv` is a one-shot install-time bootstrap into this table — admin-editable thereafter, survives every SDE refresh.
+
 ### 6.5 Lifecycle, visibility, and audit
 
 The legacy schema uses a generic `active` boolean across `map`, `system`, `connection`, `signature`, etc. ([02 § Cortex ORM primer](02-data-model.md#cortex-orm-primer)) for three distinct behaviors: system resurrection on re-encounter, two-phase map deletion, and admin disable-without-delete. The rebuild replaces the generic flag with mechanisms that fit each case.
+
+**Map root (`pf_map`).** The owning entity for every per-map relation below. Two-phase lifecycle via `deleted_at`.
+
+```
+pf_map (
+  id                         bigserial PRIMARY KEY,
+  scope                      map_scope NOT NULL,    -- enum: wh | k_space | none | all
+  type                       map_type  NOT NULL,    -- enum: private | corp | alliance
+  name                       text NOT NULL,
+  icon                       text,
+  delete_expired_connections boolean NOT NULL DEFAULT true,
+  delete_eol_connections     boolean NOT NULL DEFAULT true,
+  track_abyssal_jumps        boolean NOT NULL DEFAULT true,
+  log_activity               boolean NOT NULL DEFAULT true,
+  next_bookmarks             jsonb   NOT NULL DEFAULT '[]'::jsonb,
+  created_at                 timestamptz NOT NULL DEFAULT now(),
+  updated_at                 timestamptz NOT NULL DEFAULT now(),
+  deleted_at                 timestamptz   -- two-phase; deleteMapData cron purges after 30-day grace
+)
+```
+
+Legacy toggles dropped under the new lifecycle: `persistentAliases` and `persistentSignatures` are obsolete (`pf_map_system` rows always persist across invisibility cycles, and `pf_map_signature` reaps independently by `expires_at`); `logHistory` is obsolete (`pf_map_event` is the universal log — see below).
 
 **Map-system visibility.** The universe is finite (~10.5K systems) and per-map row count is bounded by `MAX_SYSTEMS`. `pf_map_system` rows persist for the life of their parent map; an explicit `visible boolean` controls whether the system currently appears on the map:
 
 ```
 pf_map_system (
-  id              bigserial PRIMARY KEY,
-  map_id          fk → pf_map.id              ON DELETE CASCADE,
-  system_id       int  → universe_system.id,  -- real FK, finite universe
-  visible         boolean NOT NULL,
-  position_x, position_y,
-  intel_notes text, status, tags, is_rally,
-  first_added_at, last_visible_at timestamptz,
+  id               bigserial PRIMARY KEY,
+  map_id           fk → pf_map.id              ON DELETE CASCADE,
+  system_id        int  → universe_system.id,  -- real FK, finite universe
+  visible          boolean NOT NULL,
+  position_x       double precision NOT NULL DEFAULT 0,  -- float; legacy 2440×1480 clamp dropped (xyflow renders float)
+  position_y       double precision NOT NULL DEFAULT 0,
+  alias            text,                       -- user-set system label
+  tag              text,                       -- single short chain-position tag (e.g. "A1")
+  status           system_status NOT NULL DEFAULT 'unknown',  -- enum: unknown | friendly | occupied | hostile | empty | unscanned
+  intel_notes      text,
+  locked           boolean NOT NULL DEFAULT false,
+  rally_at         timestamptz,                -- non-null ⇒ rally active; replaces legacy rallyUpdated + rallyPoke
+  first_added_at   timestamptz NOT NULL DEFAULT now(),
+  last_visible_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at       timestamptz NOT NULL DEFAULT now(),
   UNIQUE (map_id, system_id)
 )
+```
 
+**Map connections.** Edges between two map-systems. The legacy `connection.type JSON` flag bag (~12 token strings with no DB-level mutual-exclusion enforcement — `wh_fresh + wh_critical` was silently accepted) is split into typed columns + enums.
+
+```
+pf_map_connection (
+  id                    bigserial PRIMARY KEY,
+  map_id                fk → pf_map.id           ON DELETE CASCADE,
+  source_map_system_id  fk → pf_map_system.id    ON DELETE CASCADE,
+  target_map_system_id  fk → pf_map_system.id    ON DELETE CASCADE,
+  scope                 connection_scope NOT NULL,  -- enum: wh | stargate | jumpbridge | abyssal
+  mass_status           wh_mass NOT NULL DEFAULT 'fresh',  -- enum: fresh | reduced | critical
+  jump_mass_class       wh_jump_mass,                       -- enum: s | m | l | xl   (nullable for non-wh)
+  is_eol                boolean NOT NULL DEFAULT false,
+  is_frigate            boolean NOT NULL DEFAULT false,
+  preserve_mass         boolean NOT NULL DEFAULT false,
+  is_rolling            boolean NOT NULL DEFAULT false,
+  eol_at                timestamptz,            -- when is_eol first flipped to true
+  created_at            timestamptz NOT NULL DEFAULT now(),
+  updated_at            timestamptz NOT NULL DEFAULT now(),
+  CHECK (source_map_system_id <> target_map_system_id)
+)
+```
+
+The legacy `sourceEndpointType` / `targetEndpointType` JSON columns are dropped — they encoded jsPlumb anchor descriptions; xyflow handles edge endpoints client-side.
+
+**Signatures.** Attached to a map-system, optionally linked to a connection ("this sig IS the wormhole I just bookmarked"). Signature `group`/`type` reference universe lookups, not free text.
+
+```
 pf_map_signature (
-  id              bigserial PRIMARY KEY,
-  map_system_id   fk → pf_map_system.id        ON DELETE CASCADE,
-  sig_id text, "group", "type", name,
-  created_at, updated_at, expires_at timestamptz,
+  id                  bigserial PRIMARY KEY,
+  map_system_id       fk → pf_map_system.id        ON DELETE CASCADE,
+  map_connection_id   fk → pf_map_connection.id    ON DELETE CASCADE,  -- nullable; sig dies with the WH if linked
+  sig_id              text NOT NULL,               -- in-game 3-char sig id (e.g. "ABC")
+  group_id            int  → universe_group.id ON DELETE SET NULL,
+  type_id             int  → universe_type.id  ON DELETE SET NULL,
+  name                text,
+  description         text,
+  created_at          timestamptz NOT NULL DEFAULT now(),
+  updated_at          timestamptz NOT NULL DEFAULT now(),
+  expires_at          timestamptz NOT NULL,        -- default created_at + interval '5 days' (EVE max sig lifetime)
   UNIQUE (map_system_id, sig_id)
 )
 ```
 
 Lifecycle rules:
 
-- Removing a system from a map sets `visible = false, last_visible_at = now()`. No row is deleted; intel notes, tags, status, and all attached signatures persist untouched.
-- Re-adding the same system (common: same wormhole chain re-scanned hours or a day later — EVE signatures stay valid 3–5 days) upserts `visible = true` with the new position. Everything previously attached reappears.
+- Removing a system from the map sets `visible = false, last_visible_at = now()`. No row is deleted; intel notes, tags, status, and unattached signatures persist untouched.
+- Re-adding the same system (common: same wormhole chain re-scanned hours or a day later) upserts `visible = true` with the new position. Everything still attached reappears.
 - `MAX_SYSTEMS` enforcement counts `WHERE visible = true`.
-- `pf_map_system` rows are hard-deleted only via `ON DELETE CASCADE` when the parent map is deleted. There is no "delete old systems" cron.
-- A single signature reap cron — `DELETE FROM pf_map_signature WHERE expires_at < now()` — handles freshness, independent of system visibility. Replaces the legacy `deleteSignatures` job.
+- `pf_map_system` rows are hard-deleted only via `ON DELETE CASCADE` from `pf_map`. Optional housekeeping: garbage-collect rows with `visible = false AND last_visible_at < now() - interval '90 days'` that have no surviving signatures. No cron required for correctness.
+- Signature reap cron: `DELETE FROM pf_map_signature WHERE expires_at < now()`. Replaces the legacy `deleteSignatures` job.
+- **Connections are hard-deleted on collapse** — wormholes physically die and don't come back. Signatures linked via `map_connection_id` cascade with them. Sigs unattached to a connection (gas, ore, data, relic) survive the system's invisibility cycle. History of every connection mutation is preserved in `pf_map_event` (below).
 
-**Connections** are hard-deleted on collapse — wormholes physically die and don't come back. History is preserved in `map_event` (below).
+**Admin disable flags** (corp rights, external-role assignments, etc.) use status enums where actually needed; everything else is hard-delete.
 
-**Map two-phase lifecycle** is the only place a temporal soft-delete earns its keep. `pf_map.deleted_at timestamptz NULL`; the existing `deleteMapData` cron stays but is scoped to maps only and runs after the 30-day grace.
+**Character status.** Legacy `kicked` and `banned` are two nullable timestamps encoding mutually-exclusive states. Collapse onto `pf_character`:
 
-**Admin disable flags** (corp rights, access entries, etc.) use a status enum (`enabled` / `suspended`) where actually needed; everything else is hard-delete.
+```
+pf_character.status               character_status NOT NULL DEFAULT 'active'  -- enum: active | kicked | banned
+pf_character.status_changed_at    timestamptz
+pf_character.status_reason        text
+```
 
-**Unified audit / history (`map_event`).** The legacy three-layer setup — `activity_log` (weekly counter rows), `connection_log` (per-mutation detail rows), and NDJSON `history/map/*.log` files (which leak on hard-delete, [04 § Known issues](04-cron-and-background.md#known-issues--quirks)) — collapses into one append-only table:
+**Webhook fan-out (`pf_map_webhook`).** Legacy stores eight denormalized webhook columns on `map` (`slackWebHookURL`, `slackUsername`, `slackIcon`, `slackChannelHistory`, `slackChannelRally`, `discordUsername`, `discordWebHookURLRally`, `discordWebHookURLHistory`). Normalize:
+
+```
+pf_map_webhook (
+  id           bigserial PRIMARY KEY,
+  map_id       fk → pf_map.id ON DELETE CASCADE,
+  channel      channel_kind   NOT NULL,    -- enum: slack | discord
+  event        webhook_event  NOT NULL,    -- enum: rally | history
+  url          text NOT NULL,
+  display_name text,
+  icon         text,
+  UNIQUE (map_id, channel, event)
+)
+```
+
+Adding a new channel/event = one row, no DDL.
+
+**Permissions: in-app authority + external role tags.** Legacy splits permissions across three tables (`role`, `right`, `corporation_right`) and has no concept of external (e.g. Discord-sync) roles. The rebuild separates two orthogonal concerns:
+
+1. **In-app authority level** — a fixed enum on `pf_character`. Replaces the legacy `role` lookup table entirely.
+
+   ```
+   pf_character.authz_level  authz_level NOT NULL DEFAULT 'member'  -- enum: member | manager | admin
+   ```
+
+2. **Per-corporation right matrix** — flattened against `authz_level`. Replaces the three-way `corporation_right(corp, role, right)` join with a two-column key.
+
+   ```
+   pf_corporation_right (
+     corporation_id   fk → pf_corporation.id ON DELETE CASCADE,
+     "right"          map_right   NOT NULL,    -- enum: map_create | map_update | map_delete | map_import | map_export | map_share
+     min_authz_level  authz_level NOT NULL,
+     PRIMARY KEY (corporation_id, "right")
+   )
+   ```
+
+3. **External / tag-style roles** — supports multi-role-per-character and per-role map visibility (e.g. Discord-sync gives an "Officer" role, certain maps are visible only to Officer-tagged characters). New in the rebuild.
+
+   ```
+   pf_role (
+     id             bigserial PRIMARY KEY,
+     source         role_source NOT NULL,         -- enum: builtin | discord | external
+     external_ref   text,                         -- discord role id, auth-system role id, …
+     name           text NOT NULL,
+     display_label  text,
+     UNIQUE (source, external_ref)
+   )
+
+   pf_character_role (
+     character_id fk → pf_character.id ON DELETE CASCADE,
+     role_id      fk → pf_role.id      ON DELETE CASCADE,
+     granted_at   timestamptz NOT NULL DEFAULT now(),
+     granted_by   text,                          -- 'discord-sync@<hash>' | <character_id> | 'admin'
+     PRIMARY KEY (character_id, role_id)
+   )
+
+   pf_map_role_access (
+     map_id  fk → pf_map.id  ON DELETE CASCADE,
+     role_id fk → pf_role.id ON DELETE CASCADE,
+     PRIMARY KEY (map_id, role_id)
+   )
+   ```
+
+External-system role sync (Discord, third-party auth) upserts into `pf_role` and replaces the `pf_character_role` set for each character. The feature is intentionally scaffolded now to avoid a later migration.
+
+**Unified audit / history (`pf_map_event`).** The legacy three-layer setup — `activity_log` (weekly counter rows), `connection_log` (per-mutation detail rows), and NDJSON `history/map/*.log` files (which leak on hard-delete, [04 § Known issues](04-cron-and-background.md#known-issues--quirks)) — collapses into one append-only table:
 
 ```
 pf_map_event (
   id              bigserial PRIMARY KEY,
-  map_id          fk → pf_map.id              ON DELETE CASCADE,
-  character_id    fk → pf_character.id,
+  map_id          fk → pf_map.id        ON DELETE CASCADE,
+  character_id    fk → pf_character.id  ON DELETE SET NULL,  -- audit survives character deletion
   occurred_at     timestamptz NOT NULL,
-  kind            text NOT NULL,    -- 'system.added' | 'connection.create' | …
+  kind            text NOT NULL,        -- referenced against pf_event_kind lookup (below)
   payload         jsonb
-) PARTITION BY RANGE (occurred_at) -- monthly partitions
+) PARTITION BY RANGE (occurred_at)        -- monthly partitions via pg_partman
+
+CREATE INDEX ON pf_map_event (map_id, occurred_at DESC);
+CREATE INDEX ON pf_map_event (character_id, occurred_at DESC);
+
+pf_event_kind (
+  kind     text PRIMARY KEY,             -- 'system.added' | 'connection.create' | 'signature.update' | …
+  category text NOT NULL                 -- for admin-UI grouping: 'system' | 'connection' | 'signature' | 'map' | …
+)
 ```
 
-- An `AFTER INSERT` trigger does `pg_notify('map:'||map_id, payload)` — every commit atomically becomes a realtime broadcast (§5.2). No application-level dual-write, no "did I publish after I committed" race.
-- Weekly activity rollups become a materialized view over `pf_map_event` keyed by `(year, week, character_id, map_id, kind)`, refreshed hourly. Replaces `activity_log`.
+- `ON DELETE SET NULL` on `character_id` fixes the legacy footgun where erasing a character cascade-wiped every map/system/connection/signature row they ever created ([02 § 22 known issue #2](02-data-model.md#22-known-issues--quirks)).
+- The `pf_event_kind` lookup gives the admin UI a stable source for category-grouped event filters without app-side hardcoding.
+- An `AFTER INSERT` trigger does `pg_notify('map:'||map_id, payload)` — every commit atomically becomes a realtime broadcast (§5.2). No application-level dual-write.
+- Weekly activity rollups become a materialized view over `pf_map_event` keyed by `(year, week, character_id, map_id, kind)`, refreshed hourly via `REFRESH MATERIALIZED VIEW CONCURRENTLY` (requires unique index on the key tuple). Replaces `activity_log`.
 - Connection mutations are `kind = 'connection.create' | 'connection.update' | …` rows. Replaces `connection_log`.
-- The "recent map history" UI reads the last N rows directly. Replaces NDJSON files. The history-leak bug ([10 footgun "history file purge"](10-feature-matrix.md#dead--disabled--wip-inventory)) is structurally impossible — `ON DELETE CASCADE` from `pf_map` removes every event when a map is deleted.
+- The "recent map history" UI reads the last N rows directly. Replaces NDJSON files. The history-leak bug ([10 footgun "history file purge"](10-feature-matrix.md#dead--disabled--wip-inventory)) is structurally impossible — `ON DELETE CASCADE` from `pf_map` removes every event when a map is deleted (Postgres 14+ propagates cascades into all partitions).
+- **Retention policy:** monthly partitions kept indefinitely by default; deployments may attach `pg_partman` retention to drop partitions older than N months. The default should ship as "keep all" — small-corp maps generate negligible event volume.
 
 **Per-system stats time series.** Legacy `system_jumps`, `system_kills_ships`, `system_kills_pods`, `system_kills_factions` each hold a 24-column circular buffer (`value1`…`value24` + `lastUpdatedValue`) as a MySQL-era workaround. Replace with one narrow time-series table:
 
 ```
 pf_system_stats (
-  system_id    int → universe_system.id,
-  hour_bucket  timestamptz,
-  jumps int, ship_kills int, pod_kills int, faction_kills int,
+  system_id     int → universe_system.id,
+  hour_bucket   timestamptz,
+  jumps         int NOT NULL DEFAULT 0,
+  ship_kills    int NOT NULL DEFAULT 0,
+  pod_kills     int NOT NULL DEFAULT 0,
+  faction_kills int NOT NULL DEFAULT 0,
   PRIMARY KEY (system_id, hour_bucket)
-)
+) PARTITION BY RANGE (hour_bucket)         -- daily partitions; rolloff = drop partition
 ```
 
-Rolling 24h windows become `WHERE hour_bucket > now() - interval '24 hours'`. A single `DELETE WHERE hour_bucket < now() - interval '24 hours'` job (or BRIN-indexed monthly partition + drop-partition) handles rolloff. No manual column rotation.
+Rolling 24h windows become `WHERE hour_bucket > now() - interval '24 hours'`. Rolloff is `DETACH/DROP PARTITION` instead of `DELETE` — cheaper, no vacuum churn, matches `pf_map_event` partitioning style.
 
 ## 7. Auth strategy
 
 Source: [05 § 2 CCP SSO](05-external-integrations.md#2-ccp-sso-oauth-20--jwt), [09 § Auth principals](09-permissions-and-admin.md#auth-principals).
 
 - **Auth.js v5** with a custom **EVE SSO** OAuth2 provider implementing CCP's authorize → callback → token-exchange → JWK-verify flow.
-- **Persisted refresh tokens** — every token response writes the (possibly rotated) `refresh_token` back to the `character_authentication` row before the new access token is consumed. Closes [10 footgun #2](10-feature-matrix.md#ccp-api-footgun-history).
+- **ESI token storage on `pf_character`.** Access token, rotated refresh token, expiry, and granted scopes live directly on the character row (matches the legacy `CharacterModel` placement, *not* the legacy `character_authentication` table — which was the cookie selector/token store and is dropped entirely along with "Remember me" at the end of the migration window).
+
+  ```
+  pf_character.esi_access_token         text         -- encrypted at rest (pgcrypto or app-layer AEAD)
+  pf_character.esi_access_token_expires timestamptz
+  pf_character.esi_refresh_token        text         -- encrypted; rotated on every token exchange
+  pf_character.esi_scopes               text[]
+  ```
+
+- **Persisted refresh-token rotation** — every Auth.js token-endpoint round-trip writes the (possibly rotated) `refresh_token` back to `pf_character.esi_refresh_token` **before** the new access token is consumed by any caller. Closes [10 footgun #2](10-feature-matrix.md#ccp-api-footgun-history); verified by integration test (§9 Phase 3 gate).
 - **JWK caching** — fetch on cold start, refresh on signature failure, capped at one re-fetch per 10s ([10 footgun #3](10-feature-matrix.md#ccp-api-footgun-history)).
 - **Multi-character session** — Auth.js session holds the active character id; switching is a server action that updates the session. Same character ↔ user mapping as [09 § Auth principals](09-permissions-and-admin.md#auth-principals).
-- **Admin gating** — uses app-level role checks ([09 § Permissions](09-permissions-and-admin.md)), not a separate Auth.js provider. The legacy `CCP_ESI_SCOPES_ADMIN` config slot is empty and the second-provider concept is dropped. If a concrete admin-scope requirement appears later, add a provider then.
-- **"Remember me" cookie migration** — at cutover, the new app reads the legacy selector+validator cookie once, looks up the matching `character_authentication`, re-issues an Auth.js session, and clears the legacy cookie. Window: ≥30 days (matches `COOKIE_EXPIRE`). After window, drop legacy reader.
+- **Admin gating** — uses the `pf_character.authz_level` enum (§6.5), not a separate Auth.js provider. The legacy `CCP_ESI_SCOPES_ADMIN` config slot is empty and the second-provider concept is dropped. If a concrete admin-scope requirement appears later, add a provider then.
+- **"Remember me" cookie migration** — at cutover, the new app reads the legacy selector+validator cookie once, resolves it against a one-shot import of the legacy `character_authentication` rows, re-issues an Auth.js session, and clears the legacy cookie. Window: ≥30 days (matches `COOKIE_EXPIRE`). After window, the legacy reader and the imported rows are dropped — no `character_authentication` table survives in the rebuild schema.
 
 ## 8. Keep / Drop / Redesign
 
