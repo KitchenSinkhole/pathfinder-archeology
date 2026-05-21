@@ -1,6 +1,6 @@
-# Pathfinder — Claude Code Working Notes
+# Aperture — Claude Code Working Notes
 
-Pathfinder is a collaborative wormhole-mapping web app for EVE Online. This repo is the **rebuild** of the legacy F3 + jQuery/jsPlumb + MySQL implementation onto Next.js + TypeScript + Drizzle + Postgres.
+Aperture is a collaborative wormhole-mapping web app for EVE Online. This repo is the **rebuild** of the legacy Pathfinder (F3 + jQuery/jsPlumb + MySQL) implementation onto Next.js + TypeScript + Drizzle + Postgres.
 
 The behavior-level spec is in [docs/spec/](docs/spec/). The assembly document (start here) is [docs/spec/SPEC.md](docs/spec/SPEC.md).
 
