@@ -8,7 +8,7 @@ If you are about to write code, start here, then drill into the linked source do
 
 ## 1. Purpose & scope
 
-Pathfinder is a collaborative wormhole-mapping web app for EVE Online ([00 § Purpose](00-overview.md)). The current implementation — Fat-Free Framework + RequireJS/jQuery/jsPlumb + dual MySQL — has been documented in full at the behavior level across nine spec files totalling ~5,000 lines. This document converts that present-state spec into a rebuild blueprint on **Next.js + TypeScript + Drizzle + Postgres**.
+Pathfinder is a collaborative wormhole-mapping web app for EVE Online ([00 § Purpose](00-overview.md)). The current implementation — Fat-Free Framework + RequireJS/jQuery/jsPlumb + dual MySQL — has been documented in full at the behavior level across nine spec files totalling ~5,000 lines. This document converts that present-state spec into a rebuild blueprint on **Next.js + TypeScript + Drizzle + Postgres** (no Redis — see §5).
 
 **This document contains:**
 - Goals, non-goals, and functional / non-functional requirements (§§2–4).
@@ -57,7 +57,7 @@ Derived from [10 §§ 1–14](10-feature-matrix.md). The rebuild must implement 
 | External integrations | [10 § 9](10-feature-matrix.md#9-external-integrations), [05](05-external-integrations.md) | CCP SSO + ESI (≈38 opKeys), zKillboard, EVE-Scout, DOTLAN/EVEEYE/Anoik deep links, CCP image server, GitHub changelog. |
 | Permissions & access control | [10 § 10](10-feature-matrix.md#10-permissions--access-control), [09](09-permissions-and-admin.md) | Roles (MEMBER / CORPORATION / SUPER) + per-action rights + map access lists + character status. |
 | Logging & history | [10 § 11](10-feature-matrix.md#11-logging--history), [04 § Map history pipeline](04-cron-and-background.md#map-history-pipeline) | Activity log (DB) + map history (file, NDJSON) + Monolog channels. |
-| Caching | [10 § 12](10-feature-matrix.md#12-caching) | Redis-first in the rebuild (was filesystem-default). |
+| Caching | [10 § 12](10-feature-matrix.md#12-caching) | In-process LRU for universe lookups and search index; no separate cache service (§5.5). |
 | UI shell & ergonomics | [10 § 13](10-feature-matrix.md#13-ui-shell--ergonomics), [06 § Page chrome](06-frontend-architecture.md#page-chrome-jsapppagejs), [08](08-frontend-ui-modules.md) | Header, footer, splash, status pages, module dock, shortcuts, gallery, task manager. |
 | Build & assets | [10 § 14](10-feature-matrix.md#14-build--assets), [06 § Build pipeline](06-frontend-architecture.md#build-pipeline) | Replaced wholesale by Next.js build (§5). |
 
@@ -67,12 +67,12 @@ Every dialog and module listed under [08 § Module / dialog inventory](08-fronte
 
 | NFR | Source / rationale | Acceptance |
 |---|---|---|
-| Self-host complexity | [00 Q answer](00-overview.md#open-questions) | One `docker-compose.yml` brings up the app, Postgres, Redis. No separate socket-server repo. |
+| Self-host complexity | [00 Q answer](00-overview.md#open-questions) | One `docker-compose.yml` brings up the app and Postgres. No Redis, no separate socket-server repo. |
 | Realtime liveness | [04 § Known issues](04-cron-and-background.md#known-issues--quirks) (silent no-op) | If realtime is unhealthy, the UI must surface a degraded-mode banner — never silently render stale state. |
 | ESI failure modes | [05 § 3 CCP ESI](05-external-integrations.md#3-ccp-esi-game-data), [00 § Known issues](00-overview.md#known-issues--quirks-high-level) | Per-endpoint circuit breakers; downtime window (`±8m` around `CCP_SSO_DOWNTIME`) treated as expected. ESI shape drift survives via Zod-validated response decoders. |
 | Refresh-token rotation | [10 footgun #2](10-feature-matrix.md#ccp-api-footgun-history) (high-priority bug) | Rotated `refresh_token` from every SSO response is persisted to `character_authentication` before the new access token is used. Verified by integration test. |
-| Authoritative session storage | [00 § Known issues](00-overview.md#known-issues--quirks-high-level) (MySQL sessions) | Stateless JWT cookie (preferred) or Redis-backed sessions. No DB-table session store. |
-| Background jobs | [04 § Job inventory](04-cron-and-background.md#job-inventory) | Same 13 jobs (or replacements that achieve the same outcomes) run reliably without F3-Cron. Must be observable (job duration, failure count). |
+| Authoritative session storage | [00 § Known issues](00-overview.md#known-issues--quirks-high-level) (MySQL sessions) | Stateless JWT cookie. No DB-table session store, no Redis. |
+| Background jobs | [04 § Job inventory](04-cron-and-background.md#job-inventory) | Same job outcomes as the legacy 13, run on a Postgres-backed queue (§5.3). Must be observable (job duration, failure count). |
 | Map history file leak | [10 footgun "history file purge"](10-feature-matrix.md#dead--disabled--wip-inventory) | History storage is bound to map lifetime — hard-deleting a map must cascade. |
 | Static-data drift | [10 footgun #4](10-feature-matrix.md#ccp-api-footgun-history) (Pochven/Zarzakh) | Static-data refresh is driven by streaming SDE + ESI deltas, not patch SQL files. Adding a new region/system requires zero schema work. |
 | Throughput | Not measured in present-state docs | Out of scope to specify a number; rebuild should preserve responsiveness on a single small VPS (current deploy target). Capture baselines during Phase 0. |
@@ -80,7 +80,7 @@ Every dialog and module listed under [08 § Module / dialog inventory](08-fronte
 
 ## 5. Target architecture
 
-**Stack:** Next.js 15+ (App Router) · React 19 · TypeScript 5+ · Drizzle ORM · Postgres 16 · Redis 7 · Auth.js v5 · Node 22 LTS.
+**Stack:** Next.js 15+ (App Router) · React 19 · TypeScript 5+ · Drizzle ORM · Postgres 16 · Auth.js v5 · Node 22 LTS. No Redis — sessions are stateless JWT, the background queue is Postgres-backed (§5.3), realtime fanout is `LISTEN/NOTIFY` (§5.2), and hot caches are in-process LRU (§6.2).
 
 ### 5.1 Routes
 
@@ -97,35 +97,46 @@ Every dialog and module listed under [08 § Module / dialog inventory](08-fronte
 
 The AJAX/REST split is preserved conceptually but rebuilt as plain HTTP+JSON. F3's `(ttl, kbps)` throttle args have no analogue; protect against abuse via Auth.js session + an `@upstash/ratelimit`-style middleware.
 
-**Server Actions** are used for low-traffic state changes where a fresh page render is the natural next step: account settings save, map create / delete, admin settings save. High-frequency endpoints (map updates, system / connection mutations, signature edits) stay as JSON API routes consumed by the client.
+**Mutation pathways.** The rebuild distinguishes three, each with a single canonical mechanism:
+
+| Trigger | Mechanism | Examples |
+|---|---|---|
+| User clicked / typed in the UI | Server Action *or* JSON API route | Account settings save, map create / delete, signature paste, drag system, edit connection type |
+| Server observed something external | Background job (§5.3) → DB write → `map_event` insert → `pg_notify` → WS push | **Character location change (hot path)**, EOL connection expiry, signature decay, ESI killboard delta, structure resolution |
+| Cross-tab fan-out of either above | WebSocket server → client only | All `mapUpdate` / `characterUpdate` / `mapConnectionAccess` envelopes |
+
+The WebSocket is a **broadcast** channel, not a request channel — clients do not send mutations over it. Every mutation regardless of origin lands as one `INSERT INTO map_event` (§6.5), an `AFTER INSERT` trigger does `pg_notify('map:'||map_id, ...)`, and the WS handler picks it up. One canonical commit point per change.
+
+Server Actions are used for low-traffic state changes where a fresh page render is the natural next step (account settings, map create / delete, admin settings). JSON API routes serve high-frequency client-initiated mutations (signature edits, system drag, connection type change). The full set of legacy "AJAX API (26 actions)" endpoints should be re-enumerated in Phase 1 before porting — once character tracking moves server-side (§5.3) and `map_event` drives fan-out, several legacy endpoints become unnecessary.
 
 ### 5.2 Realtime transport
 
 Replace `react/socket` + `clue/ndjson-react` + the external `KitchenSinkhole/pathfinder_websocket` process with **native WebSockets served by the same Next.js deployment**.
 
-Recommended approach:
-- **Edge or Node runtime WebSocket route** — Next.js supports WebSocket upgrade in custom server (Node) deployments; for serverless deployments use a managed service (Ably / Pusher / Soketi) behind the same auth.
-- **Postgres `LISTEN/NOTIFY`** for fanout between server instances when scaling beyond a single Node process. Avoids a separate Redis pub/sub layer.
-- **Task vocabulary** inherited verbatim from [04 § Realtime transport coverage](10-feature-matrix.md#realtime-transport-coverage-stage-d) — `mapUpdate`, `mapAccess`, `mapConnectionAccess`, `mapDeleted`, `characterUpdate`, `characterLogout`, `healthCheck`, `logData`, `subscribe`, `unsubscribe`. Payload shapes are an open question (§11 Q3).
+Approach:
+- **Node runtime WebSocket route** in the same Next.js deployment. The supported topology is long-running Node, not serverless — this matches the self-host target (§4 NFR).
+- **Postgres `LISTEN/NOTIFY`** for fanout between server instances when scaling beyond a single Node process. The same channel that the `map_event` trigger publishes to (§6.5) is the channel the WS handler subscribes to. No Redis pub/sub.
+- **Broadcast direction only.** Clients subscribe and receive; they do not mutate over the WS. All mutations land via the pathways in §5.1.
+- **Task vocabulary** inherited verbatim from [04 § Realtime transport coverage](10-feature-matrix.md#realtime-transport-coverage-stage-d) — `mapUpdate`, `mapAccess`, `mapConnectionAccess`, `mapDeleted`, `characterUpdate`, `characterLogout`, `healthCheck`, `logData`, `subscribe`, `unsubscribe`. Payload shapes are a Phase-0 deliverable (§11).
 
 The browser side keeps the **SharedWorker** pattern from [06 § SharedWorker + WebSocket transport](06-frontend-architecture.md#sharedworker--websocket-transport) so a character with multiple tabs holds exactly one socket. SharedWorker is well-supported in current Chromium / Firefox; Safari gap is acceptable (matches current product support).
 
 ### 5.3 Background jobs
 
-The 13 jobs from [04 § Job inventory](04-cron-and-background.md#job-inventory) are reimplemented as a single Node job runner. Recommended: **BullMQ on Redis** (already-required dependency). Each job is one BullMQ Queue with a cron repeat. Disabled jobs (`updateUniverseSystems`, `Cron\Universe::setup`) are dropped — `setup` becomes a one-shot CLI command per §8.
+The jobs from [04 § Job inventory](04-cron-and-background.md#job-inventory) are reimplemented as a single Node job runner backed by **Postgres**: `graphile-worker` is the recommended library (`pgmq` or `river` are equivalents). `LISTEN/NOTIFY` drives low-latency dispatch on the same channel the realtime fanout uses (§5.2). No Redis. Disabled jobs (`updateUniverseSystems`, `Cron\Universe::setup`) are dropped — `setup` becomes a one-shot CLI command per §8.
 
-Per-request "background" work ([04 § Per-request background work](04-cron-and-background.md#per-request-background-work)) — the activity-log buffer flush in `Controller::unload` — moves to an `after()` hook on Server Actions or a flush-on-response wrapper for API routes.
+**Character location tracking is the hottest job and is moved fully server-side.** The legacy app drives ESI location polling from a client poll loop (`/api/Map/updateData`), coupling tracking to a tab being open and multiplying ESI calls by tab count. The rebuild runs one location-poll job per tracked character regardless of client state. On a non-gate-adjacent location change (lookup against `universe_stargate`), the job upserts both systems onto the map and creates an assumed wormhole connection — the canonical example of the server-initiated mutation pathway in §5.1.
+
+Polling cadence is adaptive on character `online` state: faster while online, slower while offline. Both intervals are **hard-coded constants** (e.g. `LOCATION_POLL_ONLINE_MS`, `LOCATION_POLL_OFFLINE_MS`) tuned during development and frozen before ship — no `pathfinder.ini` knob.
+
+Per-request "background" work ([04 § Per-request background work](04-cron-and-background.md#per-request-background-work)) — the activity-log buffer flush in `Controller::unload` — moves to an `after()` hook on Server Actions or a flush-on-response wrapper for API routes. With `map_event` (§6.5) as the unified audit shape, this collapses into a single insert per request.
 
 ### 5.4 Frontend
 
 - **Page chrome** ([06 § Page chrome](06-frontend-architecture.md#page-chrome-jsapppagejs)) — React components; off-canvas Slidebars replaced with shadcn/ui `Sheet`.
 - **Dialogs** ([08 § Per-dialog specs](08-frontend-ui-modules.md#per-dialog-specs)) — 13 dialogs become route-modal `parallel` slots or `<Dialog>` components.
 - **Modules** ([08 § Per-module specs](08-frontend-ui-modules.md#per-module-specs)) — 13 modules become React components inside the map page shell; tabs / docking via a grid layout primitive (CSS grid + Framer Motion or `react-grid-layout`).
-- **Map engine** ([07](07-frontend-map-engine.md)) — **the single highest-risk slice.** jsPlumb + 3,441 LOC of `map.js` need a deliberate port. Two approaches:
-  1. Keep jsPlumb in a React wrapper. Lowest behavior risk; carries 2.x → community-edition friction.
-  2. Re-author on `react-flow` (xyflow). Modern but the magnetize / overlay / drag-select features ([07 § Auxiliary modules](07-frontend-map-engine.md#auxiliary-modules)) need re-implementation.
-
-   Recommendation: **prototype both in Phase 1**, pick before Phase 2.
+- **Map engine** ([07](07-frontend-map-engine.md)) — **the single highest-risk slice.** jsPlumb + 3,441 LOC of `map.js` are re-authored on **`react-flow` (xyflow)**. jsPlumb community edition is unmaintained relative to xyflow, and a jsPlumb-in-React wrapper would leak imperative state through every component boundary. The magnetize / overlay / drag-select features ([07 § Auxiliary modules](07-frontend-map-engine.md#auxiliary-modules)) are a finite list — most map onto xyflow plugins or composable hooks. Re-authoring is real Phase-1 cost but pays back across Phases 2–5; the legacy `map.js` listing is not used as a reference implementation beyond behavior cues.
 - **DataTables / Summernote / PNotify** — replaced by TanStack Table, Tiptap, and sonner (or shadcn `Sonner`) respectively.
 
 ### 5.5 Deployment topology
@@ -136,16 +147,17 @@ Per-request "background" work ([04 § Per-request background work](04-cron-and-b
 │  - App Router pages + API routes         │
 │  - WebSocket upgrade handler             │
 │  - Auth.js (EVE SSO provider)            │
-└──────────┬──────────────┬────────────────┘
-           │              │
-       Postgres        Redis
-       (single DB,     (cache + BullMQ)
-        2 schemas:
-        pathfinder,
-        universe)
+│  - graphile-worker (background jobs)     │
+│  - In-process LRU (universe lookups)     │
+└──────────────────┬───────────────────────┘
+                   │
+               Postgres
+               (single DB, single schema;
+                LISTEN/NOTIFY drives both
+                realtime fanout and job dispatch)
 ```
 
-Compose file ships this stack as the supported self-host bundle.
+Compose file ships this two-service stack as the supported self-host bundle. If a deployment ever scales beyond one Node instance, a managed Redis can be introduced for a fairness-aware queue (BullMQ) — out of scope for the rebuild's supported topology.
 
 ## 6. Data model approach
 
@@ -154,16 +166,17 @@ Source: [02-data-model.md](02-data-model.md).
 ### 6.1 ORM and DB
 
 - **Drizzle** for schemas, queries, and migrations. The Cortex `$fieldConf` style maps cleanly onto Drizzle's per-column declaration. JSON columns use Postgres `jsonb`.
-- **Postgres** single instance, two schemas: `pathfinder` (mutable user data — 38 models) and `universe` (static CCP data — 22 models). Replaces the current dual-MySQL-DSN pattern ([02 § Surface area](02-data-model.md#surface-area)).
-- **Cross-schema FKs are native** in Postgres, closing the gap [02 § Cross-DB FKs do not exist](02-data-model.md#cortex-orm-primer) flagged. `pathfinder.system.system_id` → `universe.system.id` becomes a real FK.
+- **Postgres**, single instance, **single schema** (the historical `pathfinder` / `universe` split exists only because MySQL cannot FK across DSNs — that constraint is gone). Universe data (~10.5K systems, ~70 regions, well under 100MB) lives in the same schema as user data with `universe_*` table prefixes; user data uses `pf_*` prefixes where naming clarity matters.
+- `pf_map_system.system_id` → `universe_system.id` is a real FK with `ON DELETE RESTRICT`. All cross-domain joins are native; no schema-name gymnastics, no application-level loader for what should be a SQL join.
 
 ### 6.2 Postgres-native wins
 
-- `LISTEN/NOTIFY` for realtime fanout (§5.2) — removes Redis pub/sub as a separate piece.
-- `jsonb` for the activity-log payload (currently denormalized TEXT in `activity_log`).
-- Partial indexes on `WHERE active = true` — the soft-delete convention ([02 § Cortex ORM primer](02-data-model.md#cortex-orm-primer)) becomes a first-class index strategy.
+- `LISTEN/NOTIFY` for realtime fanout (§5.2) and job dispatch (§5.3) — one mechanism, no Redis.
+- `jsonb` for the unified audit-event payload (`map_event.payload`, §6.5).
+- `pgEnum` (Drizzle) or native `CREATE TYPE` for tiny lookup tables (`map_type`, `map_scope`, `system_type`, `system_status`, `character_status`, `connection_scope`) — six tables of ~24 total rows collapse into six enums and the joins disappear. Cortex needed lookup tables only because it had no enum primitive.
 - `timestamptz` everywhere; drop the implicit-UTC assumption baked into `DATETIME` columns.
 - `generated always as identity` columns instead of MySQL `AUTO_INCREMENT`.
+- Materialized views for the weekly activity rollup (§6.5), refreshed hourly.
 
 ### 6.3 Data migration
 
@@ -190,6 +203,78 @@ Replace [02 § 21 Bootstrap data files](02-data-model.md#21-bootstrap-data-files
 
 This kills the "patch SQL when CCP adds a region" dance ([10 footgun #4](10-feature-matrix.md#ccp-api-footgun-history)).
 
+### 6.5 Lifecycle, visibility, and audit
+
+The legacy schema uses a generic `active` boolean across `map`, `system`, `connection`, `signature`, etc. ([02 § Cortex ORM primer](02-data-model.md#cortex-orm-primer)) for three distinct behaviors: system resurrection on re-encounter, two-phase map deletion, and admin disable-without-delete. The rebuild replaces the generic flag with mechanisms that fit each case.
+
+**Map-system visibility.** The universe is finite (~10.5K systems) and per-map row count is bounded by `MAX_SYSTEMS`. `pf_map_system` rows persist for the life of their parent map; an explicit `visible boolean` controls whether the system currently appears on the map:
+
+```
+pf_map_system (
+  id              bigserial PRIMARY KEY,
+  map_id          fk → pf_map.id              ON DELETE CASCADE,
+  system_id       int  → universe_system.id,  -- real FK, finite universe
+  visible         boolean NOT NULL,
+  position_x, position_y,
+  intel_notes text, status, tags, is_rally,
+  first_added_at, last_visible_at timestamptz,
+  UNIQUE (map_id, system_id)
+)
+
+pf_map_signature (
+  id              bigserial PRIMARY KEY,
+  map_system_id   fk → pf_map_system.id        ON DELETE CASCADE,
+  sig_id text, "group", "type", name,
+  created_at, updated_at, expires_at timestamptz,
+  UNIQUE (map_system_id, sig_id)
+)
+```
+
+Lifecycle rules:
+
+- Removing a system from a map sets `visible = false, last_visible_at = now()`. No row is deleted; intel notes, tags, status, and all attached signatures persist untouched.
+- Re-adding the same system (common: same wormhole chain re-scanned hours or a day later — EVE signatures stay valid 3–5 days) upserts `visible = true` with the new position. Everything previously attached reappears.
+- `MAX_SYSTEMS` enforcement counts `WHERE visible = true`.
+- `pf_map_system` rows are hard-deleted only via `ON DELETE CASCADE` when the parent map is deleted. There is no "delete old systems" cron.
+- A single signature reap cron — `DELETE FROM pf_map_signature WHERE expires_at < now()` — handles freshness, independent of system visibility. Replaces the legacy `deleteSignatures` job.
+
+**Connections** are hard-deleted on collapse — wormholes physically die and don't come back. History is preserved in `map_event` (below).
+
+**Map two-phase lifecycle** is the only place a temporal soft-delete earns its keep. `pf_map.deleted_at timestamptz NULL`; the existing `deleteMapData` cron stays but is scoped to maps only and runs after the 30-day grace.
+
+**Admin disable flags** (corp rights, access entries, etc.) use a status enum (`enabled` / `suspended`) where actually needed; everything else is hard-delete.
+
+**Unified audit / history (`map_event`).** The legacy three-layer setup — `activity_log` (weekly counter rows), `connection_log` (per-mutation detail rows), and NDJSON `history/map/*.log` files (which leak on hard-delete, [04 § Known issues](04-cron-and-background.md#known-issues--quirks)) — collapses into one append-only table:
+
+```
+pf_map_event (
+  id              bigserial PRIMARY KEY,
+  map_id          fk → pf_map.id              ON DELETE CASCADE,
+  character_id    fk → pf_character.id,
+  occurred_at     timestamptz NOT NULL,
+  kind            text NOT NULL,    -- 'system.added' | 'connection.create' | …
+  payload         jsonb
+) PARTITION BY RANGE (occurred_at) -- monthly partitions
+```
+
+- An `AFTER INSERT` trigger does `pg_notify('map:'||map_id, payload)` — every commit atomically becomes a realtime broadcast (§5.2). No application-level dual-write, no "did I publish after I committed" race.
+- Weekly activity rollups become a materialized view over `pf_map_event` keyed by `(year, week, character_id, map_id, kind)`, refreshed hourly. Replaces `activity_log`.
+- Connection mutations are `kind = 'connection.create' | 'connection.update' | …` rows. Replaces `connection_log`.
+- The "recent map history" UI reads the last N rows directly. Replaces NDJSON files. The history-leak bug ([10 footgun "history file purge"](10-feature-matrix.md#dead--disabled--wip-inventory)) is structurally impossible — `ON DELETE CASCADE` from `pf_map` removes every event when a map is deleted.
+
+**Per-system stats time series.** Legacy `system_jumps`, `system_kills_ships`, `system_kills_pods`, `system_kills_factions` each hold a 24-column circular buffer (`value1`…`value24` + `lastUpdatedValue`) as a MySQL-era workaround. Replace with one narrow time-series table:
+
+```
+pf_system_stats (
+  system_id    int → universe_system.id,
+  hour_bucket  timestamptz,
+  jumps int, ship_kills int, pod_kills int, faction_kills int,
+  PRIMARY KEY (system_id, hour_bucket)
+)
+```
+
+Rolling 24h windows become `WHERE hour_bucket > now() - interval '24 hours'`. A single `DELETE WHERE hour_bucket < now() - interval '24 hours'` job (or BRIN-indexed monthly partition + drop-partition) handles rolloff. No manual column rotation.
+
 ## 7. Auth strategy
 
 Source: [05 § 2 CCP SSO](05-external-integrations.md#2-ccp-sso-oauth-20--jwt), [09 § Auth principals](09-permissions-and-admin.md#auth-principals).
@@ -198,7 +283,7 @@ Source: [05 § 2 CCP SSO](05-external-integrations.md#2-ccp-sso-oauth-20--jwt), 
 - **Persisted refresh tokens** — every token response writes the (possibly rotated) `refresh_token` back to the `character_authentication` row before the new access token is consumed. Closes [10 footgun #2](10-feature-matrix.md#ccp-api-footgun-history).
 - **JWK caching** — fetch on cold start, refresh on signature failure, capped at one re-fetch per 10s ([10 footgun #3](10-feature-matrix.md#ccp-api-footgun-history)).
 - **Multi-character session** — Auth.js session holds the active character id; switching is a server action that updates the session. Same character ↔ user mapping as [09 § Auth principals](09-permissions-and-admin.md#auth-principals).
-- **Admin scopes** — split into a second `eve-admin` provider that requests the (currently empty) `CCP_ESI_SCOPES_ADMIN` scope set ([10 dead-code table](10-feature-matrix.md#dead--disabled--wip-inventory)). A real admin-scope list is decided in §11 Q.
+- **Admin gating** — uses app-level role checks ([09 § Permissions](09-permissions-and-admin.md)), not a separate Auth.js provider. The legacy `CCP_ESI_SCOPES_ADMIN` config slot is empty and the second-provider concept is dropped. If a concrete admin-scope requirement appears later, add a provider then.
 - **"Remember me" cookie migration** — at cutover, the new app reads the legacy selector+validator cookie once, looks up the matching `character_authentication`, re-issues an Auth.js session, and clears the legacy cookie. Window: ≥30 days (matches `COOKIE_EXPIRE`). After window, drop legacy reader.
 
 ## 8. Keep / Drop / Redesign
@@ -220,7 +305,7 @@ Every row in [10 §§ 1–14](10-feature-matrix.md) **not** flagged in §15 or a
 | `BaseModule.isPlugin` + `module/empty.js` | `js/app/ui/module/empty.js` | Plugin scaffolding never wired into build. |
 | `header_login.js` canvas physics splash | `js/app/ui/header_login.js` (~600 LOC) | Decorative; replace with a static SVG hero. |
 | `Position.findNonOverlappingDimensions` `findChain:true` branch | `js/app/map/util.js` | Likely dead ([10 dead-code table](10-feature-matrix.md#dead--disabled--wip-inventory)). |
-| MySQL-table session storage | `app/Db/Sql/Mysql/Session.php` | Replaced by stateless JWT cookie or Redis sessions. |
+| MySQL-table session storage | `app/Db/Sql/Mysql/Session.php` | Replaced by stateless JWT cookie. |
 | F3 route bandwidth throttle (`(0, 512)` arg pair) | [`app/routes.ini`](../../app/routes.ini) | Not a real rate limit; replaced by per-route limiter. |
 | RequireJS, Gulp, jQuery, jsPlumb runtime, DataTables, Summernote, PNotify | `js/app/**`, [`gulpfile.js`](../../gulpfile.js) | Replaced wholesale by the Next.js / React stack. |
 
@@ -233,15 +318,18 @@ Every row in [10 §§ 1–14](10-feature-matrix.md) **not** flagged in §15 or a
 | Auth + refresh-token rotation | Bespoke `Sso::verifyAccessToken`; refresh tokens not persisted on rotation | Auth.js v5 + EVE provider; refresh persisted on every rotation. §7 |
 | Auth cookies ("Remember me") | Selector+validator pair, undocumented on-wire format | Auth.js session cookie; legacy selector read once during migration window. §7 |
 | Static config | Six `.ini` files (`config`, `environment`, `pathfinder`, `plugin`, `requirements`, `cron`) | Env vars + a `pathfinder.config.ts` for type-safe app constants. Drop `requirements.ini` (Node version pinned in `package.json`). |
-| Map history storage | NDJSON files under `history/`, truncated by cron, leaked on hard-delete | Append-only Postgres table partitioned by month; bound to map lifecycle via FK. Closes the file-leak bug. |
-| Sessions | MySQL-backed in PF DB | Stateless JWT or Redis. |
-| Map engine | jsPlumb + 3,441-LOC `map.js` | React component; jsPlumb-React-wrapper vs `react-flow` decided in Phase 1 prototype. §5.4 |
+| Map history storage | NDJSON files under `history/`, truncated by cron, leaked on hard-delete | `pf_map_event` table partitioned by month, `ON DELETE CASCADE` from `pf_map`, `AFTER INSERT` trigger → `pg_notify`. Subsumes `activity_log` and `connection_log` too. §6.5 |
+| Soft-delete pattern | Generic `active` boolean on every operational table; reaped by `deleteMapData` cron | Replaced by explicit `visible` flag on `pf_map_system`, `deleted_at` two-phase lifecycle on `pf_map` only, hard-delete on `pf_map_connection`. §6.5 |
+| Per-system stats | 24-column circular buffer (`value1`…`value24`) on `system_jumps`/`system_kills_*` | Narrow time-series `pf_system_stats (system_id, hour_bucket, …)`. §6.5 |
+| Sessions | MySQL-backed in PF DB | Stateless JWT. No Redis, no DB session table. |
+| Background queue | None (F3-Cron) | `graphile-worker` on Postgres. `LISTEN/NOTIFY` dispatch. No Redis. §5.3 |
+| Map engine | jsPlumb + 3,441-LOC `map.js` | Re-authored on `react-flow` (xyflow). §5.4 |
 | Build pipeline | Gulp 4 on Node 12 EOL | Next.js native build (Turbopack). |
 
 ### 8.4 Decide before commit
 
-- `CCP_ESI_SCOPES_ADMIN` — empty in shipped config. Either populate with a real admin-scope set or drop the admin-scope gate from §7. ([09 Q on admin scopes](09-permissions-and-admin.md#open-questions))
-- `[PATHFINDER.EXPERIMENTS] PERSISTENT_DB_CONNECTIONS` — re-evaluate against Postgres pooling (PgBouncer or built-in `pg`).
+- `CCP_ESI_SCOPES_ADMIN` — empty in shipped config. Decision in §7: drop the second-provider concept entirely; use app-level role checks. Revisit only if a real admin-scope appears.
+- `[PATHFINDER.EXPERIMENTS] PERSISTENT_DB_CONNECTIONS` — non-decision under Node + `pg`: connection pooling is the default. Dropped from open questions.
 
 ## 9. Phased migration
 
@@ -259,7 +347,7 @@ Each phase ends in a parity gate (§10). The legacy app stays serving production
 - Auth.js EVE provider with refresh-token rotation.
 - App Router pages for login + map list + map view (read-only).
 - Server reads from a **legacy DB read-replica** for `pathfinder.*` so no schema migration is needed yet.
-- Map engine prototype in both candidate stacks (jsPlumb-wrapper, `react-flow`); pick a winner.
+- Map engine implementation on `react-flow` (xyflow). No prototype phase — decision pre-committed in §5.4.
 - **Gate:** a logged-in character sees their maps with all systems and connections rendered, kill stats and route module populated, no edit affordances.
 
 ### Phase 2 — Map writes + realtime (4–6 weeks)
@@ -272,7 +360,7 @@ Each phase ends in a parity gate (§10). The legacy app stays serving production
 
 ### Phase 3 — Cron + integrations (3–4 weeks)
 
-- BullMQ port of all 13 jobs.
+- `graphile-worker` port of all jobs (§5.3).
 - ESI client with circuit breakers; SSO refresh-token persistence verified by integration test.
 - zKillboard, EVE-Scout, GitHub, Slack, Discord clients.
 - Structure resolution + intel modules.
@@ -311,10 +399,10 @@ Verbatim from [10 § Open-question audit](10-feature-matrix.md#open-question-aud
 
 1. **`DB_CCP_*` env block** — confirmed unused; remove rather than carry forward. *(Decision: drop, §8.2.)*
 2. **`Lib\Config::pingDomain`** — appears dead; confirm with `git log -S` before deletion.
-3. **WebSocket `subscribe` / `stats` / `healthCheck` payload shapes** ([04 Q2–Q4](04-cron-and-background.md#open-questions)) — must be lifted from `KitchenSinkhole/pathfinder_websocket` before §5.2 is finalized. **Blocking for §5.2.**
+3. **WebSocket `subscribe` / `stats` / `healthCheck` payload shapes** ([04 Q2–Q4](04-cron-and-background.md#open-questions)) — lifted from `KitchenSinkhole/pathfinder_websocket`. **Phase-0 deliverable** (constrains §5.2 from the first code commit, not just "before final shape").
 4. **`refreshAccessToken` rotation** ([05 Q3](05-external-integrations.md#open-questions)) — current code does not persist a rotated `esiRefreshToken`. High-priority latent bug; rebuild fixes by §7, but document the legacy gap so any prod hotfix lands first.
 5. **`searchUniverseNameData` scope coverage** ([05 Q2](05-external-integrations.md#open-questions)) — only `search_structures` scope is granted; non-structure categories may be queried silently.
-6. **Vendor opKey ↔ swagger op mapping** ([05 Q1](05-external-integrations.md#open-questions)) — diff against `KitchenSinkhole/pathfinder_esi` before TS ESI client. **Blocking for §5 ESI client.**
+6. **Vendor opKey ↔ swagger op mapping** ([05 Q1](05-external-integrations.md#open-questions)) — diff against `KitchenSinkhole/pathfinder_esi`. **Phase-0 deliverable** (constrains the TS ESI client written in Phase 1).
 7. **Map history file purge** ([04 Q6](04-cron-and-background.md#open-questions)) — confirmed leak; rebuild closes by §8.3, but a one-shot cleanup script for existing leaked files is needed at cutover.
 8. **`map_share` / `map_import` / `map_export` server-side enforcement** ([09 Q1](09-permissions-and-admin.md#open-questions)) — server-side check needs verification per controller; potential bypass on current app. Rebuild adds explicit per-action right checks.
 9. **Cookie `SameSite` / `Secure` flags** ([09 Q6](09-permissions-and-admin.md#open-questions)) — no-CSRF posture currently depends on proxy-set flags. Rebuild sets these in app code.
@@ -329,7 +417,7 @@ Verbatim from [10 § Open-question audit](10-feature-matrix.md#open-question-aud
 | Config / env / deployment topology | [01 — Configuration & Deployment](01-config-and-deployment.md) |
 | Drizzle schema, DB migration, data types | [02 — Data Model](02-data-model.md) |
 | API route shape, request lifecycle, auth gating per endpoint | [03 — Backend HTTP API](03-backend-api.md) |
-| BullMQ job port, WebSocket transport, map history | [04 — Cron & Background Workers](04-cron-and-background.md) |
+| `graphile-worker` job port, WebSocket transport, map history | [04 — Cron & Background Workers](04-cron-and-background.md) |
 | Auth.js EVE provider, ESI client, Slack/Discord/GitHub | [05 — External Integrations](05-external-integrations.md) |
 | Page chrome, SharedWorker, init bootstrap, build replacement | [06 — Frontend Architecture & Build](06-frontend-architecture.md) |
 | Map engine port (highest-risk slice) | [07 — Frontend Map Engine](07-frontend-map-engine.md) |
@@ -348,4 +436,4 @@ Verbatim from [10 § Open-question audit](10-feature-matrix.md#open-question-aud
 
 ## Hand-off
 
-This document closes doc-plan.md Stage 1 (documentation). Stage 2 (rebuild) starts with **Phase 0** per §9 — stand up Postgres, write the SDE ingest job, validate static-data parity. The blocking open questions in §11 (specifically Q3 and Q6) should be answered in that same window, since they constrain the ESI client and WebSocket transport written in Phases 1–3.
+This document closes doc-plan.md Stage 1 (documentation). Stage 2 (rebuild) starts with **Phase 0** per §9 — stand up Postgres, write the SDE ingest job, validate static-data parity, and produce the §11 Q3 / Q6 deliverables (WebSocket payload shapes and ESI opKey mapping). Phase 1 cannot start without those.
