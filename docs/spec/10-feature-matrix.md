@@ -487,3 +487,9 @@ Stage J (rebuild spec) can now treat this matrix as the canonical feature invent
 - **Drop:** all rows / items in the dead-code table above.
 - **Redesign:** realtime transport (move off TCP+NDJSON to native WebSockets / SSE), static-data sync (move off SQL-dump + ESI walk to streaming SDE + ESI deltas), SSO (NextAuth provider with persisted refresh-token rotation), auth cookies (re-issue under new format with a migration window).
 - **Open before commit:** the 11 still-open questions above.
+
+---
+
+## Stage J update
+
+Stage J assembled the rebuild specification at [SPEC.md](SPEC.md). It treats the hand-off block above as canonical (no rows added or moved here), and consolidates Keep / Drop / Redesign + phased migration + open-question resolution in the new doc. From this point on, the rebuild team's entry point is [SPEC.md](SPEC.md); §§1–14 above remain the source-of-truth feature inventory it points back at.
