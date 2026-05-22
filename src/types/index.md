@@ -3,7 +3,7 @@
 **Purpose:** Canonical home for shared domain types. Re-exports Drizzle-inferred row types for the `universe_*` and `ap_*` tables.
 **File:** `src/types/index.ts`
 
-For each table `X` exports `X` (`InferSelectModel`) and `NewX` (`InferInsertModel`), e.g. `UniverseSystem` / `NewUniverseSystem`. Import row types from here, never re-infer inline. Stage 2 adds `ApUser` / `NewApUser` and `ApCharacter` / `NewApCharacter`; more `ap_*` types land in later stages.
+For each table `X` exports `X` (`InferSelectModel`) and `NewX` (`InferInsertModel`), e.g. `UniverseSystem` / `NewUniverseSystem`. Import row types from here, never re-infer inline. Stage 2 adds `ApUser` / `NewApUser` and `ApCharacter` / `NewApCharacter`. Stage 6 adds the map schema row types: `ApMap`, `ApMapSystem`, `ApMapConnection`, `ApMapSignature`, `ApMapEvent`, `ApEventKind` (each with a `New…` insert variant).
 
 Stage 3 re-exports the realtime wire-contract types (`Envelope`, `ServerToClientTask`, `ClientToServerTask`, `ServerToClientMessage`, `ClientToServerMessage` — schemas in `src/lib/realtime/protocol.ts`) and the ESI opKey types (`OpKey`, `OpDef` — map in `src/lib/esi/opkeys.ts`).
 

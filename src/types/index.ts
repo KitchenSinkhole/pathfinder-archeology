@@ -1,6 +1,12 @@
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import type {
   apCharacter,
+  apEventKind,
+  apMap,
+  apMapConnection,
+  apMapEvent,
+  apMapSignature,
+  apMapSystem,
   apUser,
   universeCategory,
   universeConstellation,
@@ -57,6 +63,24 @@ export type NewApUser = InferInsertModel<typeof apUser>;
 
 export type ApCharacter = InferSelectModel<typeof apCharacter>;
 export type NewApCharacter = InferInsertModel<typeof apCharacter>;
+
+export type ApMap = InferSelectModel<typeof apMap>;
+export type NewApMap = InferInsertModel<typeof apMap>;
+
+export type ApMapSystem = InferSelectModel<typeof apMapSystem>;
+export type NewApMapSystem = InferInsertModel<typeof apMapSystem>;
+
+export type ApMapConnection = InferSelectModel<typeof apMapConnection>;
+export type NewApMapConnection = InferInsertModel<typeof apMapConnection>;
+
+export type ApMapSignature = InferSelectModel<typeof apMapSignature>;
+export type NewApMapSignature = InferInsertModel<typeof apMapSignature>;
+
+export type ApMapEvent = InferSelectModel<typeof apMapEvent>;
+export type NewApMapEvent = InferInsertModel<typeof apMapEvent>;
+
+export type ApEventKind = InferSelectModel<typeof apEventKind>;
+export type NewApEventKind = InferInsertModel<typeof apEventKind>;
 
 // Realtime WebSocket wire contracts (schemas in src/lib/realtime/protocol.ts).
 export type {
