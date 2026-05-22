@@ -1,7 +1,7 @@
 import { Client } from 'pg';
 import { env } from '@/lib/env';
 import { apertureConfig } from '../../../aperture.config';
-import type { ServerToClientMessage } from './protocol';
+import type { MapEventPayload, ServerToClientMessage } from './protocol';
 
 /**
  * Server-side Postgres LISTEN multiplexer — the read end of the §6.5 realtime
@@ -157,9 +157,12 @@ class RealtimeBus {
         ? (data as { kind: string }).kind
         : undefined;
 
+    // Trusted passthrough: the trigger forwards a payload built by
+    // `commitMapEvent` (already validated against `mapEventPayloadSchema`), so
+    // the bus re-wraps it without re-parsing. Clients revalidate on receipt.
     const message: ServerToClientMessage = {
       task: 'mapUpdate',
-      load: { mapId: Number(mapId), kind, data },
+      load: { mapId: Number(mapId), kind, data: data as MapEventPayload | undefined },
     };
 
     for (const listener of set) {

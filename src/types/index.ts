@@ -109,6 +109,12 @@ export type {
 // Realtime client connection status (provider in src/lib/realtime/useRealtime.tsx).
 export type { RealtimeStatus } from '@/lib/realtime/useRealtime';
 
+// Map-event payload contract (schemas in src/lib/realtime/protocol.ts).
+export type { MapEventPayload, MapEventKind, MapEventPatch } from '@/lib/realtime/protocol';
+
+// Map mutation core result type (src/lib/map/mutations/core.ts).
+export type { ActionResult, CommitMapEventArgs } from '@/lib/map/mutations/core';
+
 // ESI opKey identifiers (map in src/lib/esi/opkeys.ts).
 export type { OpKey, OpDef } from '@/lib/esi/opkeys';
 

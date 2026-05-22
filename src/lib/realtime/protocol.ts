@@ -1,4 +1,12 @@
 import { z } from 'zod';
+import {
+  connectionScope,
+  mapScope,
+  mapType,
+  systemStatus,
+  whJumpMass,
+  whMass,
+} from '@/db/schema/ap/enums';
 
 /**
  * Wire contracts for the Aperture realtime WebSocket transport.
@@ -87,18 +95,179 @@ export const mapAccessLoadSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// Data-bearing load schemas (forward-declared). The event-reference fields are
-// firm; the `data` body is a passthrough until Stage 6 replaces it with the
-// real ap_map_system / ap_map_connection / ap_map_event row schemas.
+// Map-event payload contract (Stage 9.1). The jsonb `ap_map_event.payload` *is*
+// this body: the `tg_map_event_notify` trigger forwards it verbatim and `bus.ts`
+// re-wraps it as the `mapUpdate.load.data`. Convention: every payload is
+// `{ kind, eventId, ...patch }` — `kind` selects the variant, `eventId` is the
+// new `ap_map_event.id` for client-side dedupe, and the patch carries exactly
+// what a canvas needs to apply the change without refetching. Timestamps cross
+// the wire as ISO strings (jsonb-serialized `Date`s).
+// ---------------------------------------------------------------------------
+
+const systemStatusEnum = z.enum(systemStatus.enumValues);
+const connectionScopeEnum = z.enum(connectionScope.enumValues);
+const whMassEnum = z.enum(whMass.enumValues);
+const whJumpMassEnum = z.enum(whJumpMass.enumValues);
+const mapScopeEnum = z.enum(mapScope.enumValues);
+const mapTypeEnum = z.enum(mapType.enumValues);
+
+const eventId = z.number().int().positive();
+
+/** Full node body — mirrors `MapSystemNode` (loadMap.ts) so a client can append. */
+const systemNodeBody = {
+  id: z.string(),
+  systemId: z.number().int(),
+  name: z.string(),
+  alias: z.string().nullable(),
+  tag: z.string().nullable(),
+  status: systemStatusEnum,
+  security: z.string().nullable(),
+  trueSec: z.number().nullable(),
+  effect: z.string().nullable(),
+  regionName: z.string(),
+  constellationName: z.string(),
+  statics: z.array(z.string()),
+  locked: z.boolean(),
+  positionX: z.number(),
+  positionY: z.number(),
+};
+
+/** Full edge body — mirrors `MapConnectionEdge` (loadMap.ts). */
+const connectionEdgeBody = {
+  id: z.string(),
+  source: z.string(),
+  target: z.string(),
+  scope: connectionScopeEnum,
+  massStatus: whMassEnum,
+  jumpMassClass: whJumpMassEnum.nullable(),
+  isEol: z.boolean(),
+  isFrigate: z.boolean(),
+  preserveMass: z.boolean(),
+  isRolling: z.boolean(),
+};
+
+/** Full signature body — mirrors `ap_map_signature` row fields used by the canvas. */
+const signatureBody = {
+  id: z.string(),
+  mapSystemId: z.string(),
+  mapConnectionId: z.string().nullable(),
+  sigId: z.string(),
+  groupId: z.number().int().nullable(),
+  typeId: z.number().int().nullable(),
+  name: z.string().nullable(),
+  description: z.string().nullable(),
+  expiresAt: z.string(),
+};
+
+export const mapEventPayloadSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('system.added'), eventId, ...systemNodeBody }),
+  z.object({ kind: z.literal('system.removed'), eventId, id: z.string() }),
+  z.object({
+    kind: z.literal('system.updated'),
+    eventId,
+    id: z.string(),
+    alias: z.string().nullable().optional(),
+    tag: z.string().nullable().optional(),
+    status: systemStatusEnum.optional(),
+    intelNotes: z.string().nullable().optional(),
+    locked: z.boolean().optional(),
+    rallyAt: z.string().nullable().optional(),
+    positionX: z.number().optional(),
+    positionY: z.number().optional(),
+  }),
+  z.object({ kind: z.literal('connection.create'), eventId, ...connectionEdgeBody }),
+  z.object({
+    kind: z.literal('connection.update'),
+    eventId,
+    id: z.string(),
+    scope: connectionScopeEnum.optional(),
+    massStatus: whMassEnum.optional(),
+    jumpMassClass: whJumpMassEnum.nullable().optional(),
+    isEol: z.boolean().optional(),
+    isFrigate: z.boolean().optional(),
+    preserveMass: z.boolean().optional(),
+    isRolling: z.boolean().optional(),
+    eolAt: z.string().nullable().optional(),
+  }),
+  z.object({ kind: z.literal('connection.delete'), eventId, id: z.string() }),
+  z.object({ kind: z.literal('signature.create'), eventId, ...signatureBody }),
+  z.object({
+    kind: z.literal('signature.update'),
+    eventId,
+    id: z.string(),
+    mapConnectionId: z.string().nullable().optional(),
+    sigId: z.string().optional(),
+    groupId: z.number().int().nullable().optional(),
+    typeId: z.number().int().nullable().optional(),
+    name: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+    expiresAt: z.string().optional(),
+  }),
+  z.object({ kind: z.literal('signature.delete'), eventId, id: z.string() }),
+  z.object({
+    kind: z.literal('map.create'),
+    eventId,
+    id: z.string(),
+    name: z.string(),
+    scope: mapScopeEnum,
+    type: mapTypeEnum,
+    icon: z.string().nullable(),
+  }),
+  z.object({
+    kind: z.literal('map.update'),
+    eventId,
+    id: z.string(),
+    name: z.string().optional(),
+    icon: z.string().nullable().optional(),
+    deleteExpiredConnections: z.boolean().optional(),
+    deleteEolConnections: z.boolean().optional(),
+    trackAbyssalJumps: z.boolean().optional(),
+    logActivity: z.boolean().optional(),
+  }),
+  z.object({
+    kind: z.literal('map.delete'),
+    eventId,
+    id: z.string(),
+    deletedAt: z.string().nullable().optional(),
+  }),
+]);
+
+export type MapEventPayload = z.infer<typeof mapEventPayloadSchema>;
+
+/** The 12 seeded `ap_event_kind` values (migration 0004). The discriminator set. */
+export const MAP_EVENT_KINDS = [
+  'system.added',
+  'system.removed',
+  'system.updated',
+  'connection.create',
+  'connection.update',
+  'connection.delete',
+  'signature.create',
+  'signature.update',
+  'signature.delete',
+  'map.create',
+  'map.update',
+  'map.delete',
+] as const;
+
+export type MapEventKind = (typeof MAP_EVENT_KINDS)[number];
+
+/** Patch fields for a given kind — the body `mutate()` returns, minus `kind`/`eventId`. */
+export type MapEventPatch<K extends MapEventKind> = Omit<
+  Extract<MapEventPayload, { kind: K }>,
+  'kind' | 'eventId'
+>;
+
+// ---------------------------------------------------------------------------
+// Data-bearing load schemas. `mapUpdate` carries the event payload above; the
+// rest are forward-declared (tightened in later stages).
 // ---------------------------------------------------------------------------
 
 /** Fired after any map-affecting mutation (one per `ap_map_event` insert). */
 export const mapUpdateLoadSchema = z.object({
   mapId: z.number().int().positive(),
-  eventId: z.number().int().positive().optional(),
   kind: z.string().optional(),
-  // tightened in Stage 6: { systems, connections } from the ap_map_* row schemas.
-  data: z.unknown().optional(),
+  data: mapEventPayloadSchema.optional(),
 });
 
 export const mapConnectionAccessLoadSchema = z.object({
