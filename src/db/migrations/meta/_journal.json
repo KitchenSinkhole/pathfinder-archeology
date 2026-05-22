@@ -36,6 +36,13 @@
       "when": 1779466144990,
       "tag": "0004_map_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779475285225,
+      "tag": "0005_blue_sway",
+      "breakpoints": true
     }
   ]
 }

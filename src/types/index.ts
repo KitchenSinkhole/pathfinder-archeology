@@ -7,6 +7,7 @@ import type {
   apMapEvent,
   apMapSignature,
   apMapSystem,
+  apSystemStats,
   apUser,
   universeCategory,
   universeConstellation,
@@ -81,6 +82,20 @@ export type NewApMapEvent = InferInsertModel<typeof apMapEvent>;
 
 export type ApEventKind = InferSelectModel<typeof apEventKind>;
 export type NewApEventKind = InferInsertModel<typeof apEventKind>;
+
+export type ApSystemStats = InferSelectModel<typeof apSystemStats>;
+export type NewApSystemStats = InferInsertModel<typeof apSystemStats>;
+
+// Read-only map view-model types (shaped in src/lib/map/loadMap.ts).
+export type {
+  MapSystemNode,
+  MapConnectionEdge,
+  MapViewData,
+  MapListItem,
+} from '@/lib/map/loadMap';
+
+// Route module view-model (computed in src/lib/map/route.ts).
+export type { HubRoute } from '@/lib/map/route';
 
 // Realtime WebSocket wire contracts (schemas in src/lib/realtime/protocol.ts).
 export type {

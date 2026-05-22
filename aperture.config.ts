@@ -39,6 +39,18 @@ export const apertureConfig = {
   /** `pg_notify` channel prefix for `ap_map_event` fanout. SPEC §5.2 / §6.5. */
   MAP_EVENT_NOTIFY_CHANNEL_PREFIX: 'map:',
 
+  /**
+   * Major trade hubs the read-only route module reports gate-jump distance to.
+   * EVE solar-system IDs. Ordered for display. SPEC feature-matrix §3 (route module).
+   */
+  ROUTE_HUBS: [
+    { systemId: 30000142, name: 'Jita' },
+    { systemId: 30002187, name: 'Amarr' },
+    { systemId: 30002659, name: 'Dodixie' },
+    { systemId: 30002510, name: 'Rens' },
+    { systemId: 30002053, name: 'Hek' },
+  ],
+
   /** Per-scope ceilings for `ap_map.scope`. Defaults from legacy `pathfinder.ini`; refine in Phase 1. */
   MAX_MAPS_PER_SCOPE: { private: 3, corp: 1, alliance: 1 },
 
