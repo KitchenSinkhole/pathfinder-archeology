@@ -4,7 +4,7 @@
 
 Aperture is the Next.js + Drizzle + Postgres rebuild of legacy Pathfinder. Stage 0 landed the scaffold (Next 16, Drizzle/`pg`/`drizzle-kit` installed, Dockerized Postgres 18 with `pgcrypto` + `pg_partman`, typed `env`/`aperture.config`, green CI). There is **no `src/db` directory yet** and `db:generate` / `db:migrate` are stub scripts that error with "wired up in Stage 1".
 
-Stage 1 stands up the static-data layer that every later phase depends on: the `universe_*` Drizzle schema, the migration toolchain, and a one-shot SDE ingest CLI that backfills from CCP's official Static Data Export. This is SPEC §9 **Phase 0 — Static-data parity**. No `pf_*` tables, no auth, no UI — pure substrate.
+Stage 1 stands up the static-data layer that every later phase depends on: the `universe_*` Drizzle schema, the migration toolchain, and a one-shot SDE ingest CLI that backfills from CCP's official Static Data Export. This is SPEC §9 **Phase 0 — Static-data parity**. No `ap_*` tables, no auth, no UI — pure substrate.
 
 **Decisions (confirmed with user):**
 - **SDE source:** CCP's **official YAML** Static Data Export (the source of truth per SPEC §6.4), pinned to a specific build.
@@ -63,7 +63,7 @@ Tables (snake_case columns; `integer` PKs for universe IDs; FKs explicit):
 | `universe_wormhole` | `type_id` → type **CASCADE** PK, `name` text, `source_class` text (null = any/K162), `target_class` text (null = unknown/K162) — WH-type routing catalog, class labels only (mass/lifetime stay dogma-sourced) |
 
 Notes:
-- No `pgEnum`s here — universe enums don't exist; the `pf_*` enums land in Stage 6.
+- No `pgEnum`s here — universe enums don't exist; the `ap_*` enums land in Stage 6.
 - Galactic coords stored as `doublePrecision` (SDE ships them as floats; legacy `BIGINT` was lossy).
 - `system.name` immutability and Abyssal/Pochven special-casing are ingest-time concerns (1.4), not schema constraints.
 
@@ -120,7 +120,7 @@ Assertions:
 - Drizzle Kit owns migration SQL; the view goes through a `--custom` migration, not hand-applied DDL.
 - Companion `.md` for every `.ts` (CLAUDE.md standing instruction); `src/db/schema.md` is the schema index.
 - Shared row types come from Drizzle inference re-exported via `src/types/index.ts` — no hand-written duplicates.
-- Universe spatial IDs are `integer` per SPEC §6.1; reserve `bigint` for EVE-entity IDs in later `pf_*` stages.
+- Universe spatial IDs are `integer` per SPEC §6.1; reserve `bigint` for EVE-entity IDs in later `ap_*` stages.
 
 ## Verification
 1. `docker compose up -d db` healthy (Stage 0 already provides `pgcrypto`/`pg_partman`).

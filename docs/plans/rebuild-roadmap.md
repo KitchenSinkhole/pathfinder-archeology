@@ -27,7 +27,7 @@ Infrastructure and the §11 Phase-0 deliverables that constrain every later phas
 **Done when:** SPEC §9 Phase 0 gate is green — universe row counts within 0.5% of legacy; 100-system spot-check passes.
 
 ### Stage 2 — Auth.js EVE SSO + refresh-token rotation
-**Goal:** Auth.js v5 with a custom EVE SSO provider performing authorize → callback → token-exchange → JWK-verify. `pf_character` table holds encrypted `esi_access_token` / `esi_refresh_token` / `esi_scopes`. Refresh-token rotation persists the new refresh token *before* the new access token is consumed, with an integration test proving it. JWK cache implemented with the one-fetch-per-10s cap.
+**Goal:** Auth.js v5 with a custom EVE SSO provider performing authorize → callback → token-exchange → JWK-verify. `ap_character` table holds encrypted `esi_access_token` / `esi_refresh_token` / `esi_scopes`. Refresh-token rotation persists the new refresh token *before* the new access token is consumed, with an integration test proving it. JWK cache implemented with the one-fetch-per-10s cap.
 **Touches:** `src/db/schema/pf/character.ts`, `src/lib/auth.ts`, `src/app/api/auth/[...nextauth]/route.ts`, `src/lib/auth/eve-provider.ts`, `src/lib/crypto.ts`, `tests/integration/auth-rotation.test.ts`.
 **Done when:** A test character can log in, the rotated refresh token is verifiably written to DB before any caller sees the new access token, and the JWK cache cap is enforced. Closes SPEC §11 Q4.
 
@@ -51,12 +51,12 @@ Infrastructure and the §11 Phase-0 deliverables that constrain every later phas
 **Done when:** A logged-in character can switch characters and see their (legacy-replicated) map list.
 
 ### Stage 6 — Per-map schema
-**Goal:** Drizzle models for `pf_map`, `pf_map_system`, `pf_map_connection`, `pf_map_signature`, `pf_map_event` (partitioned monthly via `pg_partman`), `pf_event_kind`, plus the AFTER INSERT trigger on `pf_map_event` that does `pg_notify('map:'||map_id, …)`. All enums declared (`map_scope`, `map_type`, `system_status`, `connection_scope`, `wh_mass`, `wh_jump_mass`, `character_status`, `authz_level`). Migrations are reversible and tested.
+**Goal:** Drizzle models for `ap_map`, `ap_map_system`, `ap_map_connection`, `ap_map_signature`, `ap_map_event` (partitioned monthly via `pg_partman`), `ap_event_kind`, plus the AFTER INSERT trigger on `ap_map_event` that does `pg_notify('map:'||map_id, …)`. All enums declared (`map_scope`, `map_type`, `system_status`, `connection_scope`, `wh_mass`, `wh_jump_mass`, `character_status`, `authz_level`). Migrations are reversible and tested.
 **Touches:** `src/db/schema/pf/*.ts`, `src/db/migrations/`, `tests/db/triggers.test.ts`.
 **Done when:** Schema migrations apply and rollback cleanly; trigger fires `pg_notify` on every insert (verified by a `LISTEN` test).
 
 ### Stage 7 — Read-only map view (xyflow)
-**Goal:** Map page renders pf_map_system + pf_map_connection on xyflow with the legacy visual fidelity (status colors, EOL/mass styling, alias/tag overlays). Route module and kill-stats sidebar populated read-only from `universe_*` + `pf_system_stats`. No edit affordances anywhere.
+**Goal:** Map page renders ap_map_system + ap_map_connection on xyflow with the legacy visual fidelity (status colors, EOL/mass styling, alias/tag overlays). Route module and kill-stats sidebar populated read-only from `universe_*` + `ap_system_stats`. No edit affordances anywhere.
 **Touches:** `src/app/(app)/map/[[...slug]]/page.tsx`, `src/components/map/MapCanvas.tsx`, `src/components/map/SystemNode.tsx`, `src/components/map/ConnectionEdge.tsx`, `src/components/sidebar/RouteModule.tsx`, `src/components/sidebar/KillStatsModule.tsx`.
 **Done when:** SPEC §9 Phase 1 gate is green — a logged-in character sees their maps with all systems, connections, kill stats and route module populated; no edit UI present.
 
@@ -70,14 +70,14 @@ Infrastructure and the §11 Phase-0 deliverables that constrain every later phas
 **Done when:** Two tabs subscribed to the same map see each other's `pg_notify` messages within <500ms; killing the socket flips the banner.
 
 ### Stage 9 — Map mutation pathways (CRUD)
-**Goal:** Server Actions for low-traffic mutations (map create/delete, account settings) and JSON API routes for high-frequency ones (signature edits, system drag, connection type cycle, mass/EOL/frigate/preserve-mass flags, rally toggle, intel notes, tags, alias). Every mutation lands as exactly one `INSERT INTO pf_map_event`. WebSocket is broadcast-only — clients never mutate over WS.
+**Goal:** Server Actions for low-traffic mutations (map create/delete, account settings) and JSON API routes for high-frequency ones (signature edits, system drag, connection type cycle, mass/EOL/frigate/preserve-mass flags, rally toggle, intel notes, tags, alias). Every mutation lands as exactly one `INSERT INTO ap_map_event`. WebSocket is broadcast-only — clients never mutate over WS.
 **Touches:** `src/app/api/map/**`, `src/app/(app)/actions/*`, `src/lib/map/mutations/*`.
 **Done when:** All map/system/connection/signature CRUD works end-to-end through the canonical pathway; mutations replicate to other tabs via realtime.
 
 **Wormhole-data wiring:** the signature→WH-type edit path filters the type dropdown by the active system's class via `universe_wormhole.source_class` (+ universal `K162`); "mark connection as static" matches the connection's target class against `universe_system_static` + `universe_wormhole` (SPEC §6.4).
 
 ### Stage 10 — Paste readers & connection lifecycle
-**Goal:** D-Scan paste, signature paste reader (with versioned history rendered from `pf_map_event`), connection type cycling and mass/EOL state machine, "is rolling" toggle, auto-expiry rules. Signature reap timing (`expires_at`) wired in.
+**Goal:** D-Scan paste, signature paste reader (with versioned history rendered from `ap_map_event`), connection type cycling and mass/EOL state machine, "is rolling" toggle, auto-expiry rules. Signature reap timing (`expires_at`) wired in.
 **Touches:** `src/components/dialogs/SignaturePaste.tsx`, `src/components/dialogs/DScanPaste.tsx`, `src/lib/map/signatureReader.ts`, `src/lib/map/connectionState.ts`. The signature paste reader resolves WH codes against `universe_wormhole`/`universe_type` for class metadata.
 **Done when:** SPEC §9 Phase 2 gate is green — §§ 2–6 of the feature matrix work end-to-end; a pilot corp can run a real chain ops session.
 
@@ -101,7 +101,7 @@ Infrastructure and the §11 Phase-0 deliverables that constrain every later phas
 **Done when:** Intel/killboard modules show live data; deep links resolve to the right external pages.
 
 ### Stage 14 — Webhook fan-out
-**Goal:** Slack + Discord dispatcher reading `pf_map_webhook` rows. Rally events and history events fan out to the configured channels. Failure modes (404 webhook, rate limit) surface to the admin UI but never block the underlying map mutation.
+**Goal:** Slack + Discord dispatcher reading `ap_map_webhook` rows. Rally events and history events fan out to the configured channels. Failure modes (404 webhook, rate limit) surface to the admin UI but never block the underlying map mutation.
 **Touches:** `src/lib/webhooks/dispatcher.ts`, `src/db/schema/pf/webhook.ts`.
 **Done when:** SPEC §9 Phase 3 gate is green — §§ 7, 9, 11 of the feature matrix work; webhook delivery proven against test channels.
 
@@ -110,7 +110,7 @@ Infrastructure and the §11 Phase-0 deliverables that constrain every later phas
 ## Phase 4 — Admin, permissions, parity catch-up
 
 ### Stage 15 — Permissions & access control
-**Goal:** `pf_role`, `pf_character_role`, `pf_map_role_access`, `pf_corporation_right` modeled and wired. `authz_level` enum gates admin actions; `character_status` enum enforces kick/ban. Every controller action has an explicit server-side right check (closes SPEC §11 Q8 — the legacy `map_share` / `map_import` / `map_export` bypass).
+**Goal:** `ap_role`, `ap_character_role`, `ap_map_role_access`, `ap_corporation_right` modeled and wired. `authz_level` enum gates admin actions; `character_status` enum enforces kick/ban. Every controller action has an explicit server-side right check (closes SPEC §11 Q8 — the legacy `map_share` / `map_import` / `map_export` bypass).
 **Touches:** `src/db/schema/pf/role.ts`, `src/lib/auth/rights.ts`, `src/lib/auth/middleware.ts`.
 **Done when:** Role-restricted maps are invisible to non-role characters across both API and UI; integration tests prove no bypass path remains.
 
@@ -129,7 +129,7 @@ Infrastructure and the §11 Phase-0 deliverables that constrain every later phas
 ## Phase 5 — Cutover
 
 ### Stage 18 — Migration tooling
-**Goal:** One-shot `pgloader` script for legacy `pathfinder.*` → `pf_*` mapping; row counts + per-table checksum validators; legacy history-file leak cleanup script (closes SPEC §11 Q7); "Remember me" cookie one-shot reader that resolves legacy selector+validator against an imported snapshot of `character_authentication` and reissues an Auth.js session.
+**Goal:** One-shot `pgloader` script for legacy `pathfinder.*` → `ap_*` mapping; row counts + per-table checksum validators; legacy history-file leak cleanup script (closes SPEC §11 Q7); "Remember me" cookie one-shot reader that resolves legacy selector+validator against an imported snapshot of `character_authentication` and reissues an Auth.js session.
 **Touches:** Separate `aperture-migrate/` repo (per SPEC §6.3 — not committed to the app).
 **Done when:** Migration scripts run dry against a copy of the production DB and produce a verified Postgres dataset; "Remember me" rehydration round-trip tested end-to-end.
 
@@ -157,7 +157,7 @@ These run alongside the staged phases rather than as discrete blocks. Each stage
 This roadmap itself doesn't ship code; verification is that each stage's "Done when" is testable, and that the union of stages covers SPEC §3 (Functional requirements), §8 (Keep / Drop / Redesign), and §11 (Open questions).
 
 Spot-check coverage:
-- All 11 SPEC §11 open questions appear: Q1/Q2 → §8.2 (resolved in spec, no stage needed); Q3/Q6 → Stage 3; Q4 → Stage 2; Q5 → Stage 4; Q7 → Stage 18; Q8 → Stage 15; Q9/Q10 → Stage 16; Q11 → Stage 6 (month-partitioned `pf_map_event`).
+- All 11 SPEC §11 open questions appear: Q1/Q2 → §8.2 (resolved in spec, no stage needed); Q3/Q6 → Stage 3; Q4 → Stage 2; Q5 → Stage 4; Q7 → Stage 18; Q8 → Stage 15; Q9/Q10 → Stage 16; Q11 → Stage 6 (month-partitioned `ap_map_event`).
 - All §8.3 Redesign rows are covered: realtime (8), static-data (1), auth (2), config (0), map-history (6), soft-delete (6/9), system-stats (11), sessions (2), background queue (11), map engine (7), build (0).
 - Feature-matrix §§ 1–14 land at the SPEC §10 phase gates (1/3 at Stage 7; 2/3/4/5/6/12/13 at Stage 10; 7/9/11 at Stage 14; 8/10/14 at Stage 17; full matrix at Stage 19).
 

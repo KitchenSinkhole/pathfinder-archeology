@@ -13,9 +13,15 @@ Stage 0 seeds:
 - `LOCATION_POLL_OFFLINE_MS` — cadence while offline.
 - `JWK_REFETCH_MIN_INTERVAL_MS` — JWK-set refetch cap from SPEC §7 / footgun #3.
 - `CCP_SSO_DOWNTIME_WINDOW_MIN` — minutes around 11:00 UTC tolerated as expected ESI outage.
-- `MAP_EVENT_NOTIFY_CHANNEL_PREFIX` — `pg_notify` channel prefix for `pf_map_event` fanout (SPEC §5.2 / §6.5).
+- `MAP_EVENT_NOTIFY_CHANNEL_PREFIX` — `pg_notify` channel prefix for `ap_map_event` fanout (SPEC §5.2 / §6.5).
 - `MAX_MAPS_PER_SCOPE` — legacy `pathfinder.ini` ceilings, refined in Phase 1.
-- `MAX_SYSTEMS_PER_MAP` — applied where `pf_map_system.visible = true`.
+- `MAX_SYSTEMS_PER_MAP` — applied where `ap_map_system.visible = true`.
+
+Stage 2 (auth) adds:
+- `SSO_AUTHORIZE_PATH` / `SSO_TOKEN_PATH` / `SSO_JWKS_PATH` — EVE SSO endpoint paths joined onto `env.AUTH_EVE_SSO_BASE` (TQ vs SISI host is env-configurable).
+- `SSO_EXPECTED_ISSUER` — expected `iss` claim on the JWT access token.
+- `SSO_TOKEN_REFRESH_BUFFER_S` — refresh the access token this many seconds before expiry (120s, matches legacy).
+- `ESI_SCOPES` — default scope list requested at login; widened by later hot-path stages.
 
 ### ApertureConfig
 Inferred type alias for `typeof apertureConfig` so consumers don't need to import the runtime value just to type a parameter.

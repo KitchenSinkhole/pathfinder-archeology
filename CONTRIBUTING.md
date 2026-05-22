@@ -124,7 +124,7 @@ Every `.ts` / `.tsx` file has a companion `.md` at the same path with the same b
 
 ### Database rules
 - Single Postgres database, single schema
-- User-data tables → `pf_` prefix. Static CCP-data tables → `universe_` prefix. No exceptions
+- User-data tables → `ap_` prefix. Static CCP-data tables → `universe_` prefix. No exceptions
 - `snake_case` columns; `camelCase` on the TS side via Drizzle's `name:` mapping
 - All time columns are `timestamptz`
 - IDs are `generated always as identity` or `bigserial`; EVE IDs are `bigint`
@@ -138,7 +138,7 @@ Pick one per change; don't invent a fourth:
 | Trigger | Mechanism |
 |---|---|
 | User clicked / typed in the UI | Server Action *or* JSON API route |
-| Server observed something external | Background job → DB write → `pf_map_event` insert → `pg_notify` → WS push |
+| Server observed something external | Background job → DB write → `ap_map_event` insert → `pg_notify` → WS push |
 | Cross-tab fan-out of either above | WebSocket server → client only |
 
 The WebSocket is **broadcast-only**. Clients never mutate over it.
@@ -162,7 +162,7 @@ All domain types live in `src/types/index.ts`. Do not define project-domain type
 - Squash-merge to `master` when the stage's "Done when" is verified
 - Don't force-push to `master`; don't skip CI hooks
 
-Commit messages should reference the stage number, e.g. `Stage 6: pf_map_event partitioning + pg_notify trigger`.
+Commit messages should reference the stage number, e.g. `Stage 6: ap_map_event partitioning + pg_notify trigger`.
 
 ---
 

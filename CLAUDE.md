@@ -139,13 +139,13 @@ These rules come straight from [docs/spec/SPEC.md](docs/spec/SPEC.md) §§5–7.
 
 ### Database
 - **Single Postgres database, single schema.** The legacy `pathfinder` / `eve_universe` split is gone.
-- **Table-name prefixes are mandatory, no exceptions:** every user-data table starts with `pf_`; every static CCP-data table starts with `universe_`.
+- **Table-name prefixes are mandatory, no exceptions:** every user-data table starts with `ap_`; every static CCP-data table starts with `universe_`.
 - **Column casing:** `snake_case` in the DB, `camelCase` on the TS side via Drizzle's `name:` mapping.
 - **All time columns are `timestamptz`.** No naked `timestamp`.
 - **IDs:** `generated always as identity` (or `bigserial` where natural). EVE IDs are 64-bit — use `bigint`.
 - **JSON:** always `jsonb`, never `json`.
 - **Small lookup tables become `pgEnum`s** (e.g. `map_scope`, `system_status`, `connection_scope`, `wh_mass`, `authz_level`). Don't introduce a lookup table when an enum will do.
-- **Real foreign keys across former schema boundaries.** `pf_map_system.system_id → universe_system.id` is a normal FK with `ON DELETE RESTRICT`. No application-level joins for what should be SQL.
+- **Real foreign keys across former schema boundaries.** `ap_map_system.system_id → universe_system.id` is a normal FK with `ON DELETE RESTRICT`. No application-level joins for what should be SQL.
 - **Audit `character_id` is `ON DELETE SET NULL`.** Erasing a character must not cascade-wipe their map/system/connection history.
 
 ### Mutation pathways (one canonical commit point per change)
@@ -154,17 +154,17 @@ There are exactly three pathways. Pick the right one; do not invent a fourth.
 | Trigger | Mechanism |
 |---|---|
 | User clicked / typed in the UI | Server Action *or* JSON API route |
-| Server observed something external | Background job → DB write → `pf_map_event` insert → `pg_notify` → WS push |
+| Server observed something external | Background job → DB write → `ap_map_event` insert → `pg_notify` → WS push |
 | Cross-tab fan-out of either above | WebSocket server → client only |
 
 - The **WebSocket is broadcast-only.** Clients never send mutations over it.
-- Every mutation lands as exactly **one `INSERT INTO pf_map_event`**. An `AFTER INSERT` trigger emits `pg_notify('map:'||map_id, …)`. The WS handler picks it up. No application-level dual-write.
+- Every mutation lands as exactly **one `INSERT INTO ap_map_event`**. An `AFTER INSERT` trigger emits `pg_notify('map:'||map_id, …)`. The WS handler picks it up. No application-level dual-write.
 - **Server Actions** for low-traffic state changes where a fresh render is the natural next step (account settings, map create/delete, admin settings).
 - **JSON API routes** for high-frequency client-initiated mutations (signature edits, system drag, connection type change).
 
 ### Realtime
 - **Native WebSocket served by the same Next.js deployment.** Not a separate process.
-- **Postgres `LISTEN/NOTIFY`** is the only fanout mechanism. The channel the `pf_map_event` trigger publishes to is the channel the WS handler subscribes to. Job dispatch uses the same mechanism.
+- **Postgres `LISTEN/NOTIFY`** is the only fanout mechanism. The channel the `ap_map_event` trigger publishes to is the channel the WS handler subscribes to. Job dispatch uses the same mechanism.
 - **SharedWorker** on the browser — one character with many tabs holds exactly **one** socket.
 - Task vocabulary is fixed: `mapUpdate`, `mapAccess`, `mapConnectionAccess`, `mapDeleted`, `characterUpdate`, `characterLogout`, `healthCheck`, `logData`, plus client→server `subscribe` / `unsubscribe`. Don't invent new task names without updating the spec.
 - If realtime is unhealthy, the UI **must** surface a degraded-mode banner — never silently render stale state.
@@ -176,12 +176,12 @@ There are exactly three pathways. Pick the right one; do not invent a fourth.
 
 ### Auth & ESI
 - **Auth.js v5** with a custom **EVE SSO** OAuth2 provider.
-- **ESI tokens live on `pf_character`** (`esi_access_token`, `esi_refresh_token`, `esi_access_token_expires`, `esi_scopes`). Tokens are **encrypted at rest** (pgcrypto or app-layer AEAD).
+- **ESI tokens live on `ap_character`** (`esi_access_token`, `esi_refresh_token`, `esi_access_token_expires`, `esi_scopes`). Tokens are **encrypted at rest** (pgcrypto or app-layer AEAD).
 - **Refresh-token rotation is persisted on every token exchange**, *before* the new access token is consumed by any caller. This closes the highest-priority latent bug from the legacy app. Cover it with an integration test.
 - **JWK cache:** fetch on cold start, refresh on signature failure, capped at one re-fetch per 10s.
 - **Per-endpoint circuit breakers** on ESI. Treat the CCP downtime window (`±8m` around `CCP_SSO_DOWNTIME`) as expected.
 - **All ESI responses go through Zod decoders.** ESI schema drift must surface as a decoder error, not a silent `undefined` cascade.
-- **Admin gating** uses the `pf_character.authz_level` enum, not a second Auth.js provider.
+- **Admin gating** uses the `ap_character.authz_level` enum, not a second Auth.js provider.
 
 ### Config
 - Env vars + a typed `aperture.config.ts` for app constants. Do not reintroduce `.ini` files.
@@ -189,11 +189,11 @@ There are exactly three pathways. Pick the right one; do not invent a fourth.
 
 ### Lifecycle patterns
 - **Do not add a generic `active` boolean** to operational tables. The legacy mistake. Pick the right mechanism per case:
-  - `pf_map_system.visible` for "currently shown on the map" (rows persist across invisibility cycles).
-  - `pf_map.deleted_at` for two-phase map deletion (30-day grace, then purge).
-  - **Hard-delete** for `pf_map_connection` — wormholes collapse and don't come back.
+  - `ap_map_system.visible` for "currently shown on the map" (rows persist across invisibility cycles).
+  - `ap_map.deleted_at` for two-phase map deletion (30-day grace, then purge).
+  - **Hard-delete** for `ap_map_connection` — wormholes collapse and don't come back.
   - Status enums (`character_status`, etc.) where a state machine is the real model.
-- **History lives in `pf_map_event`**, partitioned monthly. Never write NDJSON history files. Never dual-write to a parallel audit table.
+- **History lives in `ap_map_event`**, partitioned monthly. Never write NDJSON history files. Never dual-write to a parallel audit table.
 
 ### Code style
 - Don't add features, refactor, or introduce abstractions beyond what the task requires.

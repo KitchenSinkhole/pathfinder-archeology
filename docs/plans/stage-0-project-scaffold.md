@@ -6,7 +6,7 @@
 - [docs/spec/SPEC.md §5 Target architecture](../spec/SPEC.md#5-target-architecture) — stack pin (Next 16 / React 19 / TS 6 / Drizzle / Postgres 18 / Auth.js v5 / Node 24 LTS; no Redis).
 - [docs/spec/SPEC.md §5.5 Deployment topology](../spec/SPEC.md#55-deployment-topology) — single-compose Next + Postgres bundle.
 - [docs/spec/SPEC.md §6.1 ORM, DB, and naming conventions](../spec/SPEC.md#61-orm-db-and-naming-conventions) — single Postgres schema; `pgcrypto` available.
-- [docs/spec/SPEC.md §6.5 Lifecycle, visibility, and audit](../spec/SPEC.md#65-lifecycle-visibility-and-audit) — `pf_map_event` is partitioned monthly via `pg_partman` (extension must be available from Stage 0 onward).
+- [docs/spec/SPEC.md §6.5 Lifecycle, visibility, and audit](../spec/SPEC.md#65-lifecycle-visibility-and-audit) — `ap_map_event` is partitioned monthly via `pg_partman` (extension must be available from Stage 0 onward).
 - [docs/plans/rebuild-roadmap.md § Stage 0](rebuild-roadmap.md) — roadmap stub being expanded.
 - [CLAUDE.md § Companion `.md` files](../../CLAUDE.md#companion-md-files--standing-instruction) — every `.ts`/`.tsx` gets a companion in the same edit.
 
