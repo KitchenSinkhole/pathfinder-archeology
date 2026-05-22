@@ -6,7 +6,7 @@
 ---
 
 ### eveProvider(config?): OAuthConfig<EveProfile>
-Builds the `id: 'eve'` OAuth2 provider: authorize/token endpoints from `aperture.config` + `env.AUTH_EVE_SSO_BASE`, scopes from `apertureConfig.ESI_SCOPES`, `checks: ['pkce', 'state']`. EVE has no userinfo endpoint, so `userinfo.request` verifies the JWT access token via `verifyEveAccessToken`, and `profile()` maps the claims to `{ id, name }`.
+Builds the `id: 'eve'` OAuth2 provider: authorize/token endpoints from `aperture.config` + `env.AUTH_EVE_SSO_BASE`, scopes from `apertureConfig.ESI_SCOPES`, `checks: ['pkce', 'state']`. EVE has no real userinfo endpoint, so `userinfo.request` verifies the JWT access token via `verifyEveAccessToken`, and `profile()` maps the claims to `{ id, name }`. `userinfo.url` is set to EVE's `/oauth/verify` endpoint only to satisfy @auth/core's config assertion and `as` builder — it is never fetched because `request` takes precedence.
 
 ---
 

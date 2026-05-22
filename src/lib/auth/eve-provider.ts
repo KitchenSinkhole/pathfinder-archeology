@@ -44,7 +44,13 @@ export function eveProvider(): OAuthConfig<EveProfile> {
     },
     token: tokenUrl(),
     userinfo: {
-      // No CCP userinfo endpoint — verify the JWT access token instead.
+      // EVE has no userinfo endpoint — the profile is the verified JWT
+      // access-token claims (`request` below). Auth.js still requires a `url`
+      // here (its config assertion and the callback `as` builder both read
+      // `userinfo.url`), so we point it at EVE's token-verify endpoint. It is
+      // never actually fetched: when `request` is present @auth/core uses it in
+      // preference to the URL.
+      url: new URL('/oauth/verify', ssoBase()).toString(),
       async request({ tokens }: { tokens: { access_token?: string } }) {
         return verifyEveAccessToken(tokens.access_token ?? '');
       },

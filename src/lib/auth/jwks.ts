@@ -52,7 +52,7 @@ export interface EveAccessTokenClaims {
  */
 export async function verifyEveAccessToken(token: string): Promise<EveAccessTokenClaims> {
   const { payload } = await jwtVerify(token, eveKeySet(), {
-    issuer: apertureConfig.SSO_EXPECTED_ISSUER,
+    issuer: [...apertureConfig.SSO_EXPECTED_ISSUER],
     audience: env.AUTH_EVE_CLIENT_ID,
   });
   const claims = eveClaimsSchema.parse(payload);

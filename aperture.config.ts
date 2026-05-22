@@ -53,8 +53,13 @@ export const apertureConfig = {
   SSO_TOKEN_PATH: '/v2/oauth/token',
   SSO_JWKS_PATH: '/oauth/jwks',
 
-  /** Expected `iss` claim on EVE SSO JWT access tokens. SPEC §7 (`CCP_SSO_JWK_CLAIM`). */
-  SSO_EXPECTED_ISSUER: 'login.eveonline.com',
+  /**
+   * Accepted `iss` claim values on EVE SSO JWT access tokens. CCP issues the
+   * scheme-prefixed form (`https://login.eveonline.com`) on live tokens, but has
+   * historically also used the bare host — accept both so verification is robust
+   * to the inconsistency. SPEC §7 (`CCP_SSO_JWK_CLAIM`).
+   */
+  SSO_EXPECTED_ISSUER: ['login.eveonline.com', 'https://login.eveonline.com'],
 
   /** Refresh the access token this many seconds before it expires. Legacy used a 120s buffer. */
   SSO_TOKEN_REFRESH_BUFFER_S: 120,

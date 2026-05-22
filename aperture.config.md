@@ -19,7 +19,7 @@ Stage 0 seeds:
 
 Stage 2 (auth) adds:
 - `SSO_AUTHORIZE_PATH` / `SSO_TOKEN_PATH` / `SSO_JWKS_PATH` — EVE SSO endpoint paths joined onto `env.AUTH_EVE_SSO_BASE` (TQ vs SISI host is env-configurable).
-- `SSO_EXPECTED_ISSUER` — expected `iss` claim on the JWT access token.
+- `SSO_EXPECTED_ISSUER` — accepted `iss` claim values on the JWT access token (array: bare host + scheme-prefixed form).
 - `SSO_TOKEN_REFRESH_BUFFER_S` — refresh the access token this many seconds before expiry (120s, matches legacy).
 - `ESI_SCOPES` — default scope list requested at login; widened by later hot-path stages.
 

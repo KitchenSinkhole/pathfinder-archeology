@@ -1,0 +1,17 @@
+## AppHeader
+
+**Purpose:** Top page chrome for the authenticated app — branding link plus the character switcher.
+**File:** `src/components/chrome/AppHeader.tsx`
+
+### Props
+
+| Prop | Type | Required | Description |
+|---|---|---|---|
+| active | `{ id: string; name: string }` | yes | Active character, forwarded to the switcher chip |
+| characters | `SwitcherCharacter[]` | yes | Account roster, forwarded to the switcher |
+
+### Renders
+A bordered header bar: an "Aperture" link to `/maps` on the left, the `CharacterSwitcher` on the right.
+
+### Depends On
+- `CharacterSwitcher` (client) — the data props are resolved server-side in `(app)/layout.tsx`.

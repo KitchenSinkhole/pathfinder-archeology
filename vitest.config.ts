@@ -19,6 +19,10 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // `server-only`/`client-only` throw at import outside Next's bundler;
+      // stub them so server modules can be unit-tested.
+      'server-only': fileURLToPath(new URL('./tests/stubs/empty.ts', import.meta.url)),
+      'client-only': fileURLToPath(new URL('./tests/stubs/empty.ts', import.meta.url)),
     },
   },
 });
