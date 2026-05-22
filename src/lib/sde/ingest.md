@@ -23,6 +23,20 @@ Pinned build: **`SDE_BUILD = 3351823`** (released 2026-05-19), YAML variant. Sou
 
 ---
 
+### Vendored community data (anoik.is)
+
+WH data CCP omits from the SDE/ESI is reconstructed by [anoik.is](https://anoik.is). Both files below were derived from anoik.is's single static dataset `https://anoik.is/static/static.json?version=11`, **pulled 2026-05-22**. anoik.is serves this as one cached static asset (the site loads it once into `localStorage`), so the whole dataset is one request — no page scraping. anoik.is is an EVE Online Partner; data is CCP-derived and used here under EVE's third-party developer terms with attribution.
+
+- **`system-static.csv`** (`systemID;typeID`, 3772 rows) — one row per J-space system × static spawn. `systemID` = `solarSystemID`; `typeID` resolved from each system's `statics[]` code via the dataset's per-code `typeID`.
+- **`wormhole-classes.csv`** (`code;sourceClass;targetClass`, 90 rows incl. K162) — the WH-type routing catalog. anoik class labels are mapped to Aperture's vocabulary (`c1`→`C1` … `c6`→`C6`, `c13`→`C13`, `hs`→`HS`, `ls`→`LS`, `ns`→`NS`, `thera`→`Thera`). Two cases collapse to empty (→ NULL):
+  - **Multi-source holes** (e.g. `B449` src `[ls,ns]`): the schema defines a null `source_class` as "any", which already models a wandering hole that spawns from several classes — so multi-source → empty `sourceClass`.
+  - **Drifter destinations** (`B735`/`C414`/`R259`/`S877`/`V928`, dest = barbican/conflux/redoubt/sentinel/vidette = classes 14–18): not in Aperture's class vocabulary, so `targetClass` is left empty (unmodeled). Revisit if C14–C18 are added to the label set.
+  - K162 (the universal reverse-exit) has both cells empty by definition.
+
+Re-pull: refetch `static.json`, regenerate, and re-validate the Stage-1.5 gate (valid-or-null labels, K162 both-null, `A239` resolves).
+
+---
+
 ### SDE_BUILD / SDE_RELEASE_DATE / SDE_ZIP_URL
 Pinned-build constants. Bump deliberately and re-validate the Phase-0 gate counts.
 
