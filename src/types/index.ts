@@ -57,3 +57,15 @@ export type NewApUser = InferInsertModel<typeof apUser>;
 
 export type ApCharacter = InferSelectModel<typeof apCharacter>;
 export type NewApCharacter = InferInsertModel<typeof apCharacter>;
+
+// Realtime WebSocket wire contracts (schemas in src/lib/realtime/protocol.ts).
+export type {
+  Envelope,
+  ServerToClientTask,
+  ClientToServerTask,
+  ServerToClientMessage,
+  ClientToServerMessage,
+} from '@/lib/realtime/protocol';
+
+// ESI opKey identifiers (map in src/lib/esi/opkeys.ts).
+export type { OpKey, OpDef } from '@/lib/esi/opkeys';
