@@ -10,7 +10,7 @@
 | children | ReactNode | yes | Page subtree rendered inside `<body>`. |
 
 ### Renders
-`<html lang="en">` with the Geist font CSS variable and a `font-sans` class, wrapping `<body>{children}</body>`. Imports `./globals.css` (shadcn-generated Tailwind v4 tokens) once at the root.
+`<html lang="en">` with the Geist font CSS variable and a `dark font-sans` class, wrapping `<body>{children}</body>`. Imports `./globals.css` (shadcn-generated Tailwind v4 tokens) once at the root. The `dark` class is hard-coded on `<html>` — the app is permanently dark mode (no theme toggle), which activates the `.dark` token overrides in `globals.css`.
 
 ### Exports
 - Default: `RootLayout`

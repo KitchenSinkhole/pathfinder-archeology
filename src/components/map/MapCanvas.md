@@ -14,7 +14,7 @@
 A `ReactFlow` canvas (custom `system` nodes, `connection` edges, `Background`, `Controls`) beside a sidebar with `RouteModule` and `KillStatsModule` for the selected system.
 
 ### Behaviour & Interactions
-- Read-only: `nodesDraggable`/`nodesConnectable` false, edges non-selectable. `fitView` on load; attribution hidden.
+- Read-only: `nodesDraggable`/`nodesConnectable` false, edges non-selectable. `fitView` on load; attribution hidden. `colorMode="dark"` so xyflow built-in chrome (Controls, etc.) matches the app's permanent dark theme.
 - Node selection is local state (`selectedId`); never persisted. Selecting a node maps it to its EVE `systemId` to look up `routes`/`stats` for the sidebar.
 - `useMapSubscription(Number(data.map.id))` opens this map's realtime channel for the canvas's lifetime (Stage 8). Live updates are not yet applied to the canvas — that is Stage 9.
 

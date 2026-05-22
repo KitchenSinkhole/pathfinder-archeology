@@ -84,6 +84,7 @@ export function MapCanvas({
           nodesDraggable={false}
           nodesConnectable={false}
           edgesFocusable={false}
+          colorMode="dark"
           fitView
           proOptions={{ hideAttribution: true }}
         >
