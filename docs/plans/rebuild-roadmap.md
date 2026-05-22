@@ -22,8 +22,8 @@ Infrastructure and the §11 Phase-0 deliverables that constrain every later phas
 **Done when:** Empty app runs locally and in CI against a containerized Postgres.
 
 ### Stage 1 — Universe schema & SDE ingest
-**Goal:** All `universe_*` tables from SPEC §6 modeled in Drizzle (systems, constellations, regions, groups, types, type-attributes, stargate edges, type overrides). One-shot SDE ingest CLI populates them from CCP's official SDE; a route-lookup smoke test matches the legacy `eve_universe` row counts within 0.5%.
-**Touches:** `src/db/schema/universe/*.ts`, `src/db/migrations/`, `src/lib/sde/ingest.ts`, `scripts/sde-bootstrap.ts`.
+**Goal:** All `universe_*` tables from SPEC §6 modeled in Drizzle (systems, constellations, regions, groups, types, type-attributes, stargate edges, type overrides, per-system WH statics, the wormhole-type routing catalog `universe_wormhole`). One-shot SDE ingest CLI populates them from CCP's official SDE; vendored community CSVs (anoik.is) seed the WH statics and the wormhole-type catalog; a route-lookup smoke test matches the legacy `eve_universe` row counts within 0.5%.
+**Touches:** `src/db/schema/universe/*.ts`, `src/db/migrations/`, `src/lib/sde/ingest.ts`, `scripts/sde-bootstrap.ts`, `scripts/data/{system-static,wormhole-classes,wormhole-overrides}.csv`.
 **Done when:** SPEC §9 Phase 0 gate is green — universe row counts within 0.5% of legacy; 100-system spot-check passes.
 
 ### Stage 2 — Auth.js EVE SSO + refresh-token rotation
@@ -74,9 +74,11 @@ Infrastructure and the §11 Phase-0 deliverables that constrain every later phas
 **Touches:** `src/app/api/map/**`, `src/app/(app)/actions/*`, `src/lib/map/mutations/*`.
 **Done when:** All map/system/connection/signature CRUD works end-to-end through the canonical pathway; mutations replicate to other tabs via realtime.
 
+**Wormhole-data wiring:** the signature→WH-type edit path filters the type dropdown by the active system's class via `universe_wormhole.source_class` (+ universal `K162`); "mark connection as static" matches the connection's target class against `universe_system_static` + `universe_wormhole` (SPEC §6.4).
+
 ### Stage 10 — Paste readers & connection lifecycle
 **Goal:** D-Scan paste, signature paste reader (with versioned history rendered from `pf_map_event`), connection type cycling and mass/EOL state machine, "is rolling" toggle, auto-expiry rules. Signature reap timing (`expires_at`) wired in.
-**Touches:** `src/components/dialogs/SignaturePaste.tsx`, `src/components/dialogs/DScanPaste.tsx`, `src/lib/map/signatureReader.ts`, `src/lib/map/connectionState.ts`.
+**Touches:** `src/components/dialogs/SignaturePaste.tsx`, `src/components/dialogs/DScanPaste.tsx`, `src/lib/map/signatureReader.ts`, `src/lib/map/connectionState.ts`. The signature paste reader resolves WH codes against `universe_wormhole`/`universe_type` for class metadata.
 **Done when:** SPEC §9 Phase 2 gate is green — §§ 2–6 of the feature matrix work end-to-end; a pilot corp can run a real chain ops session.
 
 ---

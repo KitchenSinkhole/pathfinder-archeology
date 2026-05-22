@@ -37,7 +37,8 @@ Row types are inferred and re-exported from `src/types/index.ts`.
 
 | Table (`const`) | DB name | Key columns / FKs |
 |---|---|---|
-| `universeSystemStatic` | `universe_system_static` | `system_id` → system **CASCADE**, `type_id` → type **CASCADE**, PK `(system_id, type_id)` |
+| `universeSystemStatic` | `universe_system_static` | `system_id` → system **CASCADE**, `type_id` → type **CASCADE**, PK `(system_id, type_id)`. Per-system WH statics (anoik.is /systems) |
+| `universeWormhole` | `universe_wormhole` | `type_id` PK → type **CASCADE**, `name`, `source_class`, `target_class` (class labels; null = any/unknown for K162). WH-type routing catalog (anoik.is /wormholes) |
 
 ## `universe/views.ts`
 

@@ -49,8 +49,8 @@ Derived from [10 §§ 1–14](10-feature-matrix.md). The rebuild must implement 
 | Authentication & accounts | [10 § 1](10-feature-matrix.md#1-authentication--accounts), [09 § Auth principals](09-permissions-and-admin.md#auth-principals), [05 § 2 CCP SSO](05-external-integrations.md#2-ccp-sso-oauth-20--jwt) | Multi-character switch is a hard requirement; cookies-based "Remember me" needs a migration window (§7). |
 | Map lifecycle (create / share / delete / expire) | [10 § 2](10-feature-matrix.md#2-map-lifecycle), [03 § REST API](03-backend-api.md#rest-api--apirestresourceid), [02 § 9 core entities](02-data-model.md#9-pathfinder-models--core-entities) | Three scopes (private / corp / alliance), per-scope limits (`MAX_COUNT`, `MAX_SYSTEMS`, `LIFETIME`) come from [01 § pathfinder.ini](01-config-and-deployment.md#app-pathfinderini--application-feature-flags). |
 | Systems on the map | [10 § 3](10-feature-matrix.md#3-systems-on-the-map), [07 § System-node lifecycle](07-frontend-map-engine.md#system-node-lifecycle-systemjs--mapjs) | Includes rally point, intel notes, system tags, route, graph, killboard. |
-| Connections (wormhole edges) | [10 § 4](10-feature-matrix.md#4-connections-wormhole-edges), [07 § Connection lifecycle](07-frontend-map-engine.md#connection-lifecycle) | Type cycling, mass/EOL/frigate/preserve-mass flags, auto-expiry. |
-| Signatures | [10 § 5](10-feature-matrix.md#5-signatures), [02 § 9 core entities](02-data-model.md#9-pathfinder-models--core-entities) | D-Scan paste, signature paste reader, signature history versioning. |
+| Connections (wormhole edges) | [10 § 4](10-feature-matrix.md#4-connections-wormhole-edges), [07 § Connection lifecycle](07-frontend-map-engine.md#connection-lifecycle) | Type cycling, mass/EOL/frigate/preserve-mass flags, auto-expiry. A connection can be marked as a system's **static** by matching its target class against `universe_system_static` + `universe_wormhole` (§6.4). |
+| Signatures | [10 § 5](10-feature-matrix.md#5-signatures), [02 § 9 core entities](02-data-model.md#9-pathfinder-models--core-entities) | D-Scan paste, signature paste reader, signature history versioning. WH-type selection is **class-filtered** against `universe_wormhole.source_class` for the active system's class, plus the universal `K162` (§6.4). |
 | Realtime sync | [10 § 6](10-feature-matrix.md#6-realtime--multi-user), [04 § Realtime push pipeline](04-cron-and-background.md#realtime-push-pipeline) | Task vocabulary fixed: `mapUpdate`, `mapAccess`, `mapConnectionAccess`, `mapDeleted`, `characterUpdate`, `characterLogout`, `healthCheck`, `logData`, plus client→server `subscribe`/`unsubscribe`. |
 | Notifications & broadcasts | [10 § 7](10-feature-matrix.md#7-notifications--broadcasts), [05 § 6 mail](05-external-integrations.md#6-outbound-mail-swiftmailer) | Slack + Discord webhooks kept; mail dropped (§8). |
 | Admin / operator | [10 § 8](10-feature-matrix.md#8-admin--operator), [09 § Admin panel](09-permissions-and-admin.md#admin-panel----admin) | Maps list, members, notification config, global settings, kick / ban / activate / hard-delete actions. |
@@ -233,6 +233,29 @@ universe_type_override (
 ```
 
 Effective dogma value is read via a view: `universe_type_attribute_effective` returns `COALESCE(override.value, type_attribute.value)`. `wormhole.csv` is a one-shot install-time bootstrap into this table — admin-editable thereafter, survives every SDE refresh.
+
+**Wormhole-type routing catalog as a DB table.** CCP deliberately omits wormhole *routing* data from both ESI and the SDE; the community has reconstructed it on [anoik.is](https://anoik.is). Two datasets matter:
+
+- **anoik.is /wormholes** — for each wormhole type (signature code, e.g. `A239`, `K162`): the system **class it can appear in** ("source") and the **class it leads into** ("target"). The source class is the genuinely-missing field — it is not a dogma attribute and cannot be derived from the SDE. Target class exists in dogma attr 1381 but only as an opaque numeric class id.
+- **anoik.is /systems** — the **statics** for each J-space system (the WH type that always re-spawns if it collapses). This already lands in `universe_system_static (system_id, type_id)` (§6.4 below).
+
+The /wormholes catalog lands in a **class-only** table — only the navigationally-missing source/target class labels are vendored; mass, lifetime, and scan strength stay dogma-sourced via `universe_type_attribute_effective`:
+
+```
+universe_wormhole (
+  type_id      int → universe_type.id ON DELETE CASCADE PRIMARY KEY,
+  name         text NOT NULL,   -- WH code, e.g. 'A239', 'K162'
+  source_class text,            -- class it can appear in; same labels as universe_system.security (C1–C6, HS, LS, NS, Thera, Pochven). NULL = any (K162)
+  target_class text             -- class it leads into. NULL = unknown (K162)
+)
+```
+
+`K162` is the universal reverse-exit: it appears in any class (`source_class = NULL`) and its destination is resolved from the far side (`target_class = NULL`). The two product use-cases this serves:
+
+1. **Class-filtered WH-type suggestion** — marking a scanned signature as a wormhole in a C3 offers only types where `source_class = 'C3'` (plus `K162`).
+2. **Static identification** — a connection leaving a system can be marked as that system's static by matching the connection's resolved target class against the system's `universe_system_static` rows (each row's `type_id` resolves to a `target_class` via `universe_wormhole`).
+
+The catalog is seeded from a vendored community CSV (anoik.is /wormholes), the same one-shot-bootstrap-then-admin-editable pattern as `wormhole.csv`.
 
 ### 6.5 Lifecycle, visibility, and audit
 

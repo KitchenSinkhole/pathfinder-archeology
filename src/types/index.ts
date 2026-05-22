@@ -11,6 +11,7 @@ import type {
   universeType,
   universeTypeAttribute,
   universeTypeOverride,
+  universeWormhole,
 } from '@/db/schema';
 
 export type UniverseRegion = InferSelectModel<typeof universeRegion>;
@@ -45,3 +46,6 @@ export type NewUniverseTypeOverride = InferInsertModel<typeof universeTypeOverri
 
 export type UniverseSystemStatic = InferSelectModel<typeof universeSystemStatic>;
 export type NewUniverseSystemStatic = InferInsertModel<typeof universeSystemStatic>;
+
+export type UniverseWormhole = InferSelectModel<typeof universeWormhole>;
+export type NewUniverseWormhole = InferInsertModel<typeof universeWormhole>;

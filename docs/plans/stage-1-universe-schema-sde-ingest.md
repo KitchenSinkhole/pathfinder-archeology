@@ -8,7 +8,8 @@ Stage 1 stands up the static-data layer that every later phase depends on: the `
 
 **Decisions (confirmed with user):**
 - **SDE source:** CCP's **official YAML** Static Data Export (the source of truth per SPEC §6.4), pinned to a specific build.
-- **Schema scope:** the roadmap subset + minimal dependencies only — `region, constellation, system, group, category, type, dogma_attribute, type_attribute, stargate_edge, type_override, system_static`. Stars/planets/stations/structures/factions/races/alliances/corps/sovereignty/faction-war are deferred to the stages that first need them.
+- **Schema scope:** the roadmap subset + minimal dependencies only — `region, constellation, system, group, category, type, dogma_attribute, type_attribute, stargate_edge, type_override, system_static, wormhole`. Stars/planets/stations/structures/factions/races/alliances/corps/sovereignty/faction-war are deferred to the stages that first need them.
+- **Wormhole data is community-sourced (anoik.is), not in the SDE.** Two vendored CSVs cover it: `system-static.csv` (per-system statics, anoik.is /systems) and `wormhole-classes.csv` (the WH-type routing catalog with source/target class, anoik.is /wormholes). Note: `system-static.csv` is referenced by the ingest but is **not yet present** in the repo — until both CSVs are vendored their loaders warn-and-skip, so the build/ingest stays green.
 - **Verification:** no legacy `eve_universe` DB is available; the smoke test pins lower-bound counts from the chosen SDE build and runs a 100-system spot-check + route-lookup self-consistency, rather than a literal 0.5% diff against legacy.
 
 **Spec references:**
@@ -59,6 +60,7 @@ Tables (snake_case columns; `integer` PKs for universe IDs; FKs explicit):
 | `universe_stargate_edge` | `from_system_id` → system **CASCADE**, `to_system_id` → system **CASCADE**, PK `(from_system_id, to_system_id)`, **index on `to_system_id`** |
 | `universe_type_override` | `type_id` → type **CASCADE**, `attr_id` int, `value` double NOT NULL, `reason` text, `updated_at` timestamptz default now(), PK `(type_id, attr_id)` |
 | `universe_system_static` | `system_id` → system **CASCADE**, `type_id` → type **CASCADE**, PK `(system_id, type_id)` |
+| `universe_wormhole` | `type_id` → type **CASCADE** PK, `name` text, `source_class` text (null = any/K162), `target_class` text (null = unknown/K162) — WH-type routing catalog, class labels only (mass/lifetime stay dogma-sourced) |
 
 Notes:
 - No `pgEnum`s here — universe enums don't exist; the `pf_*` enums land in Stage 6.
@@ -74,7 +76,7 @@ Notes:
 ## Sub-stage 1.4 — SDE ingest module + bootstrap CLI
 **Mode:** Accept edits
 **Goal:** One re-runnable command downloads CCP's official YAML SDE and populates every `universe_*` table; vendored community CSVs seed WH statics and the dogma-3974 overrides.
-**Touches:** `src/lib/sde/ingest.ts`, `src/lib/sde/security.ts` (label derivation helper), `scripts/sde-bootstrap.ts`, `scripts/data/wormhole-overrides.csv` (88 rows, vendored + committed), `scripts/data/system-static.csv` (3771 rows, vendored + committed), `package.json` deps, companion `.md` files, `src/lib/jobs/sdeIngest.md` (referenced in CLAUDE.md index).
+**Touches:** `src/lib/sde/ingest.ts`, `src/lib/sde/security.ts` (label derivation helper), `scripts/sde-bootstrap.ts`, `scripts/data/wormhole-overrides.csv` (88 rows, vendored + committed), `scripts/data/system-static.csv` (3771 rows, vendored + committed), `scripts/data/wormhole-classes.csv` (~90 rows incl. K162, vendored + committed), `package.json` deps, companion `.md` files, `src/lib/jobs/sdeIngest.md` (referenced in CLAUDE.md index).
 **Done when:** `pnpm sde:bootstrap` against an empty migrated DB completes and every table is populated; re-running is idempotent (upserts, no duplicate-key errors).
 
 Details:
@@ -87,6 +89,7 @@ Details:
   4. `stargate_edge`: build `stargateID → systemID` map from the universe tree, then for each stargate emit `(system, destination's system)`; skip edges whose endpoint system is absent.
   5. `system_static` from vendored `system-static.csv` (WH statics are **not** in the official SDE — community data, hence vendored).
   6. `type_override` from vendored `wormhole-overrides.csv` with `reason = 'esi-missing-3974'` (one-shot bootstrap; admin-editable thereafter, survives SDE refreshes).
+  7. `wormhole` catalog from vendored `wormhole-classes.csv` (`code;sourceClass;targetClass`); resolve each code → typeId via the WH-code→type map built in step 2; empty class cell → null (K162 = any). Class labels only — mass/lifetime/scan-strength stay dogma-sourced.
 - Bulk inserts chunked (~1000 rows) with `onConflictDoUpdate`/`onConflictDoNothing` keyed on the natural PK for idempotency.
 - This is a **CLI ingest**, not a `graphile-worker` job (the scheduled SDE-delta job is a later stage); keep it under `src/lib/sde/` and `scripts/`.
 
@@ -101,6 +104,7 @@ Assertions:
 - **Referential self-consistency:** every `stargate_edge` endpoint resolves to an existing `system`; every `type_attribute.type_id` exists; no orphaned `system_static`/`type_override`.
 - **100-system spot-check:** sample 100 system IDs (including known fixtures — Jita 30000142, Thera, a C-space J-system, an Abyssal/Pochven system) and assert name + derived `security` label + non-zero neighbour count where expected.
 - **Route lookup:** a recursive-CTE query over `universe_stargate_edge` confirms a known adjacency (Jita 30000142 ↔ Perimeter 30000144) and returns a multi-hop path of plausible length for a known pair. (Production route planning is a later stage; this is a self-consistency probe only.)
+- **Wormhole catalog** (when `wormhole-classes.csv` is vendored): `universe_wormhole` is populated; every `source_class`/`target_class` is a valid class label (`C1`–`C6`, `C13`, `HS`, `LS`, `NS`, `Thera`, `Pochven`) or null; `K162` is present with both classes null; a spot code (e.g. `A239`) resolves to a real `type_id` with the expected source/target class.
 - Because full ingest is heavy (download + parse, minutes), gate the suite behind a populated DB / dedicated CI job rather than the default fast `pnpm test` lane.
 
 ---

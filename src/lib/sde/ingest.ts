@@ -21,6 +21,7 @@ import {
   universeType,
   universeTypeAttribute,
   universeTypeOverride,
+  universeWormhole,
 } from '@/db/schema';
 import { deriveSecurityLabel, roundSecurity } from './security';
 
@@ -455,6 +456,50 @@ async function ingestTypeOverrides(wormholeCodeToTypeId: Map<string, number>) {
   return rows.length;
 }
 
+/**
+ * Vendored `code;sourceClass;targetClass` CSV (anoik.is /wormholes) → the
+ * `universe_wormhole` routing catalog. Class labels are absent from the SDE;
+ * mass/lifetime stay dogma-sourced. Empty class cells become null (K162 = any).
+ */
+async function ingestWormholeCatalog(wormholeCodeToTypeId: Map<string, number>) {
+  const path = join(DATA_DIR, 'wormhole-classes.csv');
+  if (!(await fileExists(path))) {
+    console.warn(`  wormhole-classes.csv not found at ${path} — skipping WH catalog.`);
+    return 0;
+  }
+  const text = await readFile(path, 'utf-8');
+  const records = parseCsv(text, {
+    columns: true,
+    delimiter: ';',
+    skip_empty_lines: true,
+    trim: true,
+  }) as Record<string, string>[];
+  const rows: { typeId: number; name: string; sourceClass: string | null; targetClass: string | null }[] =
+    [];
+  for (const r of records) {
+    const code = r.code?.toUpperCase();
+    if (!code) continue;
+    const typeId = wormholeCodeToTypeId.get(code);
+    if (typeId == null) continue;
+    rows.push({
+      typeId,
+      name: code,
+      sourceClass: r.sourceClass ? r.sourceClass : null,
+      targetClass: r.targetClass ? r.targetClass : null,
+    });
+  }
+  for (const c of chunk(rows)) {
+    await db
+      .insert(universeWormhole)
+      .values(c)
+      .onConflictDoUpdate({
+        target: universeWormhole.typeId,
+        set: excluded(universeWormhole, ['name', 'sourceClass', 'targetClass']),
+      });
+  }
+  return rows.length;
+}
+
 export interface IngestResult {
   build: number;
   counts: Record<string, number>;
@@ -494,6 +539,7 @@ export async function runIngest(): Promise<IngestResult> {
   console.log('Ingesting vendored CSVs (system statics, overrides) ...');
   counts.systemStatics = await ingestSystemStatics(systemIds, typeIds);
   counts.typeOverrides = await ingestTypeOverrides(wormholeCodeToTypeId);
+  counts.wormholes = await ingestWormholeCatalog(wormholeCodeToTypeId);
 
   return { build: SDE_BUILD, counts };
 }

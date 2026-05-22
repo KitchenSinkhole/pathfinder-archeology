@@ -15,6 +15,13 @@
       "when": 1779430434125,
       "tag": "0001_type_attribute_effective_view",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779440246419,
+      "tag": "0002_dizzy_dust",
+      "breakpoints": true
     }
   ]
 }

@@ -19,6 +19,7 @@ Pinned build: **`SDE_BUILD = 3351823`** (released 2026-05-19), YAML variant. Sou
 | `mapStargates.yaml` | `universe_stargate_edge` | edge `(solarSystemID → destination.solarSystemID)`, deduped, skips edges whose endpoint system is absent |
 | `scripts/data/system-static.csv` | `universe_system_static` | vendored community data (WH statics not in SDE); skipped with a warning if absent |
 | `scripts/data/wormhole-overrides.csv` | `universe_type_override` | `Id;Name;scanWormholeStrength`; resolves WH code → typeId, writes attr `3974` with `reason='esi-missing-3974'` |
+| `scripts/data/wormhole-classes.csv` | `universe_wormhole` | `code;sourceClass;targetClass` (anoik.is /wormholes); resolves WH code → typeId; empty class cell → null (K162 = any); skipped with a warning if absent |
 
 ---
 
