@@ -8,3 +8,5 @@ For each table `X` exports `X` (`InferSelectModel`) and `NewX` (`InferInsertMode
 Stage 3 re-exports the realtime wire-contract types (`Envelope`, `ServerToClientTask`, `ClientToServerTask`, `ServerToClientMessage`, `ClientToServerMessage` — schemas in `src/lib/realtime/protocol.ts`) and the ESI opKey types (`OpKey`, `OpDef` — map in `src/lib/esi/opkeys.ts`).
 
 Stage 4 re-exports the ESI decoded-response types (`EsiStatus`, `EsiLocation`, `EsiRoute` — schemas in `src/lib/esi/decoders`).
+
+Stage 8 re-exports `RealtimeStatus` (`'connecting' | 'open' | 'closed' | 'degraded'` — the client realtime connection state from `src/lib/realtime/useRealtime.tsx`).

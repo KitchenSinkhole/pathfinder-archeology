@@ -15,6 +15,7 @@ import type { HubRoute } from '@/lib/map/route';
 import type { SystemStatsSummary } from '@/lib/map/stats';
 import { RouteModule } from '@/components/sidebar/RouteModule';
 import { KillStatsModule } from '@/components/sidebar/KillStatsModule';
+import { useMapSubscription } from '@/lib/realtime/useRealtime';
 import { ConnectionEdge, type ConnectionEdgeData } from './ConnectionEdge';
 import { SystemNode, type SystemNodeData } from './SystemNode';
 
@@ -31,6 +32,10 @@ export function MapCanvas({
   stats: Record<number, SystemStatsSummary>;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Subscribe this map's channel for the lifetime of the canvas. Stage 8 only
+  // opens the channel; applying live updates to the canvas is Stage 9.
+  useMapSubscription(Number(data.map.id));
 
   const nodes = useMemo<Node<SystemNodeData>[]>(
     () =>

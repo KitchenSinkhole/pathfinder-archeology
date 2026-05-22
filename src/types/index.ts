@@ -106,6 +106,9 @@ export type {
   ClientToServerMessage,
 } from '@/lib/realtime/protocol';
 
+// Realtime client connection status (provider in src/lib/realtime/useRealtime.tsx).
+export type { RealtimeStatus } from '@/lib/realtime/useRealtime';
+
 // ESI opKey identifiers (map in src/lib/esi/opkeys.ts).
 export type { OpKey, OpDef } from '@/lib/esi/opkeys';
 

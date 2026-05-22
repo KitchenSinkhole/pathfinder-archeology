@@ -20,8 +20,9 @@ The behavior-level spec is in [docs/spec/](docs/spec/). The assembly document (s
 | Background jobs (graphile-worker) | `src/lib/jobs/index.md` |
 | Server-side character location tracking | `src/lib/jobs/locationPoll.md` |
 | Realtime fanout (`pg_notify` ↔ WebSocket) | `src/lib/realtime/bus.md` |
-| WebSocket server (Next.js Node route) | `src/lib/realtime/wsServer.md` |
+| WebSocket server (custom Node `server.ts` upgrade handler) | `src/lib/realtime/wsServer.md`, `server.md` |
 | Browser SharedWorker WebSocket client | `src/lib/realtime/sharedWorker.md` |
+| Client realtime provider + degraded banner | `src/lib/realtime/useRealtime.md`, `src/components/RealtimeStatusBanner.md` |
 | Map engine (xyflow) | `src/components/map/MapCanvas.md` |
 | Map mutation pathways (Server Actions / API) | `src/app/api/map/README.md` |
 | Webhook fan-out (Slack / Discord) | `src/lib/webhooks/dispatcher.md` |

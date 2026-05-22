@@ -16,9 +16,10 @@ A `ReactFlow` canvas (custom `system` nodes, `connection` edges, `Background`, `
 ### Behaviour & Interactions
 - Read-only: `nodesDraggable`/`nodesConnectable` false, edges non-selectable. `fitView` on load; attribution hidden.
 - Node selection is local state (`selectedId`); never persisted. Selecting a node maps it to its EVE `systemId` to look up `routes`/`stats` for the sidebar.
+- `useMapSubscription(Number(data.map.id))` opens this map's realtime channel for the canvas's lifetime (Stage 8). Live updates are not yet applied to the canvas — that is Stage 9.
 
 ### Depends On
-- `@xyflow/react`, `./SystemNode`, `./ConnectionEdge`, `RouteModule`, `KillStatsModule`.
+- `@xyflow/react`, `./SystemNode`, `./ConnectionEdge`, `RouteModule`, `KillStatsModule`, `useMapSubscription` (`@/lib/realtime/useRealtime`).
 
 ### Local State
 - `selectedId: string | null` — selected `ap_map_system.id`.

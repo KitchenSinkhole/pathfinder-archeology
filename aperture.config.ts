@@ -39,6 +39,21 @@ export const apertureConfig = {
   /** `pg_notify` channel prefix for `ap_map_event` fanout. SPEC §5.2 / §6.5. */
   MAP_EVENT_NOTIFY_CHANNEL_PREFIX: 'map:',
 
+  /** Path the WebSocket upgrade handler listens on (same Next.js deployment). SPEC §5.2 / §5.5. */
+  WS_PATH: '/ws/map/update',
+
+  /** Server→client ping cadence; sockets that miss the next pong are terminated. */
+  WS_HEARTBEAT_MS: 30_000,
+
+  /** First client reconnect delay after a dropped socket; backs off exponentially. */
+  WS_RECONNECT_BASE_MS: 1_000,
+
+  /** Ceiling for the client reconnect backoff. */
+  WS_RECONNECT_MAX_MS: 30_000,
+
+  /** No realtime traffic (incl. heartbeat) for this long flips the degraded-mode banner. SPEC §71 NFR. */
+  WS_HEALTH_STALE_MS: 45_000,
+
   /**
    * Major trade hubs the read-only route module reports gate-jump distance to.
    * EVE solar-system IDs. Ordered for display. SPEC feature-matrix §3 (route module).
