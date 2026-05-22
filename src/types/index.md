@@ -10,3 +10,5 @@ Stage 3 re-exports the realtime wire-contract types (`Envelope`, `ServerToClient
 Stage 4 re-exports the ESI decoded-response types (`EsiStatus`, `EsiLocation`, `EsiRoute` — schemas in `src/lib/esi/decoders`).
 
 Stage 8 re-exports `RealtimeStatus` (`'connecting' | 'open' | 'closed' | 'degraded'` — the client realtime connection state from `src/lib/realtime/useRealtime.tsx`).
+
+Stage 9 re-exports the map-event payload contract (`MapEventPayload`, `MapEventKind`, `MapEventPatch` — `src/lib/realtime/protocol.ts`), the mutation core result (`ActionResult`, `CommitMapEventArgs` — `src/lib/map/mutations/core.ts`), the system/connection mutation input bags (`AddSystemInput`, `RemoveSystemInput`, `UpdateSystemInput`, `UpdateSystemPatch`, `CreateConnectionInput`, `DeleteConnectionInput`, `UpdateConnectionInput`, `UpdateConnectionPatch`), and the wormhole-catalog lookup results (`WormholeTypeOption`, `StaticMatch` — `src/lib/map/wormholeTypes.ts`).

@@ -115,6 +115,25 @@ export type { MapEventPayload, MapEventKind, MapEventPatch } from '@/lib/realtim
 // Map mutation core result type (src/lib/map/mutations/core.ts).
 export type { ActionResult, CommitMapEventArgs } from '@/lib/map/mutations/core';
 
+// System mutation input types (src/lib/map/mutations/systems.ts).
+export type {
+  AddSystemInput,
+  RemoveSystemInput,
+  UpdateSystemInput,
+  UpdateSystemPatch,
+} from '@/lib/map/mutations/systems';
+
+// Connection mutation input types (src/lib/map/mutations/connections.ts).
+export type {
+  CreateConnectionInput,
+  DeleteConnectionInput,
+  UpdateConnectionInput,
+  UpdateConnectionPatch,
+} from '@/lib/map/mutations/connections';
+
+// Wormhole-catalog lookup result types (src/lib/map/wormholeTypes.ts).
+export type { WormholeTypeOption, StaticMatch } from '@/lib/map/wormholeTypes';
+
 // ESI opKey identifiers (map in src/lib/esi/opkeys.ts).
 export type { OpKey, OpDef } from '@/lib/esi/opkeys';
 
