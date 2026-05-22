@@ -69,3 +69,6 @@ export type {
 
 // ESI opKey identifiers (map in src/lib/esi/opkeys.ts).
 export type { OpKey, OpDef } from '@/lib/esi/opkeys';
+
+// ESI client decoded-response types (Stage 4).
+export type { EsiStatus, EsiLocation, EsiRoute } from '@/lib/esi/decoders';

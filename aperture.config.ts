@@ -15,8 +15,26 @@ export const apertureConfig = {
   /** Minimum interval between two JWK-set refetches. SPEC §7 / footgun #3. */
   JWK_REFETCH_MIN_INTERVAL_MS: 10_000,
 
+  /** CCP daily downtime start, UTC `HH:MM`. ESI calls are expected to fail in this window. SPEC §01. */
+  CCP_SSO_DOWNTIME: '11:00',
+
   /** Minutes around CCP_SSO_DOWNTIME (11:00 UTC) treated as expected ESI outage. SPEC §4 NFR. */
   CCP_SSO_DOWNTIME_WINDOW_MIN: 8,
+
+  /** Extra minutes padded onto each side of the downtime window. Legacy `DOWNTIME_BUFFER`. SPEC §01. */
+  CCP_SSO_DOWNTIME_BUFFER_MIN: 1,
+
+  /** Consecutive ESI failures (per operationId) that trip a circuit breaker open. SPEC §05. */
+  ESI_BREAKER_FAILURE_THRESHOLD: 5,
+
+  /** How long an open ESI breaker waits before allowing a half-open trial request. */
+  ESI_BREAKER_COOLDOWN_MS: 60_000,
+
+  /** Per-request ESI timeout. Legacy Guzzle used a 5s cap. SPEC §05 §1. */
+  ESI_REQUEST_TIMEOUT_MS: 5_000,
+
+  /** ESI `datasource` query param. `tranquility` (live) vs `singularity` (test server). */
+  ESI_DATASOURCE: 'tranquility',
 
   /** `pg_notify` channel prefix for `ap_map_event` fanout. SPEC §5.2 / §6.5. */
   MAP_EVENT_NOTIFY_CHANNEL_PREFIX: 'map:',

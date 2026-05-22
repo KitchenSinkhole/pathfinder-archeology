@@ -20,6 +20,7 @@ const schema = z
     AUTH_EVE_CLIENT_ID: z.string().default(''),
     AUTH_EVE_CLIENT_SECRET: z.string().default(''),
     AUTH_EVE_SSO_BASE: z.string().url().default('https://login.eveonline.com'),
+    ESI_BASE_URL: z.string().url().default('https://esi.evetech.net'),
     EVE_USER_AGENT: z.string().default('Aperture/0.0.0 (contact@example.com)'),
     ESI_TOKEN_ENC_KEY: z.string().default(''),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),

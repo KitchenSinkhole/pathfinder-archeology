@@ -23,5 +23,13 @@ Stage 2 (auth) adds:
 - `SSO_TOKEN_REFRESH_BUFFER_S` — refresh the access token this many seconds before expiry (120s, matches legacy).
 - `ESI_SCOPES` — default scope list requested at login; widened by later hot-path stages.
 
+Stage 4 (ESI client) adds:
+- `CCP_SSO_DOWNTIME` — CCP daily downtime start, UTC `HH:MM` (legacy `CCP_SSO_DOWNTIME`).
+- `CCP_SSO_DOWNTIME_BUFFER_MIN` — extra minutes padded onto each side of the downtime window (legacy `DOWNTIME_BUFFER`).
+- `ESI_BREAKER_FAILURE_THRESHOLD` — consecutive per-operationId failures that trip a breaker open.
+- `ESI_BREAKER_COOLDOWN_MS` — open-breaker wait before a half-open trial request.
+- `ESI_REQUEST_TIMEOUT_MS` — per-request ESI timeout (5s, matches legacy Guzzle).
+- `ESI_DATASOURCE` — ESI `datasource` query param (`tranquility` vs `singularity`).
+
 ### ApertureConfig
 Inferred type alias for `typeof apertureConfig` so consumers don't need to import the runtime value just to type a parameter.
