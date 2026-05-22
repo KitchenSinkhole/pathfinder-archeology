@@ -12,6 +12,9 @@ node_modules/
 coverage/
 dist/
 
+# SDE download cache (zip is re-fetchable from the pinned build URL)
+.sde-cache/
+
 # Env (only the example is committed)
 .env
 .env.*

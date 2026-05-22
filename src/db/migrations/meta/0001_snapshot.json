@@ -1,0 +1,761 @@
+{
+  "id": "37692a96-277d-4935-84d5-1c45d6ad4bf7",
+  "prevId": "8071980a-47a1-4b71-a21b-1ef181e8bd08",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.universe_constellation": {
+      "name": "universe_constellation",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "region_id": {
+          "name": "region_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "x": {
+          "name": "x",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "y": {
+          "name": "y",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "z": {
+          "name": "z",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "universe_constellation_region_id_universe_region_id_fk": {
+          "name": "universe_constellation_region_id_universe_region_id_fk",
+          "tableFrom": "universe_constellation",
+          "columnsFrom": [
+            "region_id"
+          ],
+          "tableTo": "universe_region",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.universe_region": {
+      "name": "universe_region",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.universe_stargate_edge": {
+      "name": "universe_stargate_edge",
+      "schema": "",
+      "columns": {
+        "from_system_id": {
+          "name": "from_system_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "to_system_id": {
+          "name": "to_system_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "universe_stargate_edge_to_idx": {
+          "name": "universe_stargate_edge_to_idx",
+          "columns": [
+            {
+              "expression": "to_system_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "universe_stargate_edge_from_system_id_universe_system_id_fk": {
+          "name": "universe_stargate_edge_from_system_id_universe_system_id_fk",
+          "tableFrom": "universe_stargate_edge",
+          "columnsFrom": [
+            "from_system_id"
+          ],
+          "tableTo": "universe_system",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "universe_stargate_edge_to_system_id_universe_system_id_fk": {
+          "name": "universe_stargate_edge_to_system_id_universe_system_id_fk",
+          "tableFrom": "universe_stargate_edge",
+          "columnsFrom": [
+            "to_system_id"
+          ],
+          "tableTo": "universe_system",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {
+        "universe_stargate_edge_from_system_id_to_system_id_pk": {
+          "name": "universe_stargate_edge_from_system_id_to_system_id_pk",
+          "columns": [
+            "from_system_id",
+            "to_system_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.universe_system": {
+      "name": "universe_system",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "constellation_id": {
+          "name": "constellation_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "security": {
+          "name": "security",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "true_sec": {
+          "name": "true_sec",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "security_status": {
+          "name": "security_status",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "security_class": {
+          "name": "security_class",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "effect": {
+          "name": "effect",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "x": {
+          "name": "x",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "y": {
+          "name": "y",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "z": {
+          "name": "z",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "universe_system_constellation_id_universe_constellation_id_fk": {
+          "name": "universe_system_constellation_id_universe_constellation_id_fk",
+          "tableFrom": "universe_system",
+          "columnsFrom": [
+            "constellation_id"
+          ],
+          "tableTo": "universe_constellation",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.universe_category": {
+      "name": "universe_category",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "published": {
+          "name": "published",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.universe_group": {
+      "name": "universe_group",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "category_id": {
+          "name": "category_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "published": {
+          "name": "published",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "universe_group_category_id_universe_category_id_fk": {
+          "name": "universe_group_category_id_universe_category_id_fk",
+          "tableFrom": "universe_group",
+          "columnsFrom": [
+            "category_id"
+          ],
+          "tableTo": "universe_category",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.universe_type": {
+      "name": "universe_type",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "group_id": {
+          "name": "group_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mass": {
+          "name": "mass",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "volume": {
+          "name": "volume",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "capacity": {
+          "name": "capacity",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "radius": {
+          "name": "radius",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "packaged_volume": {
+          "name": "packaged_volume",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "portion_size": {
+          "name": "portion_size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "market_group_id": {
+          "name": "market_group_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "graphic_id": {
+          "name": "graphic_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published": {
+          "name": "published",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "universe_type_group_id_universe_group_id_fk": {
+          "name": "universe_type_group_id_universe_group_id_fk",
+          "tableFrom": "universe_type",
+          "columnsFrom": [
+            "group_id"
+          ],
+          "tableTo": "universe_group",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.universe_dogma_attribute": {
+      "name": "universe_dogma_attribute",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "published": {
+          "name": "published",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stackable": {
+          "name": "stackable",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "high_is_good": {
+          "name": "high_is_good",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "default_value": {
+          "name": "default_value",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "icon_id": {
+          "name": "icon_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unit_id": {
+          "name": "unit_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.universe_type_attribute": {
+      "name": "universe_type_attribute",
+      "schema": "",
+      "columns": {
+        "type_id": {
+          "name": "type_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attribute_id": {
+          "name": "attribute_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "universe_type_attribute_type_id_universe_type_id_fk": {
+          "name": "universe_type_attribute_type_id_universe_type_id_fk",
+          "tableFrom": "universe_type_attribute",
+          "columnsFrom": [
+            "type_id"
+          ],
+          "tableTo": "universe_type",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "universe_type_attribute_attribute_id_universe_dogma_attribute_id_fk": {
+          "name": "universe_type_attribute_attribute_id_universe_dogma_attribute_id_fk",
+          "tableFrom": "universe_type_attribute",
+          "columnsFrom": [
+            "attribute_id"
+          ],
+          "tableTo": "universe_dogma_attribute",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {
+        "universe_type_attribute_type_id_attribute_id_pk": {
+          "name": "universe_type_attribute_type_id_attribute_id_pk",
+          "columns": [
+            "type_id",
+            "attribute_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.universe_type_override": {
+      "name": "universe_type_override",
+      "schema": "",
+      "columns": {
+        "type_id": {
+          "name": "type_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attr_id": {
+          "name": "attr_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "universe_type_override_type_id_universe_type_id_fk": {
+          "name": "universe_type_override_type_id_universe_type_id_fk",
+          "tableFrom": "universe_type_override",
+          "columnsFrom": [
+            "type_id"
+          ],
+          "tableTo": "universe_type",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {
+        "universe_type_override_type_id_attr_id_pk": {
+          "name": "universe_type_override_type_id_attr_id_pk",
+          "columns": [
+            "type_id",
+            "attr_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.universe_system_static": {
+      "name": "universe_system_static",
+      "schema": "",
+      "columns": {
+        "system_id": {
+          "name": "system_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type_id": {
+          "name": "type_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "universe_system_static_system_id_universe_system_id_fk": {
+          "name": "universe_system_static_system_id_universe_system_id_fk",
+          "tableFrom": "universe_system_static",
+          "columnsFrom": [
+            "system_id"
+          ],
+          "tableTo": "universe_system",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        },
+        "universe_system_static_type_id_universe_type_id_fk": {
+          "name": "universe_system_static_type_id_universe_type_id_fk",
+          "tableFrom": "universe_system_static",
+          "columnsFrom": [
+            "type_id"
+          ],
+          "tableTo": "universe_type",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {
+        "universe_system_static_system_id_type_id_pk": {
+          "name": "universe_system_static_system_id_type_id_pk",
+          "columns": [
+            "system_id",
+            "type_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "views": {
+    "public.universe_type_attribute_effective": {
+      "name": "universe_type_attribute_effective",
+      "schema": "public",
+      "columns": {
+        "type_id": {
+          "name": "type_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "attr_id": {
+          "name": "attr_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "materialized": false,
+      "isExisting": true
+    }
+  },
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
