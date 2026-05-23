@@ -17,7 +17,7 @@ Inserts one `ap_map_connection` row between two map systems. Flag defaults: `mas
 ---
 
 ### deleteConnection(input: DeleteConnectionInput): Promise<ActionResult<MapEventPayload>>
-Hard-deletes the `ap_map_connection` row matching `(connectionId, mapId)`; attached `ap_map_signature` rows cascade. Throws (rolls back) if no matching row. Emits `connection.delete` → `{ id }`.
+Hard-deletes the `ap_map_connection` row matching `(connectionId, mapId)`; attached `ap_map_signature` rows cascade. Throws (rolls back) if no matching row. Emits `connection.delete` → `{ id }`. Accepts optional `input.tx` to join an outer transaction (used by `bulkSignatures.ts` when tearing down WH connections orphaned by `removeOrphanedConnections`).
 
 ---
 

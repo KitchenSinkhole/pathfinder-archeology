@@ -1,7 +1,11 @@
 import { toast } from 'sonner';
 import type {
   ActionResult,
+  BulkPasteOptions,
+  BulkPasteResult,
   MapEventPayload,
+  ParsedSigRow,
+  ResolvedSigRow,
   WormholeTypeOption,
 } from '@/types';
 import type {
@@ -238,6 +242,52 @@ export function deleteSignatureOnServer(args: {
   return mutationFetch<MapEventPayload>(
     'DELETE',
     `/api/map/${args.mapId}/signatures/${args.signatureId}`,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Signature paste — bulk diff + resolver preview (Stage 10.2)
+// ---------------------------------------------------------------------------
+
+export type PasteSignaturesBody = {
+  mapSystemId: string;
+  rows: ParsedSigRow[];
+  options: BulkPasteOptions;
+};
+
+/**
+ * Bulk paste: server diffs `rows` against existing sigs and commits add /
+ * update / remove (+ optional connection tear-down) atomically. Returns the
+ * full committed event payloads so the caller can register each `eventId`
+ * in its dedupe set and apply each payload locally — the bulk endpoint is
+ * N-events, so the wrapper-level `eventId` is always `0` here.
+ */
+export function pasteSignaturesOnServer(args: {
+  mapId: string;
+  body: PasteSignaturesBody;
+}): Promise<ActionResult<BulkPasteResult>> {
+  return mutationFetch<BulkPasteResult>(
+    'POST',
+    `/api/map/${args.mapId}/signatures/bulk`,
+    args.body,
+  );
+}
+
+/**
+ * Preview-only resolver. Feeds the paste dialog's preview table so users see
+ * which rows will resolve to a known group / type before they submit. The
+ * bulk POST always re-resolves authoritatively.
+ */
+export function resolveSignaturesOnServer(args: {
+  mapId: string;
+  rows: ParsedSigRow[];
+}): Promise<FetchResult<ResolvedSigRow[]>> {
+  return mutationFetch<ResolvedSigRow[]>(
+    'POST',
+    `/api/map/${args.mapId}/signatures/resolve`,
+    { rows: args.rows },
+  ).then((result) =>
+    result.ok ? { ok: true, data: result.data } : { ok: false, error: result.error },
   );
 }
 

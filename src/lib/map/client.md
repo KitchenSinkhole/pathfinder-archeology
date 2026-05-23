@@ -37,6 +37,12 @@ PATCH / DELETE on `/api/map/{mapId}/connections/{connectionId}`. Optimistic.
 ### createSignatureOnServer({ mapId, body }) / updateSignatureOnServer({ mapId, signatureId, patch }) / deleteSignatureOnServer({ mapId, signatureId })
 POST / PATCH / DELETE on `/api/map/{mapId}/signatures[/{sigId}]`. Create awaits; update/delete are optimistic.
 
+### pasteSignaturesOnServer({ mapId, body }): Promise<ActionResult<BulkPasteResult>>
+POST `/api/map/{mapId}/signatures/bulk`. Bulk-diff a paste against the system's existing sigs and commit add / update / remove (+ optional connection tear-down) atomically. Returns `{ summary, payloads }`; the caller iterates `payloads` to register each `eventId` in its dedupe set and apply each payload locally (the wrapper-level `eventId` is always `0` here because bulk is N-events).
+
+### resolveSignaturesOnServer({ mapId, rows }): Promise<FetchResult<ResolvedSigRow[]>>
+POST `/api/map/{mapId}/signatures/resolve`. Preview-only resolver for the paste dialog — returns `(groupId, typeId)` for each `ParsedSigRow`. The bulk POST always re-resolves authoritatively, so a stale preview cannot affect the final commit.
+
 ### fetchWormholeTypes({ mapId, universeSystemId }): Promise<ActionResult<WormholeTypeOption[]>>
 GET `/api/map/{mapId}/wormhole-types?systemId=<universeSystemId>`. Results are cached per `(mapId, universeSystemId)` in a module-scoped `Map` for the session — WH catalog filtering is immutable per class, so this avoids re-fetching as the user opens the inspector for different systems.
 
@@ -44,5 +50,5 @@ GET `/api/map/{mapId}/wormhole-types?systemId=<universeSystemId>`. Results are c
 
 ### Depends On
 - `sonner` (`toast.error`)
-- Types from `@/types`: `ActionResult`, `MapEventPayload`, `WormholeTypeOption`
+- Types from `@/types`: `ActionResult`, `MapEventPayload`, `WormholeTypeOption`, `BulkPasteOptions`, `BulkPasteResult`, `ParsedSigRow`, `ResolvedSigRow`
 - Enum value types from `@/lib/map/enumLabels`

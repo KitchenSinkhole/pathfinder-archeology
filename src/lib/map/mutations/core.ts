@@ -19,9 +19,14 @@ import {
  * The new event id is pre-allocated from the table's sequence so it can be
  * embedded in the payload (as `eventId`) before the insert fires the trigger —
  * that's the dedupe key the initiating client uses to drop its own realtime echo.
+ *
+ * Bulk paths (e.g. the signature paste in `bulkSignatures.ts`) pass an outer
+ * `tx` so N commits share one transaction and roll back atomically; in that
+ * mode `commitMapEvent` throws on failure instead of returning `{ ok: false }`,
+ * letting the caller's `db.transaction` abort the entire batch.
  */
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 /** Discriminated result for every mutation pathway (Server Action / API route). */
 export type ActionResult<T> =
@@ -39,40 +44,58 @@ export type CommitMapEventArgs<K extends MapEventKind> = {
    * pre-allocated `eventId` is passed in for helpers that need it in the patch.
    */
   mutate: (tx: Tx, eventId: number) => Promise<MapEventPatch<K>>;
+  /**
+   * Optional caller-owned transaction. When present, `commitMapEvent` runs the
+   * mutate + event insert on `tx` directly and surfaces inner failures by
+   * throwing — so the caller's outer `db.transaction` rolls back. When absent,
+   * `commitMapEvent` opens its own transaction and folds failures into
+   * `{ ok: false, error }` (the default behaviour every API route relies on).
+   */
+  tx?: Tx;
 };
 
 /**
- * Open a transaction, run `mutate`, build `{ kind, eventId, ...patch }`, validate
- * it against `mapEventPayloadSchema`, and insert exactly one `ap_map_event`. An
- * invalid payload or a throwing `mutate` rolls the whole transaction back and
- * surfaces as `{ ok: false }` — no half-written event, no orphaned row.
+ * Open a transaction (or join an outer one), run `mutate`, build
+ * `{ kind, eventId, ...patch }`, validate it against `mapEventPayloadSchema`,
+ * and insert exactly one `ap_map_event`. An invalid payload or a throwing
+ * `mutate` rolls the active transaction back: when running standalone the
+ * failure surfaces as `{ ok: false }`; when joined to a caller's `tx` the
+ * error re-throws so the outer batch aborts cleanly.
  *
  * Returns the validated payload and its `eventId` on success.
  */
 export async function commitMapEvent<K extends MapEventKind>(
   args: CommitMapEventArgs<K>,
 ): Promise<ActionResult<MapEventPayload>> {
-  const { mapId, characterId, kind, mutate } = args;
+  const { mapId, characterId, kind, mutate, tx: outerTx } = args;
+
+  const run = async (tx: Tx) => {
+    const [seq] = (
+      await tx.execute(
+        sql`SELECT nextval(pg_get_serial_sequence('ap_map_event', 'id')) AS id`,
+      )
+    ).rows as Array<{ id: string }>;
+    const eventId = Number(seq!.id);
+
+    const patch = await mutate(tx, eventId);
+    const payload = mapEventPayloadSchema.parse({ kind, eventId, ...patch });
+    const occurredAt = new Date();
+
+    await tx
+      .insert(apMapEvent)
+      .values({ id: BigInt(eventId), mapId, characterId, occurredAt, kind, payload })
+      .returning({ id: apMapEvent.id });
+
+    return { eventId, payload };
+  };
+
+  if (outerTx) {
+    const result = await run(outerTx);
+    return { ok: true, data: result.payload, eventId: result.eventId };
+  }
+
   try {
-    const result = await db.transaction(async (tx) => {
-      const [seq] = (
-        await tx.execute(
-          sql`SELECT nextval(pg_get_serial_sequence('ap_map_event', 'id')) AS id`,
-        )
-      ).rows as Array<{ id: string }>;
-      const eventId = Number(seq!.id);
-
-      const patch = await mutate(tx, eventId);
-      const payload = mapEventPayloadSchema.parse({ kind, eventId, ...patch });
-      const occurredAt = new Date();
-
-      await tx
-        .insert(apMapEvent)
-        .values({ id: BigInt(eventId), mapId, characterId, occurredAt, kind, payload })
-        .returning({ id: apMapEvent.id });
-
-      return { eventId, payload };
-    });
+    const result = await db.transaction(run);
     return { ok: true, data: result.payload, eventId: result.eventId };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Mutation failed.' };

@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SignatureModule } from './SignatureModule';
 import type {
   MapConnectionEdge,
+  MapEventPayload,
   MapSignature,
   MapSystemNode,
   MapViewData,
@@ -55,6 +56,7 @@ export function InspectorModule(props: {
   onSignatureCreate: (body: CreateSignatureBody) => void;
   onSignaturePatch: (signatureId: string, patch: UpdateSignatureBody) => void;
   onSignatureDelete: (signatureId: string) => void;
+  onSignatureBulkPaste: (payloads: MapEventPayload[]) => void;
 }) {
   const { selected, viewData } = props;
 
@@ -74,6 +76,7 @@ export function InspectorModule(props: {
         onSignatureCreate={props.onSignatureCreate}
         onSignaturePatch={props.onSignaturePatch}
         onSignatureDelete={props.onSignatureDelete}
+        onSignatureBulkPaste={props.onSignatureBulkPaste}
       />
     );
   }
@@ -119,6 +122,7 @@ function SystemInspector({
   onSignatureCreate,
   onSignaturePatch,
   onSignatureDelete,
+  onSignatureBulkPaste,
 }: {
   mapId: string;
   system: MapSystemNode;
@@ -128,6 +132,7 @@ function SystemInspector({
   onSignatureCreate: (body: CreateSignatureBody) => void;
   onSignaturePatch: (signatureId: string, patch: UpdateSignatureBody) => void;
   onSignatureDelete: (signatureId: string) => void;
+  onSignatureBulkPaste: (payloads: MapEventPayload[]) => void;
 }) {
   // `intelNotes` isn't part of `MapViewData`; we keep a local draft that's
   // committed on blur so PATCHes don't fire per keystroke. The parent renders
@@ -229,6 +234,7 @@ function SystemInspector({
           onCreate={onSignatureCreate}
           onPatch={onSignaturePatch}
           onDelete={onSignatureDelete}
+          onBulkPaste={onSignatureBulkPaste}
         />
 
         <div className="flex justify-end">

@@ -14,17 +14,18 @@ Inserts an `ap_map_signature` row and emits `signature.create` with the full bod
 - `input.mapConnectionId` — optional FK to the resolved wormhole connection.
 - `input.sigId` — in-game 3-char scan id (e.g. `"ABC"`).
 - `input.expiresAt` — when the sig ages out (set by the caller, typically now + 24 h).
+- `input.tx` *(optional)* — outer Drizzle transaction (see `bulkSignatures.ts`). Forwarded to `commitMapEvent`.
 - remaining fields — `groupId`, `typeId`, `name`, `description` (all optional).
 
 ---
 
 ### updateSignature(input: UpdateSignatureInput): Promise<ActionResult<MapEventPayload>>
-Patches only the keys present in `input.patch`. Validates ownership by joining through `apMapSystem.mapId` before the update — throws `"Signature does not belong to this map."` if mismatched. Emits `signature.update` with only the changed fields (plus `id`).
+Patches only the keys present in `input.patch`. Validates ownership by joining through `apMapSystem.mapId` before the update — throws `"Signature does not belong to this map."` if mismatched. Emits `signature.update` with only the changed fields (plus `id`). Accepts optional `input.tx` for joined-batch commits.
 
 ---
 
 ### deleteSignature(input: DeleteSignatureInput): Promise<ActionResult<MapEventPayload>>
-Hard-deletes the signature row. Validates ownership through `apMapSystem.mapId` (same check as `updateSignature`). Emits `signature.delete` → `{ id }`.
+Hard-deletes the signature row. Validates ownership through `apMapSystem.mapId` (same check as `updateSignature`). Emits `signature.delete` → `{ id }`. Accepts optional `input.tx`.
 
 ---
 

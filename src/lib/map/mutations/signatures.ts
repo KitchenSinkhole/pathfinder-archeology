@@ -1,7 +1,7 @@
 import 'server-only';
 import { and, eq, type InferInsertModel } from 'drizzle-orm';
 import { apMapSignature, apMapSystem } from '@/db/schema';
-import { commitMapEvent, type ActionResult } from './core';
+import { commitMapEvent, type ActionResult, type Tx } from './core';
 import type { MapEventPatch, MapEventPayload } from '@/lib/realtime/protocol';
 
 /**
@@ -13,6 +13,9 @@ import type { MapEventPatch, MapEventPayload } from '@/lib/realtime/protocol';
  * `apMapSignature` has no direct `map_id` column — ownership is validated
  * through `apMapSystem.map_id` in update/delete so a client cannot reach a
  * signature on a different map via a forged id.
+ *
+ * Each helper accepts an optional `tx` so a bulk caller (`bulkSignatures.ts`)
+ * can commit N sig events under one outer transaction.
  */
 
 export type CreateSignatureInput = {
@@ -26,6 +29,7 @@ export type CreateSignatureInput = {
   name?: string | null;
   description?: string | null;
   expiresAt: Date;
+  tx?: Tx;
 };
 
 export type UpdateSignaturePatch = {
@@ -43,12 +47,14 @@ export type UpdateSignatureInput = {
   signatureId: bigint;
   characterId: bigint | null;
   patch: UpdateSignaturePatch;
+  tx?: Tx;
 };
 
 export type DeleteSignatureInput = {
   mapId: bigint;
   signatureId: bigint;
   characterId: bigint | null;
+  tx?: Tx;
 };
 
 /** Create a scan signature in a map system. Emits `signature.create` with the full body. */
@@ -59,6 +65,7 @@ export function createSignature(
     mapId: input.mapId,
     characterId: input.characterId,
     kind: 'signature.create',
+    tx: input.tx,
     mutate: async (tx) => {
       const [row] = await tx
         .insert(apMapSignature)
@@ -110,6 +117,7 @@ export function updateSignature(
     mapId: input.mapId,
     characterId: input.characterId,
     kind: 'signature.update',
+    tx: input.tx,
     mutate: async (tx) => {
       const { patch } = input;
 
@@ -166,6 +174,7 @@ export function deleteSignature(
     mapId: input.mapId,
     characterId: input.characterId,
     kind: 'signature.delete',
+    tx: input.tx,
     mutate: async (tx) => {
       const [existing] = await tx
         .select({ mapSystemId: apMapSignature.mapSystemId })

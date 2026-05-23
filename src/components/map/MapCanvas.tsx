@@ -243,6 +243,15 @@ export function MapCanvas({
     [mapId, runOptimistic],
   );
 
+  // Bulk paste returns N event payloads in commit order. Apply each and
+  // register its eventId in the dedupe set — same contract `awaitServer`
+  // uses for single-event mutations, just looped.
+  const onBulkPaste = useCallback((payloads: MapEventPayload[]) => {
+    if (payloads.length === 0) return;
+    for (const p of payloads) appliedEventIds.current.add(p.eventId);
+    setViewData((prev) => payloads.reduce(applyEvent, prev));
+  }, []);
+
   const onAliasOrTagCommit = useCallback(
     (mapSystemId: string, field: 'alias' | 'tag', next: string | null) => {
       onSystemPatch(mapSystemId, { [field]: next });
@@ -324,6 +333,7 @@ export function MapCanvas({
           onSignatureCreate={onSignatureCreate}
           onSignaturePatch={onSignaturePatch}
           onSignatureDelete={onSignatureDelete}
+          onSignatureBulkPaste={onBulkPaste}
         />
         <RouteModule
           system={selectedSystem}

@@ -1,7 +1,7 @@
 import 'server-only';
 import { and, eq, type InferInsertModel } from 'drizzle-orm';
 import { apMapConnection, connectionScope, whJumpMass, whMass } from '@/db/schema';
-import { commitMapEvent, type ActionResult } from './core';
+import { commitMapEvent, type ActionResult, type Tx } from './core';
 import type { MapEventPatch, MapEventPayload } from '@/lib/realtime/protocol';
 
 /**
@@ -32,6 +32,8 @@ export type DeleteConnectionInput = {
   mapId: bigint;
   connectionId: bigint;
   characterId: bigint | null;
+  /** Optional outer transaction (joined by `bulkSignatures.ts` to tear down orphan WH connections atomically with sig deletes). */
+  tx?: Tx;
 };
 
 /** Fields a client may change on a connection. Omitted keys are left untouched. */
@@ -117,6 +119,7 @@ export function deleteConnection(
     mapId: input.mapId,
     characterId: input.characterId,
     kind: 'connection.delete',
+    tx: input.tx,
     mutate: async (tx) => {
       const [row] = await tx
         .delete(apMapConnection)

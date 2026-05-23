@@ -14,6 +14,7 @@
 | onConnectionPatch | (connectionId, patch: UpdateConnectionBody) => void | yes | PATCH the connection. |
 | onConnectionDelete | (connectionId) => void | yes | DELETE the connection (hard). |
 | onSignatureCreate / onSignaturePatch / onSignatureDelete | callbacks | yes | Forwarded into `SignatureModule`. |
+| onSignatureBulkPaste | (payloads: MapEventPayload[]) => void | yes | Forwarded into `SignatureModule` / `SignaturePasteDialog`. |
 
 ### Renders
 One of three sub-views:

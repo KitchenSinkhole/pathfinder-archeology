@@ -1,11 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { ClipboardPaste, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { WormholeTypeSelect } from './WormholeTypeSelect';
-import type { MapSignature, MapSystemNode } from '@/types';
+import { SignaturePasteDialog } from '@/components/dialogs/SignaturePasteDialog';
+import type { MapEventPayload, MapSignature, MapSystemNode } from '@/types';
 import type {
   CreateSignatureBody,
   UpdateSignatureBody,
@@ -35,6 +36,7 @@ export function SignatureModule({
   onCreate,
   onPatch,
   onDelete,
+  onBulkPaste,
 }: {
   mapId: string;
   system: MapSystemNode;
@@ -42,6 +44,7 @@ export function SignatureModule({
   onCreate: (body: CreateSignatureBody) => void;
   onPatch: (signatureId: string, patch: UpdateSignatureBody) => void;
   onDelete: (signatureId: string) => void;
+  onBulkPaste: (payloads: MapEventPayload[]) => void;
 }) {
   const rows = useMemo(
     () => signatures.filter((s) => s.mapSystemId === system.id),
@@ -51,6 +54,7 @@ export function SignatureModule({
   const [draftSigId, setDraftSigId] = useState('');
   const [draftName, setDraftName] = useState('');
   const [draftTypeId, setDraftTypeId] = useState<number | null>(null);
+  const [pasteOpen, setPasteOpen] = useState(false);
 
   function submit() {
     if (draftSigId.trim().length === 0) return;
@@ -68,7 +72,19 @@ export function SignatureModule({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="text-xs font-medium text-muted-foreground">Signatures</div>
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-medium text-muted-foreground">Signatures</div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-6 gap-1 px-2 text-[11px]"
+          onClick={() => setPasteOpen(true)}
+        >
+          <ClipboardPaste className="size-3" />
+          Paste
+        </Button>
+      </div>
 
       <div className="overflow-hidden rounded-md ring-1 ring-foreground/10">
         <table className="w-full text-xs">
@@ -161,6 +177,15 @@ export function SignatureModule({
           Add
         </Button>
       </div>
+
+      <SignaturePasteDialog
+        open={pasteOpen}
+        onOpenChange={setPasteOpen}
+        mapId={mapId}
+        mapSystemId={system.id}
+        existingSigs={rows}
+        onResult={onBulkPaste}
+      />
     </div>
   );
 }

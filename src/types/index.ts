@@ -140,8 +140,20 @@ export type {
   DeleteSignatureInput,
 } from '@/lib/map/mutations/signatures';
 
+// Bulk signature-paste orchestrator types (src/lib/map/mutations/bulkSignatures.ts).
+export type {
+  BulkPasteOptions,
+  BulkPasteSummary,
+  BulkPasteResult,
+  PasteSignaturesInput,
+} from '@/lib/map/mutations/bulkSignatures';
+
 // Wormhole-catalog lookup result types (src/lib/map/wormholeTypes.ts).
 export type { WormholeTypeOption, StaticMatch } from '@/lib/map/wormholeTypes';
+
+// Signature paste parser + resolver (src/lib/map/signatureParser.ts, signatureReader.ts).
+export type { ParsedSigRow } from '@/lib/map/signatureParser';
+export type { ResolvedSigRow } from '@/lib/map/signatureReader';
 
 // ESI opKey identifiers (map in src/lib/esi/opkeys.ts).
 export type { OpKey, OpDef } from '@/lib/esi/opkeys';
