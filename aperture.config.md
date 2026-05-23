@@ -31,5 +31,10 @@ Stage 4 (ESI client) adds:
 - `ESI_REQUEST_TIMEOUT_MS` — per-request ESI timeout (5s, matches legacy Guzzle).
 - `ESI_DATASOURCE` — ESI `datasource` query param (`tranquility` vs `singularity`).
 
+Stage 10 (paste readers & connection lifecycle) adds:
+- `WORMHOLE_EOL_LIFETIME_MS` — time from EOL-stamp to reap (legacy `EXPIRE_CONNECTIONS_EOL`, 15300s / 4h15m). Read by Stage 11's reap job and the canvas EOL countdown.
+- `WORMHOLE_DEFAULT_LIFETIME_MS` — default WH connection lifetime from creation (legacy `EXPIRE_CONNECTIONS_WH`, 172800s / 48h). Drives the "expires in X" hint before EOL is flagged.
+- `SIGNATURE_DEFAULT_TTL_MS` — default `expires_at` offset for newly created signatures (legacy `EXPIRE_SIGNATURES`, 259200s / 5d; matches SPEC §347).
+
 ### ApertureConfig
 Inferred type alias for `typeof apertureConfig` so consumers don't need to import the runtime value just to type a parameter.

@@ -62,7 +62,7 @@ export function applyEvent(state: MapViewData, payload: MapEventPayload): MapVie
           if (payload.isFrigate !== undefined) next.isFrigate = payload.isFrigate;
           if (payload.preserveMass !== undefined) next.preserveMass = payload.preserveMass;
           if (payload.isRolling !== undefined) next.isRolling = payload.isRolling;
-          // eolAt is not in MapConnectionEdge; silently skipped.
+          if (payload.eolAt !== undefined) next.eolAt = payload.eolAt;
           return next;
         }),
       };

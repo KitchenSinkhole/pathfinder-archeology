@@ -10,21 +10,17 @@ import type {
   CreateSignatureBody,
   UpdateSignatureBody,
 } from '@/lib/map/client';
-
-const DEFAULT_EXPIRY_HOURS = 24;
+import { formatRelativeFromMs } from '@/lib/map/relativeTime';
+import { apertureConfig } from '../../../aperture.config';
 
 function defaultExpiry(): string {
-  const d = new Date(Date.now() + DEFAULT_EXPIRY_HOURS * 60 * 60 * 1000);
-  return d.toISOString();
+  return new Date(Date.now() + apertureConfig.SIGNATURE_DEFAULT_TTL_MS).toISOString();
 }
 
-function formatRelative(iso: string): string {
-  const ms = new Date(iso).getTime() - Date.now();
-  if (Number.isNaN(ms)) return iso;
-  const hours = Math.round(ms / 3_600_000);
-  if (hours <= 0) return 'expired';
-  if (hours < 24) return `${hours}h`;
-  return `${Math.round(hours / 24)}d`;
+function formatRelativeIso(iso: string): string {
+  const ts = new Date(iso).getTime();
+  if (Number.isNaN(ts)) return iso;
+  return formatRelativeFromMs(ts - Date.now());
 }
 
 /**
@@ -112,7 +108,7 @@ export function SignatureModule({
                     placeholder="—"
                   />
                 </td>
-                <td className="px-1.5 py-1 text-muted-foreground">{formatRelative(sig.expiresAt)}</td>
+                <td className="px-1.5 py-1 text-muted-foreground">{formatRelativeIso(sig.expiresAt)}</td>
                 <td className="px-1.5 py-1 text-right">
                   <Button
                     type="button"

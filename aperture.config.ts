@@ -101,6 +101,27 @@ export const apertureConfig = {
     'esi-location.read_ship_type.v1',
     'esi-location.read_online.v1',
   ],
+
+  /**
+   * How long a wormhole connection has left from the moment it goes EOL to the
+   * point a reap job would purge it. Legacy `EXPIRE_CONNECTIONS_EOL = 15300s`
+   * (4h 15m). Read by Stage 11's EOL-expiry job and surfaced as a countdown on
+   * EOL-flagged edges. SPEC §6.5.
+   */
+  WORMHOLE_EOL_LIFETIME_MS: 15_300_000,
+
+  /**
+   * Default lifetime of a (non-EOL) wormhole connection from creation. Legacy
+   * `EXPIRE_CONNECTIONS_WH = 172800s` (48h). Used for the canvas "expires in X"
+   * hint when the connection has not yet been flagged EOL.
+   */
+  WORMHOLE_DEFAULT_LIFETIME_MS: 172_800_000,
+
+  /**
+   * Default TTL applied to a newly created signature (`expires_at = created_at +
+   * this`). Legacy `EXPIRE_SIGNATURES = 259200s` (5d); matches SPEC §347.
+   */
+  SIGNATURE_DEFAULT_TTL_MS: 259_200_000,
 } as const;
 
 export type ApertureConfig = typeof apertureConfig;

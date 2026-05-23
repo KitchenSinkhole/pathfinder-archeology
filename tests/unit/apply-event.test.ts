@@ -45,6 +45,8 @@ const conn1: MapConnectionEdge = {
   isFrigate: false,
   preserveMass: false,
   isRolling: false,
+  eolAt: null,
+  createdAt: '2026-01-01T00:00:00.000Z',
 };
 
 // ---------------------------------------------------------------------------
@@ -164,7 +166,7 @@ describe('applyEvent — connection.create', () => {
 // ---------------------------------------------------------------------------
 
 describe('applyEvent — connection.update', () => {
-  it('merges a partial patch (eolAt excluded from edge)', () => {
+  it('merges a partial patch including eolAt', () => {
     const state = makeState({ connections: [conn1] });
     const next = applyEvent(state, {
       kind: 'connection.update',
@@ -177,7 +179,7 @@ describe('applyEvent — connection.update', () => {
     const c = next.connections[0]!;
     expect(c.massStatus).toBe('critical');
     expect(c.isEol).toBe(true);
-    expect(c).not.toHaveProperty('eolAt');
+    expect(c.eolAt).toBe('2026-01-01T00:00:00Z');
   });
 
   it('is a no-op for an unknown id', () => {

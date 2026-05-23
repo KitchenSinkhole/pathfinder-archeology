@@ -144,6 +144,8 @@ const connectionEdgeBody = {
   isFrigate: z.boolean(),
   preserveMass: z.boolean(),
   isRolling: z.boolean(),
+  eolAt: z.string().nullable(),
+  createdAt: z.string(),
 };
 
 /** Full signature body — mirrors `ap_map_signature` row fields used by the canvas. */

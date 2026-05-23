@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { connectionTimeLeftMs } from '@/lib/map/connectionState';
+import { formatRelativeFromMs } from '@/lib/map/relativeTime';
 import {
   Select,
   SelectContent,
@@ -343,6 +345,8 @@ function ConnectionInspector({
           />
         </div>
 
+        <ConnectionExpiryHint connection={connection} />
+
         <div className="flex justify-end">
           <Button type="button" variant="destructive" size="sm" onClick={onDelete} className="gap-1.5">
             <Trash2 className="size-3.5" />
@@ -351,6 +355,23 @@ function ConnectionInspector({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function ConnectionExpiryHint({ connection }: { connection: MapConnectionEdge }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  const ms = connectionTimeLeftMs(connection, now);
+  if (ms === null) return null;
+  const label = connection.isEol ? 'EOL expires in' : 'Expires in';
+  return (
+    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+      <span>{label}</span>
+      <span className="font-medium tabular-nums text-foreground">{formatRelativeFromMs(ms)}</span>
+    </div>
   );
 }
 

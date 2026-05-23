@@ -60,6 +60,10 @@ export type MapConnectionEdge = {
   isFrigate: boolean;
   preserveMass: boolean;
   isRolling: boolean;
+  /** When `is_eol` was first stamped (ISO). Null when the connection is not EOL. */
+  eolAt: string | null;
+  /** ISO timestamp the row was inserted. Drives the pre-EOL "expires in X" hint. */
+  createdAt: string;
 };
 
 /** A scan signature inside a placed system. Mirrors the realtime `signature.*` payload body. */
@@ -149,6 +153,8 @@ export async function loadMapForView(mapId: bigint): Promise<MapViewData | null>
       isFrigate: apMapConnection.isFrigate,
       preserveMass: apMapConnection.preserveMass,
       isRolling: apMapConnection.isRolling,
+      eolAt: apMapConnection.eolAt,
+      createdAt: apMapConnection.createdAt,
     })
     .from(apMapConnection)
     .where(eq(apMapConnection.mapId, mapId))
@@ -203,6 +209,8 @@ export async function loadMapForView(mapId: bigint): Promise<MapViewData | null>
       isFrigate: c.isFrigate,
       preserveMass: c.preserveMass,
       isRolling: c.isRolling,
+      eolAt: c.eolAt ? c.eolAt.toISOString() : null,
+      createdAt: c.createdAt.toISOString(),
     })),
     signatures: signatureRows.map((r) => ({
       id: r.id.toString(),

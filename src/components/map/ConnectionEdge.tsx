@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -9,7 +10,11 @@ import {
   type EdgeProps,
 } from '@xyflow/react';
 import type { MapConnectionEdge } from '@/lib/map/loadMap';
+import { connectionTimeLeftMs } from '@/lib/map/connectionState';
+import { formatRelativeFromMs } from '@/lib/map/relativeTime';
 import { connectionBadges, connectionStyle } from './styling';
+
+const EOL_COUNTDOWN_TICK_MS = 30_000;
 
 // Selectable connection edge. Scope + mass status drive the stroke colour; EOL
 // dashes the line; flags (jump-mass / EOL / frigate / rolling / preserve) render
@@ -103,11 +108,13 @@ export function ConnectionEdge(props: EdgeProps & { data: ConnectionEdgeData }) 
   const style = connectionStyle(data);
   const finalStyle = selected ? { ...style, strokeWidth: (style.strokeWidth ?? 3) + 2 } : style;
   const badges = connectionBadges(data);
+  const countdown = useEolCountdown(data);
+  const hasLabel = badges.length > 0 || countdown !== null;
 
   return (
     <>
       <BaseEdge path={path} style={finalStyle} />
-      {badges.length > 0 && (
+      {hasLabel && (
         <EdgeLabelRenderer>
           <div
             className="pointer-events-none absolute flex gap-0.5 rounded bg-card/90 px-1 py-0.5 text-[9px] font-medium leading-none ring-1 ring-foreground/10"
@@ -118,9 +125,30 @@ export function ConnectionEdge(props: EdgeProps & { data: ConnectionEdgeData }) 
                 {b}
               </span>
             ))}
+            {countdown !== null && (
+              <span className="text-muted-foreground" aria-label="EOL time remaining">
+                {countdown}
+              </span>
+            )}
           </div>
         </EdgeLabelRenderer>
       )}
     </>
   );
+}
+
+// Ticks the EOL-flagged edge label once every 30s. Returns null when the
+// connection has no expiry (non-WH) or is not EOL — the pre-EOL "expires in"
+// hint only surfaces in the inspector to avoid cluttering every WH edge.
+function useEolCountdown(c: MapConnectionEdge): string | null {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!c.isEol) return;
+    const id = setInterval(() => setNow(Date.now()), EOL_COUNTDOWN_TICK_MS);
+    return () => clearInterval(id);
+  }, [c.isEol]);
+  if (!c.isEol) return null;
+  const ms = connectionTimeLeftMs(c, now);
+  if (ms === null) return null;
+  return formatRelativeFromMs(ms);
 }
