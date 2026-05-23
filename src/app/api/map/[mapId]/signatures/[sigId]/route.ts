@@ -1,0 +1,109 @@
+import 'server-only';
+import { type NextRequest } from 'next/server';
+import { z } from 'zod';
+import { getSession } from '@/lib/session';
+import { deleteSignature, updateSignature } from '@/lib/map/mutations/signatures';
+import { guardMap, parseBigInt } from '../../../utils';
+
+/**
+ * PATCH /api/map/[mapId]/signatures/[sigId] — update a signature's fields.
+ * DELETE /api/map/[mapId]/signatures/[sigId] — hard-delete a signature.
+ *
+ * [sigId] is `ap_map_signature.id` (the DB row id), NOT the in-game 3-char sig code.
+ *
+ * INTERIM ACCESS: any logged-in character may call this. Stage 15 adds per-map rights.
+ */
+
+const updateSignatureBodySchema = z.object({
+  mapConnectionId: z.string().regex(/^\d+$/).nullable().optional(),
+  sigId: z.string().min(1).max(7).optional(),
+  groupId: z.number().int().positive().nullable().optional(),
+  typeId: z.number().int().positive().nullable().optional(),
+  name: z.string().max(100).nullable().optional(),
+  description: z.string().nullable().optional(),
+  expiresAt: z.string().datetime().optional(),
+});
+
+export const runtime = 'nodejs';
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ mapId: string; sigId: string }> },
+) {
+  const session = await getSession();
+  if (!session?.characterId) return Response.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
+
+  const { mapId: rawMapId, sigId: rawSigId } = await params;
+  const guard = await guardMap(rawMapId);
+  if (!guard) return Response.json({ ok: false, error: 'Map not found.' }, { status: 404 });
+
+  const signatureId = parseBigInt(rawSigId);
+  if (!signatureId) return Response.json({ ok: false, error: 'Invalid signature id.' }, { status: 400 });
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ ok: false, error: 'Invalid JSON.' }, { status: 400 });
+  }
+
+  const parsed = updateSignatureBodySchema.safeParse(body);
+  if (!parsed.success) {
+    return Response.json(
+      { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid input.' },
+      { status: 400 },
+    );
+  }
+
+  // Convert string ids and datetime strings to their native types for the helper.
+  const patch: Parameters<typeof updateSignature>[0]['patch'] = {};
+  if ('mapConnectionId' in parsed.data) {
+    if (parsed.data.mapConnectionId == null) {
+      patch.mapConnectionId = null;
+    } else {
+      const connId = parseBigInt(parsed.data.mapConnectionId);
+      if (!connId) return Response.json({ ok: false, error: 'Invalid connection id.' }, { status: 400 });
+      patch.mapConnectionId = connId;
+    }
+  }
+  if ('sigId' in parsed.data) patch.sigId = parsed.data.sigId;
+  if ('groupId' in parsed.data) patch.groupId = parsed.data.groupId;
+  if ('typeId' in parsed.data) patch.typeId = parsed.data.typeId;
+  if ('name' in parsed.data) patch.name = parsed.data.name;
+  if ('description' in parsed.data) patch.description = parsed.data.description;
+  if ('expiresAt' in parsed.data && parsed.data.expiresAt !== undefined) {
+    patch.expiresAt = new Date(parsed.data.expiresAt);
+  }
+
+  const result = await updateSignature({
+    mapId: guard.mapId,
+    signatureId,
+    characterId: BigInt(session.characterId),
+    patch,
+  });
+
+  return Response.json(result, { status: result.ok ? 200 : 400 });
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ mapId: string; sigId: string }> },
+) {
+  const session = await getSession();
+  if (!session?.characterId) return Response.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
+
+  const { mapId: rawMapId, sigId: rawSigId } = await params;
+  const guard = await guardMap(rawMapId);
+  if (!guard) return Response.json({ ok: false, error: 'Map not found.' }, { status: 404 });
+
+  const signatureId = parseBigInt(rawSigId);
+  if (!signatureId) return Response.json({ ok: false, error: 'Invalid signature id.' }, { status: 400 });
+
+  const result = await deleteSignature({
+    mapId: guard.mapId,
+    signatureId,
+    characterId: BigInt(session.characterId),
+  });
+
+  return Response.json(result, { status: result.ok ? 200 : 400 });
+}
