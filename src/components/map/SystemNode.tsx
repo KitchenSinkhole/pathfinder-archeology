@@ -28,7 +28,7 @@ export function SystemNode({ data, selected }: NodeProps & { data: SystemNodeDat
 
   return (
     <div
-      className="min-w-36 rounded-md bg-card text-xs text-card-foreground shadow-sm ring-1"
+      className="min-w-36 cursor-pointer rounded-md bg-card text-xs text-card-foreground shadow-sm ring-1"
       style={{ borderLeft: `4px solid ${color}`, outline: selected ? `2px solid ${color}` : 'none' }}
       title={`${data.regionName} › ${data.constellationName}`}
     >

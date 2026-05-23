@@ -8,7 +8,6 @@ import {
   type Connection,
   type Edge,
   type Node,
-  type OnSelectionChangeParams,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import type { MapEventPayload, MapSystemNode, MapViewData } from '@/types';
@@ -152,14 +151,22 @@ export function MapCanvas({
     [mapId, awaitServer],
   );
 
-  const onSelectionChange = useCallback(
-    ({ nodes: selectedNodes, edges: selectedEdges }: OnSelectionChangeParams) => {
-      if (selectedNodes[0]) setSelected({ kind: 'system', id: selectedNodes[0].id });
-      else if (selectedEdges[0]) setSelected({ kind: 'connection', id: selectedEdges[0].id });
-      else setSelected(null);
-    },
-    [],
-  );
+  // Selection is driven by direct click handlers rather than xyflow's
+  // `onSelectionChange`. In controlled mode without `onNodesChange`, xyflow's
+  // internal selection mutation never produces a store `set()`, so
+  // `onSelectionChange` only fires as a side effect of unrelated re-renders
+  // (e.g. drag) — which made selecting via a still click take two attempts.
+  const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
+    setSelected({ kind: 'system', id: node.id });
+  }, []);
+
+  const onEdgeClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
+    setSelected({ kind: 'connection', id: edge.id });
+  }, []);
+
+  const onPaneClick = useCallback(() => {
+    setSelected(null);
+  }, []);
 
   // ---- Inspector callbacks -----------------------------------------------
   const onSystemPatch = useCallback(
@@ -286,7 +293,9 @@ export function MapCanvas({
           edges={edges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
-          onSelectionChange={onSelectionChange}
+          onNodeClick={onNodeClick}
+          onEdgeClick={onEdgeClick}
+          onPaneClick={onPaneClick}
           onNodeDragStop={onNodeDragStop}
           onConnect={onConnect}
           nodesDraggable

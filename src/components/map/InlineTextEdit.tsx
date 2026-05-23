@@ -82,11 +82,9 @@ export function InlineTextEdit({
 
   return (
     <span
-      role="button"
-      tabIndex={0}
       onDoubleClick={startEdit}
       aria-label={ariaLabel}
-      className={cn('cursor-text select-none', className)}
+      className={cn('select-none', className)}
       title="Double-click to edit"
     >
       {value ?? placeholder ?? ''}

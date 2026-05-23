@@ -22,6 +22,7 @@ Either a span with the value, or an autofocused input.
 - Enter commits, Esc / blur cancels.
 - Whitespace-only is treated as empty and commits as null.
 - The input carries the `nodrag nopan` classes so xyflow does not hijack drag / pan inside the editor.
+- Idle span is a plain non-focusable `<span>` (no `role="button"` / `tabIndex`) so a single click bubbles up to xyflow's node wrapper and selects the parent system. Keyboard-driven edits go through `InspectorModule`.
 - The caller persists the commit (typically a PATCH); `InlineTextEdit` only emits the new value.
 
 ### Depends On

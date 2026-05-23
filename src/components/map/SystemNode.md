@@ -13,7 +13,7 @@ A card with a left status stripe (colour from `systemStatusColor`), a head row (
 
 ### Behaviour & Interactions
 - Drag handles top/bottom are visible at low opacity to invite connections; xyflow `nodesConnectable` / `nodesDraggable` are controlled by `MapCanvas`.
-- Selection is reflected by an outline; selection state is owned by `MapCanvas`.
+- Selection is reflected by an outline; selection state is owned by `MapCanvas`. The card uses `cursor-pointer` so the entire tile reads as clickable — any click bubbles through xyflow's node wrapper to fire selection.
 - Wormhole detection: has statics, or name matches `J######`.
 - Inline editors carry `nodrag nopan` (set inside `InlineTextEdit`) so editing doesn't trigger pan / drag.
 - All other field edits (status, intel notes, locked, rally, signatures, remove) live in `InspectorModule`.
