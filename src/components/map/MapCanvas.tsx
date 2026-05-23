@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   Controls,
@@ -13,9 +13,11 @@ import '@xyflow/react/dist/style.css';
 import type { MapViewData } from '@/lib/map/loadMap';
 import type { HubRoute } from '@/lib/map/route';
 import type { SystemStatsSummary } from '@/lib/map/stats';
+import { applyEvent } from '@/lib/map/applyEvent';
+import { mapUpdateLoadSchema } from '@/lib/realtime/protocol';
+import { useMapSubscription, useRealtime } from '@/lib/realtime/useRealtime';
 import { RouteModule } from '@/components/sidebar/RouteModule';
 import { KillStatsModule } from '@/components/sidebar/KillStatsModule';
-import { useMapSubscription } from '@/lib/realtime/useRealtime';
 import { ConnectionEdge, type ConnectionEdgeData } from './ConnectionEdge';
 import { SystemNode, type SystemNodeData } from './SystemNode';
 
@@ -32,14 +34,26 @@ export function MapCanvas({
   stats: Record<number, SystemStatsSummary>;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [viewData, setViewData] = useState<MapViewData>(data);
+  const appliedEventIds = useRef<Set<number>>(new Set());
 
-  // Subscribe this map's channel for the lifetime of the canvas. Stage 8 only
-  // opens the channel; applying live updates to the canvas is Stage 9.
   useMapSubscription(Number(data.map.id));
+
+  const { lastEvent } = useRealtime();
+
+  useEffect(() => {
+    if (!lastEvent || lastEvent.task !== 'mapUpdate') return;
+    const loadResult = mapUpdateLoadSchema.safeParse(lastEvent.load);
+    if (!loadResult.success || !loadResult.data.data) return;
+    const payload = loadResult.data.data;
+    if (appliedEventIds.current.has(payload.eventId)) return;
+    appliedEventIds.current.add(payload.eventId);
+    setViewData((prev) => applyEvent(prev, payload));
+  }, [lastEvent]);
 
   const nodes = useMemo<Node<SystemNodeData>[]>(
     () =>
-      data.systems.map((s) => ({
+      viewData.systems.map((s) => ({
         id: s.id,
         type: 'system',
         position: { x: s.positionX, y: s.positionY },
@@ -47,12 +61,12 @@ export function MapCanvas({
         draggable: false,
         connectable: false,
       })),
-    [data.systems],
+    [viewData.systems],
   );
 
   const edges = useMemo<Edge<ConnectionEdgeData>[]>(
     () =>
-      data.connections.map((c) => ({
+      viewData.connections.map((c) => ({
         id: c.id,
         type: 'connection',
         source: c.source,
@@ -60,12 +74,12 @@ export function MapCanvas({
         data: c,
         selectable: false,
       })),
-    [data.connections],
+    [viewData.connections],
   );
 
   const selected = useMemo(
-    () => data.systems.find((s) => s.id === selectedId) ?? null,
-    [data.systems, selectedId],
+    () => viewData.systems.find((s) => s.id === selectedId) ?? null,
+    [viewData.systems, selectedId],
   );
 
   function onSelectionChange({ nodes: selectedNodes }: OnSelectionChangeParams) {
