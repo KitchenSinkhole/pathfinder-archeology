@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
+  ConnectionMode,
   Controls,
   ReactFlow,
   type Connection,
@@ -300,6 +301,7 @@ export function MapCanvas({
           onConnect={onConnect}
           nodesDraggable
           nodesConnectable
+          connectionMode={ConnectionMode.Loose}
           edgesFocusable
           colorMode="dark"
           fitView

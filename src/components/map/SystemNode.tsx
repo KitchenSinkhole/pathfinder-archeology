@@ -32,8 +32,10 @@ export function SystemNode({ data, selected }: NodeProps & { data: SystemNodeDat
       style={{ borderLeft: `4px solid ${color}`, outline: selected ? `2px solid ${color}` : 'none' }}
       title={`${data.regionName} › ${data.constellationName}`}
     >
-      <Handle type="target" position={Position.Top} style={{ opacity: 0.2 }} />
+      <Handle type="source" position={Position.Top} style={{ opacity: 0.2 }} />
+      <Handle type="source" position={Position.Right} style={{ opacity: 0.2 }} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0.2 }} />
+      <Handle type="source" position={Position.Left} style={{ opacity: 0.2 }} />
 
       <div className="flex items-center gap-1.5 px-2 py-1">
         <span className="rounded bg-muted px-1 font-mono text-[10px] leading-tight text-muted-foreground">

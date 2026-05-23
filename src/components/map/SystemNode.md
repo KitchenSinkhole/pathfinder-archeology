@@ -12,7 +12,7 @@ Receives xyflow `NodeProps` with `data: SystemNodeData` and `selected`.
 A card with a left status stripe (colour from `systemStatusColor`), a head row (security label, tag chip, alias-or-name, lock icon), and — for wormhole systems or systems with an effect — a secondary line listing the effect and static codes. Region/constellation shown as the hover title.
 
 ### Behaviour & Interactions
-- Drag handles top/bottom are visible at low opacity to invite connections; xyflow `nodesConnectable` / `nodesDraggable` are controlled by `MapCanvas`.
+- Drag handles on all four sides (top / right / bottom / left) are visible at low opacity to invite connections; xyflow `nodesConnectable` / `nodesDraggable` are controlled by `MapCanvas`. All four are declared as `type="source"` and the canvas runs in `ConnectionMode.Loose` so any side can act as either end of a new connection. `ConnectionEdge` picks which two sides to render against at draw time based on relative node centres, so the stored handle pair is incidental.
 - Selection is reflected by an outline; selection state is owned by `MapCanvas`. The card uses `cursor-pointer` so the entire tile reads as clickable — any click bubbles through xyflow's node wrapper to fire selection.
 - Wormhole detection: has statics, or name matches `J######`.
 - Inline editors carry `nodrag nopan` (set inside `InlineTextEdit`) so editing doesn't trigger pan / drag.

@@ -14,6 +14,7 @@ A bezier `BaseEdge` styled via `connectionStyle` (scope→colour, wormhole recol
 - When `selected`, the stroke thickens by 1.5 px and a `drop-shadow` glow is applied in the current stroke colour to surface which edge the inspector is editing.
 - Label is `pointer-events-none` so clicks always hit the path, not the badge stack.
 - Edits all live in the sidebar inspector (`InspectorModule.ConnectionInspector`).
+- Endpoint sides snap dynamically: `pickAnchors` reads source/target node geometry from `useInternalNode`, compares the centre-to-centre delta, and picks the dominant axis. `|dx| >= |dy|` → right/left; otherwise → bottom/top, oriented so the source side faces the target. The `sourceX/Y/Position` and `targetX/Y/Position` props xyflow passes (which derive from whichever handles the connection was created on) are only used as a fallback while the nodes haven't been measured yet.
 
 ### Depends On
-- `@xyflow/react` (`BaseEdge`, `EdgeLabelRenderer`, `getBezierPath`, `EdgeProps`), `./styling`.
+- `@xyflow/react` (`BaseEdge`, `EdgeLabelRenderer`, `Position`, `getBezierPath`, `useInternalNode`, `EdgeProps`), `./styling`.

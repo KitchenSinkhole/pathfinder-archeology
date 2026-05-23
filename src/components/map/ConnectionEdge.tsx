@@ -3,7 +3,9 @@
 import {
   BaseEdge,
   EdgeLabelRenderer,
+  Position,
   getBezierPath,
+  useInternalNode,
   type EdgeProps,
 } from '@xyflow/react';
 import type { MapConnectionEdge } from '@/lib/map/loadMap';
@@ -13,11 +15,55 @@ import { connectionBadges, connectionStyle } from './styling';
 // dashes the line; flags (jump-mass / EOL / frigate / rolling / preserve) render
 // as small badges at the midpoint. Edits live in the sidebar inspector — clicking
 // the edge merely selects it.
+//
+// Edge endpoints snap to whichever of the four node sides face each other based
+// on the dominant axis between the two node centres, so the line exits and
+// enters from the sides closest to the other node rather than always running
+// bottom-to-top.
 
 export type ConnectionEdgeData = MapConnectionEdge;
 
+type Anchor = { x: number; y: number; position: Position };
+
+function pickAnchors(
+  src: { x: number; y: number; w: number; h: number },
+  tgt: { x: number; y: number; w: number; h: number },
+): { source: Anchor; target: Anchor } {
+  const sCx = src.x + src.w / 2;
+  const sCy = src.y + src.h / 2;
+  const tCx = tgt.x + tgt.w / 2;
+  const tCy = tgt.y + tgt.h / 2;
+  const dx = tCx - sCx;
+  const dy = tCy - sCy;
+
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    if (dx >= 0) {
+      return {
+        source: { x: src.x + src.w, y: sCy, position: Position.Right },
+        target: { x: tgt.x, y: tCy, position: Position.Left },
+      };
+    }
+    return {
+      source: { x: src.x, y: sCy, position: Position.Left },
+      target: { x: tgt.x + tgt.w, y: tCy, position: Position.Right },
+    };
+  }
+  if (dy >= 0) {
+    return {
+      source: { x: sCx, y: src.y + src.h, position: Position.Bottom },
+      target: { x: tCx, y: tgt.y, position: Position.Top },
+    };
+  }
+  return {
+    source: { x: sCx, y: src.y, position: Position.Top },
+    target: { x: tCx, y: tgt.y + tgt.h, position: Position.Bottom },
+  };
+}
+
 export function ConnectionEdge(props: EdgeProps & { data: ConnectionEdgeData }) {
   const {
+    source,
+    target,
     sourceX,
     sourceY,
     targetX,
@@ -27,13 +73,32 @@ export function ConnectionEdge(props: EdgeProps & { data: ConnectionEdgeData }) 
     data,
     selected,
   } = props;
+
+  const sourceNode = useInternalNode(source);
+  const targetNode = useInternalNode(target);
+
+  const sPos = sourceNode?.internals.positionAbsolute;
+  const tPos = targetNode?.internals.positionAbsolute;
+  const sW = sourceNode?.measured.width;
+  const sH = sourceNode?.measured.height;
+  const tW = targetNode?.measured.width;
+  const tH = targetNode?.measured.height;
+
+  const anchors =
+    sPos && tPos && sW && sH && tW && tH
+      ? pickAnchors(
+          { x: sPos.x, y: sPos.y, w: sW, h: sH },
+          { x: tPos.x, y: tPos.y, w: tW, h: tH },
+        )
+      : null;
+
   const [path, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
+    sourceX: anchors?.source.x ?? sourceX,
+    sourceY: anchors?.source.y ?? sourceY,
+    sourcePosition: anchors?.source.position ?? sourcePosition,
+    targetX: anchors?.target.x ?? targetX,
+    targetY: anchors?.target.y ?? targetY,
+    targetPosition: anchors?.target.position ?? targetPosition,
   });
   const style = connectionStyle(data);
   const finalStyle = selected ? { ...style, strokeWidth: (style.strokeWidth ?? 3) + 2 } : style;
