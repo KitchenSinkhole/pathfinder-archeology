@@ -243,6 +243,11 @@ export function MapCanvas({
   );
 
   // ---- xyflow nodes/edges ------------------------------------------------
+  //
+  // xyflow treats `node.selected` / `edge.selected` as the source of truth when
+  // `nodes` / `edges` are passed as props. Rebuilding the arrays without that
+  // flag would wipe selection on every optimistic patch (e.g. a keystroke in
+  // the inspector), so we reflect our `selected` state back into the objects.
   const nodes = useMemo<Node<SystemNodeData>[]>(
     () =>
       viewData.systems.map((s) => ({
@@ -250,8 +255,9 @@ export function MapCanvas({
         type: 'system',
         position: { x: s.positionX, y: s.positionY },
         data: { ...s, onAliasOrTagCommit },
+        selected: selected?.kind === 'system' && selected.id === s.id,
       })),
-    [viewData.systems, onAliasOrTagCommit],
+    [viewData.systems, onAliasOrTagCommit, selected],
   );
 
   const edges = useMemo<Edge<ConnectionEdgeData>[]>(
@@ -262,8 +268,9 @@ export function MapCanvas({
         source: c.source,
         target: c.target,
         data: c,
+        selected: selected?.kind === 'connection' && selected.id === c.id,
       })),
-    [viewData.connections],
+    [viewData.connections, selected],
   );
 
   const selectedSystem: MapSystemNode | null = useMemo(() => {

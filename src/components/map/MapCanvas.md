@@ -20,7 +20,7 @@ A `ReactFlow` canvas (custom `system` nodes, `connection` edges, `Background`, `
 - `awaitServer(run)` posts and, on success, applies the server's `MapEventPayload` through `applyEvent` and records its `eventId`. Used for POST.
 - Drag: `nodesDraggable` is on; `onNodeDragStop` PATCHes `positionX`/`positionY` optimistically.
 - Connect: `nodesConnectable` is on; `onConnect` POSTs a new wormhole connection (default scope `wh`), then applies the server payload.
-- Selection: `onSelectionChange` writes a `SelectionRef = { kind: 'system' | 'connection', id }` into local state, which feeds `InspectorModule` and the route / kill-stats modules.
+- Selection: `onSelectionChange` writes a `SelectionRef = { kind: 'system' | 'connection', id }` into local state, which feeds `InspectorModule` and the route / kill-stats modules. The `selected` flag is reflected back into each xyflow node/edge object so rebuilding the arrays on `viewData` change (e.g. an optimistic inspector patch) does not wipe selection.
 - Alias and tag: the system tile's `InlineTextEdit` calls back into `MapCanvas`'s `onSystemPatch` via the per-node `onAliasOrTagCommit` injected through `data`.
 - Toasts: client helpers in `@/lib/map/client` surface server errors as `toast.error` before returning the failure result; `MapCanvas` only handles rollback.
 
