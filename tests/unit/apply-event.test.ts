@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { applyEvent } from '@/lib/map/applyEvent';
-import type { MapConnectionEdge, MapSystemNode, MapViewData } from '@/types';
+import type { MapConnectionEdge, MapSignature, MapSystemNode, MapViewData } from '@/types';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -10,6 +10,7 @@ const makeState = (overrides?: Partial<MapViewData>): MapViewData => ({
   map: { id: '1', name: 'Test Map', scope: 'wh', type: 'private' },
   systems: [],
   connections: [],
+  signatures: [],
   ...overrides,
 });
 
@@ -233,23 +234,96 @@ describe('applyEvent — map.update', () => {
 });
 
 // ---------------------------------------------------------------------------
+// signature.*
+// ---------------------------------------------------------------------------
+
+const sig1: MapSignature = {
+  id: '30',
+  mapSystemId: '10',
+  mapConnectionId: null,
+  sigId: 'ABC',
+  groupId: null,
+  typeId: null,
+  name: null,
+  description: null,
+  expiresAt: '2026-12-31T00:00:00.000Z',
+};
+
+describe('applyEvent — signature.create', () => {
+  it('appends a new signature', () => {
+    const state = makeState({ systems: [sys1] });
+    const next = applyEvent(state, { kind: 'signature.create', eventId: 20, ...sig1 });
+    expect(next.signatures).toHaveLength(1);
+    expect(next.signatures[0]).toMatchObject({ id: '30', sigId: 'ABC' });
+  });
+
+  it('upserts when a signature with the same id already exists', () => {
+    const state = makeState({ systems: [sys1], signatures: [sig1] });
+    const updated = { ...sig1, name: 'Renamed' };
+    const next = applyEvent(state, { kind: 'signature.create', eventId: 21, ...updated });
+    expect(next.signatures).toHaveLength(1);
+    expect(next.signatures[0]!.name).toBe('Renamed');
+  });
+});
+
+describe('applyEvent — signature.update', () => {
+  it('merges only the provided fields', () => {
+    const state = makeState({ systems: [sys1], signatures: [sig1] });
+    const next = applyEvent(state, {
+      kind: 'signature.update',
+      eventId: 22,
+      id: '30',
+      name: 'Wormhole',
+      groupId: 5,
+    });
+    expect(next.signatures[0]).toMatchObject({ name: 'Wormhole', groupId: 5, sigId: 'ABC' });
+  });
+
+  it('is a no-op for an unknown id', () => {
+    const state = makeState({ systems: [sys1], signatures: [sig1] });
+    const next = applyEvent(state, {
+      kind: 'signature.update',
+      eventId: 23,
+      id: '999',
+      name: 'X',
+    });
+    expect(next.signatures[0]!.name).toBeNull();
+  });
+
+  it('accepts a null patch value to clear a field', () => {
+    const state = makeState({ systems: [sys1], signatures: [{ ...sig1, name: 'Old' }] });
+    const next = applyEvent(state, {
+      kind: 'signature.update',
+      eventId: 24,
+      id: '30',
+      name: null,
+    });
+    expect(next.signatures[0]!.name).toBeNull();
+  });
+});
+
+describe('applyEvent — signature.delete', () => {
+  it('removes a signature by id', () => {
+    const state = makeState({ systems: [sys1], signatures: [sig1] });
+    const next = applyEvent(state, { kind: 'signature.delete', eventId: 25, id: '30' });
+    expect(next.signatures).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // No-op events
 // ---------------------------------------------------------------------------
 
 describe('applyEvent — no-op events', () => {
   const noopKinds = [
-    { kind: 'signature.create' as const, eventId: 20, id: 'sig1', mapSystemId: '10', mapConnectionId: null, sigId: 'ABC-123', groupId: null, typeId: null, name: null, description: null, expiresAt: '2026-12-31T00:00:00Z' },
-    { kind: 'signature.update' as const, eventId: 21, id: 'sig1' },
-    { kind: 'signature.delete' as const, eventId: 22, id: 'sig1' },
-    { kind: 'map.create' as const, eventId: 23, id: '2', name: 'New Map', scope: 'wh' as const, type: 'private' as const, icon: null },
-    { kind: 'map.delete' as const, eventId: 24, id: '1' },
+    { kind: 'map.create' as const, eventId: 30, id: '2', name: 'New Map', scope: 'wh' as const, type: 'private' as const, icon: null },
+    { kind: 'map.delete' as const, eventId: 31, id: '1' },
   ];
 
   for (const payload of noopKinds) {
     it(`returns the same state reference for ${payload.kind}`, () => {
       const state = makeState({ systems: [sys1], connections: [conn1] });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const next = applyEvent(state, payload as any);
+      const next = applyEvent(state, payload);
       expect(next).toBe(state);
     });
   }

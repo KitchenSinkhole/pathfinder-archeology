@@ -4,6 +4,7 @@ import { db } from '@/db/client';
 import {
   apMap,
   apMapConnection,
+  apMapSignature,
   apMapSystem,
   connectionScope,
   mapScope,
@@ -61,11 +62,30 @@ export type MapConnectionEdge = {
   isRolling: boolean;
 };
 
+/** A scan signature inside a placed system. Mirrors the realtime `signature.*` payload body. */
+export type MapSignature = {
+  /** `ap_map_signature.id` as a string. */
+  id: string;
+  /** `ap_map_system.id` the sig is in. */
+  mapSystemId: string;
+  /** `ap_map_connection.id` once the sig resolves to a wormhole, else null. */
+  mapConnectionId: string | null;
+  /** In-game 3-char scan id, e.g. "ABC". */
+  sigId: string;
+  groupId: number | null;
+  typeId: number | null;
+  name: string | null;
+  description: string | null;
+  /** ISO timestamp; `Date` serialised over the Server→Client boundary. */
+  expiresAt: string;
+};
+
 /** Everything the read-only map page needs to render one map. */
 export type MapViewData = {
   map: { id: string; name: string; scope: MapScope; type: MapType };
   systems: MapSystemNode[];
   connections: MapConnectionEdge[];
+  signatures: MapSignature[];
 };
 
 /** A map row for the maps list. */
@@ -134,6 +154,25 @@ export async function loadMapForView(mapId: bigint): Promise<MapViewData | null>
     .where(eq(apMapConnection.mapId, mapId))
     .orderBy(apMapConnection.id);
 
+  const visibleSystemIds = systemRows.map((s) => s.id);
+  const signatureRows = visibleSystemIds.length
+    ? await db
+        .select({
+          id: apMapSignature.id,
+          mapSystemId: apMapSignature.mapSystemId,
+          mapConnectionId: apMapSignature.mapConnectionId,
+          sigId: apMapSignature.sigId,
+          groupId: apMapSignature.groupId,
+          typeId: apMapSignature.typeId,
+          name: apMapSignature.name,
+          description: apMapSignature.description,
+          expiresAt: apMapSignature.expiresAt,
+        })
+        .from(apMapSignature)
+        .where(inArray(apMapSignature.mapSystemId, visibleSystemIds))
+        .orderBy(apMapSignature.sigId)
+    : [];
+
   return {
     map: { id: map.id.toString(), name: map.name, scope: map.scope, type: map.type },
     systems: systemRows.map((s) => ({
@@ -164,6 +203,17 @@ export async function loadMapForView(mapId: bigint): Promise<MapViewData | null>
       isFrigate: c.isFrigate,
       preserveMass: c.preserveMass,
       isRolling: c.isRolling,
+    })),
+    signatures: signatureRows.map((r) => ({
+      id: r.id.toString(),
+      mapSystemId: r.mapSystemId.toString(),
+      mapConnectionId: r.mapConnectionId ? r.mapConnectionId.toString() : null,
+      sigId: r.sigId,
+      groupId: r.groupId,
+      typeId: r.typeId,
+      name: r.name,
+      description: r.description,
+      expiresAt: r.expiresAt.toISOString(),
     })),
   };
 }

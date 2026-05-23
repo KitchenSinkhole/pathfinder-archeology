@@ -76,6 +76,8 @@ Infrastructure and the §11 Phase-0 deliverables that constrain every later phas
 
 **Wormhole-data wiring:** the signature→WH-type edit path filters the type dropdown by the active system's class via `universe_wormhole.source_class` (+ universal `K162`); "mark connection as static" matches the connection's target class against `universe_system_static` + `universe_wormhole` (SPEC §6.4).
 
+**Stage 9 follow-up — Quick-toggle context menus (deferred):** Stage 9.6 placed all field edits in the sidebar inspector with double-click inline edits for system alias / tag only. The legacy Pathfinder UX additionally supported right-click context menus on the system and connection tiles for one-click toggles (status cycle, lock, EOL flip, mass cycle, rolling, frigate, preserve-mass). Port that surface after Stage 10 lands, reusing the existing `client.ts` wrappers — no new server work required.
+
 ### Stage 10 — Paste readers & connection lifecycle
 **Goal:** D-Scan paste, signature paste reader (with versioned history rendered from `ap_map_event`), connection type cycling and mass/EOL state machine, "is rolling" toggle, auto-expiry rules. Signature reap timing (`expires_at`) wired in.
 **Touches:** `src/components/dialogs/SignaturePaste.tsx`, `src/components/dialogs/DScanPaste.tsx`, `src/lib/map/signatureReader.ts`, `src/lib/map/connectionState.ts`. The signature paste reader resolves WH codes against `universe_wormhole`/`universe_type` for class metadata.

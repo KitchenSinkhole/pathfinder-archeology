@@ -90,6 +90,7 @@ export type NewApSystemStats = InferInsertModel<typeof apSystemStats>;
 export type {
   MapSystemNode,
   MapConnectionEdge,
+  MapSignature,
   MapViewData,
   MapListItem,
 } from '@/lib/map/loadMap';
@@ -130,6 +131,14 @@ export type {
   UpdateConnectionInput,
   UpdateConnectionPatch,
 } from '@/lib/map/mutations/connections';
+
+// Signature mutation input types (src/lib/map/mutations/signatures.ts).
+export type {
+  CreateSignatureInput,
+  UpdateSignatureInput,
+  UpdateSignaturePatch,
+  DeleteSignatureInput,
+} from '@/lib/map/mutations/signatures';
 
 // Wormhole-catalog lookup result types (src/lib/map/wormholeTypes.ts).
 export type { WormholeTypeOption, StaticMatch } from '@/lib/map/wormholeTypes';

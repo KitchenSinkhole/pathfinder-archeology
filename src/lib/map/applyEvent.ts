@@ -1,4 +1,4 @@
-import type { MapConnectionEdge, MapSystemNode, MapViewData } from '@/types';
+import type { MapConnectionEdge, MapSignature, MapSystemNode, MapViewData } from '@/types';
 import type { MapEventPayload } from '@/lib/realtime/protocol';
 
 /**
@@ -6,8 +6,7 @@ import type { MapEventPayload } from '@/lib/realtime/protocol';
  * Returns a new `MapViewData` (never mutates). Called on the client inside a
  * `useState` + `useEffect` pair in `MapCanvas.tsx`.
  *
- * Signature and map lifecycle events (`signature.*`, `map.create`, `map.delete`)
- * have no representation in `MapViewData`; they are no-ops here. `map.delete`
+ * `map.create` and `map.delete` have no canvas representation; `map.delete`
  * navigation is handled by the separate `mapDeleted` WS task.
  */
 export function applyEvent(state: MapViewData, payload: MapEventPayload): MapViewData {
@@ -77,9 +76,39 @@ export function applyEvent(state: MapViewData, payload: MapEventPayload): MapVie
       return { ...state, map: { ...state.map, name: payload.name } };
     }
 
-    case 'signature.create':
-    case 'signature.update':
+    case 'signature.create': {
+      const sigData = payload as MapSignature;
+      const exists = state.signatures.some((s) => s.id === sigData.id);
+      if (exists) {
+        return {
+          ...state,
+          signatures: state.signatures.map((s) => (s.id === sigData.id ? sigData : s)),
+        };
+      }
+      return { ...state, signatures: [...state.signatures, sigData] };
+    }
+
+    case 'signature.update': {
+      return {
+        ...state,
+        signatures: state.signatures.map((s): MapSignature => {
+          if (s.id !== payload.id) return s;
+          const next = { ...s };
+          if (payload.mapConnectionId !== undefined) next.mapConnectionId = payload.mapConnectionId;
+          if (payload.sigId !== undefined) next.sigId = payload.sigId;
+          if (payload.groupId !== undefined) next.groupId = payload.groupId;
+          if (payload.typeId !== undefined) next.typeId = payload.typeId;
+          if (payload.name !== undefined) next.name = payload.name;
+          if (payload.description !== undefined) next.description = payload.description;
+          if (payload.expiresAt !== undefined) next.expiresAt = payload.expiresAt;
+          return next;
+        }),
+      };
+    }
+
     case 'signature.delete':
+      return { ...state, signatures: state.signatures.filter((s) => s.id !== payload.id) };
+
     case 'map.create':
     case 'map.delete':
       return state;
