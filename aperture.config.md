@@ -32,9 +32,19 @@ Stage 4 (ESI client) adds:
 - `ESI_DATASOURCE` — ESI `datasource` query param (`tranquility` vs `singularity`).
 
 Stage 10 (paste readers & connection lifecycle) adds:
-- `WORMHOLE_EOL_LIFETIME_MS` — time from EOL-stamp to reap (legacy `EXPIRE_CONNECTIONS_EOL`, 15300s / 4h15m). Read by Stage 11's reap job and the canvas EOL countdown.
-- `WORMHOLE_DEFAULT_LIFETIME_MS` — default WH connection lifetime from creation (legacy `EXPIRE_CONNECTIONS_WH`, 172800s / 48h). Drives the "expires in X" hint before EOL is flagged.
+- `WORMHOLE_EOL_LIFETIME_MS` — time from EOL-stamp to reap (legacy `EXPIRE_CONNECTIONS_EOL`, 15300s / 4h15m). Read by Stage 11's EOL-expiry cron and the canvas EOL countdown.
+- `WORMHOLE_DEFAULT_LIFETIME_MS` — default WH connection lifetime from creation (legacy `EXPIRE_CONNECTIONS_WH`, 172800s / 48h). Drives the "expires in X" hint before EOL is flagged, and the Stage 11 expired-wormhole cleanup cron's age cap.
 - `SIGNATURE_DEFAULT_TTL_MS` — default `expires_at` offset for newly created signatures (legacy `EXPIRE_SIGNATURES`, 259200s / 5d; matches SPEC §347).
+
+Stage 11 (graphile-worker runtime) adds:
+- `JOB_WORKER_CONCURRENCY` — how many task handlers may run in parallel per worker process.
+- `JOB_POLL_INTERVAL_MS` — fallback poll cadence for scheduled retries (LISTEN/NOTIFY drives the fast path).
+- `JOB_INSTRUMENTATION_ERROR_MAX_LENGTH` — cap for `ap_job_run.error_text` (truncates `Error.message`).
+- `JOB_INSTRUMENTATION_NOTES_MAX_BYTES` — cap for `ap_job_run.notes` (`JSON.stringify` length).
+- `MAP_PURGE_GRACE_DAYS` — 30, legacy `DAYS_UNTIL_MAP_DELETION`; grace window before hard-purging soft-deleted maps at downtime.
+- `JOB_DELETE_BATCH_SIZE` — per-run cap for the row-by-row cleanup jobs (bounds the pg_notify burst at downtime; leftovers picked up on the next run).
+- EOL-expiry and expired-wormhole thresholds reuse the Stage 10 ms constants above (`WORMHOLE_EOL_LIFETIME_MS`, `WORMHOLE_DEFAULT_LIFETIME_MS`); the jobs convert ms → seconds at the SQL `make_interval` site so the canvas countdown and the cron threshold share one source of truth.
+- Per-task cron expressions live as `cron` strings on each task module in `src/lib/jobs/tasks/`, **not** here — they are graphile-worker concerns, not cross-cutting app knobs.
 
 ### ApertureConfig
 Inferred type alias for `typeof apertureConfig` so consumers don't need to import the runtime value just to type a parameter.

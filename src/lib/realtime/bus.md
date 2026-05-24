@@ -19,7 +19,9 @@ Whether the dedicated LISTEN connection is currently live. Used by the WS health
 
 ### Notes
 - Uses its **own `pg.Client`** (not the pooled `db`) because LISTEN occupies a connection for its lifetime.
-- On notification, parses the payload as JSON (non-JSON → `{}`), derives `mapId` from the channel name, and emits `{ task:'mapUpdate', load:{ mapId, kind?, data } }`. `kind` is lifted from the payload when present. `data` is a **trusted passthrough** of the trigger payload — a `MapEventPayload` built and validated by `commitMapEvent` (Stage 9.1); the bus re-wraps it without re-parsing (clients revalidate on receipt).
+- On notification, parses the payload as JSON (non-JSON → `{}`), derives `mapId` from the channel name, and emits one of two envelopes:
+  - **`{ task: 'mapUpdate', load: { mapId, kind?, data } }`** — default path. `data` is a **trusted passthrough** of the trigger payload — a `MapEventPayload` built and validated by `commitMapEvent` (Stage 9.1); the bus re-wraps it without re-parsing (clients revalidate on receipt). `kind` is lifted from the payload when present.
+  - **`{ task: 'characterUpdate', load }`** — when the pg_notify payload has a top-level `task: 'characterUpdate'` (Stage 12.3 location-poll broadcast). The bus validates the `load` against `characterUpdateLoadSchema` and drops malformed envelopes silently.
 - Reconnects with exponential backoff (`WS_RECONNECT_BASE_MS`/`WS_RECONNECT_MAX_MS`) and re-issues LISTEN for all live channels on reconnect.
 - Singleton across HMR via a `globalThis` guard (mirrors `db/client.ts`).
 - No `import 'server-only'`: this module is loaded by the custom `server.ts` outside Next's bundler (where the `server-only` shim doesn't resolve). It is only imported by `wsServer.ts` and tests — never by a client component.

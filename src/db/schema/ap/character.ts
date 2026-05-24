@@ -1,4 +1,4 @@
-import { bigint, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { bigint, boolean, integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import { authzLevel, characterStatus } from './enums';
 import { apUser } from './user';
 
@@ -29,6 +29,14 @@ export const apCharacter = pgTable('ap_character', {
   statusChangedAt: timestamp('status_changed_at', { withTimezone: true }),
   statusReason: text('status_reason'),
   authzLevel: authzLevel('authz_level').notNull().default('member'),
+  // SPEC §5.3 / Stage 12. Last-known state cached on the row by the
+  // location-poll job; nullable until the first successful tick. No FK to
+  // `universe_system` — a universe rebuild would otherwise have to honour
+  // every stale pointer, and the next poll tick overwrites the value anyway.
+  lastSystemId: integer('last_system_id'),
+  lastShipTypeId: integer('last_ship_type_id'),
+  lastOnline: boolean('last_online'),
+  lastLocationAt: timestamp('last_location_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

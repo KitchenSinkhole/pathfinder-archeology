@@ -278,11 +278,30 @@ export const mapConnectionAccessLoadSchema = z.object({
   data: z.unknown().optional(),
 });
 
+/**
+ * `characterUpdate` envelope load. Emitted by the Stage 12 location-poll on
+ * every tick that changes the character's persisted state — broadcast on the
+ * same `map:<id>` LISTEN channels as `mapUpdate` (one notification per tracked
+ * map). The bus discriminates by the `task` discriminator in the pg_notify
+ * payload (see `src/lib/realtime/bus.ts`).
+ *
+ * `systemId` and `shipTypeId` are nullable because the poll persists the last
+ * known values; before the first successful online tick (or while offline)
+ * either may be `null`. `online` is `null` between the very first enqueue and
+ * the first completed tick.
+ *
+ * Numbers ride the wire (JSON has no `bigint`); the EVE character id and
+ * solar-system id both fit comfortably in `number.MAX_SAFE_INTEGER`.
+ */
 export const characterUpdateLoadSchema = z.object({
   characterId: z.number().int().positive(),
-  // tightened in Stage 6: status/location payload.
-  data: z.unknown().optional(),
+  online: z.boolean().nullable(),
+  systemId: z.number().int().nullable(),
+  shipTypeId: z.number().int().nullable(),
+  locationAt: z.string().nullable(),
 });
+
+export type CharacterUpdateLoad = z.infer<typeof characterUpdateLoadSchema>;
 
 export const logDataLoadSchema = z.object({
   mapId: z.number().int().positive(),

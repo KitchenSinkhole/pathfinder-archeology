@@ -1,15 +1,7 @@
 import 'server-only';
 import { and, eq, type InferInsertModel } from 'drizzle-orm';
-import { db } from '@/db/client';
-import {
-  apMapSystem,
-  systemStatus,
-  universeConstellation,
-  universeRegion,
-  universeSystem,
-  universeSystemStatic,
-  universeWormhole,
-} from '@/db/schema';
+import { apMapSystem, systemStatus } from '@/db/schema';
+import { buildSystemNode } from '../systemNode';
 import { commitMapEvent, type ActionResult } from './core';
 import type { MapEventPatch, MapEventPayload } from '@/lib/realtime/protocol';
 
@@ -20,7 +12,6 @@ import type { MapEventPatch, MapEventPayload } from '@/lib/realtime/protocol';
  * intel/tags/status survive a re-add.
  */
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type SystemStatus = (typeof systemStatus.enumValues)[number];
 
 export type AddSystemInput = {
@@ -158,56 +149,6 @@ export function updateSystem(input: UpdateSystemInput): Promise<ActionResult<Map
   });
 }
 
-/** Re-read a placed system flattened with its universe metadata + statics (the `system.added` body). */
-async function buildSystemNode(
-  tx: Tx,
-  mapSystemId: bigint,
-): Promise<MapEventPatch<'system.added'>> {
-  const [row] = await tx
-    .select({
-      id: apMapSystem.id,
-      systemId: apMapSystem.systemId,
-      alias: apMapSystem.alias,
-      tag: apMapSystem.tag,
-      status: apMapSystem.status,
-      locked: apMapSystem.locked,
-      positionX: apMapSystem.positionX,
-      positionY: apMapSystem.positionY,
-      name: universeSystem.name,
-      security: universeSystem.security,
-      trueSec: universeSystem.trueSec,
-      effect: universeSystem.effect,
-      constellationName: universeConstellation.name,
-      regionName: universeRegion.name,
-    })
-    .from(apMapSystem)
-    .innerJoin(universeSystem, eq(apMapSystem.systemId, universeSystem.id))
-    .innerJoin(universeConstellation, eq(universeSystem.constellationId, universeConstellation.id))
-    .innerJoin(universeRegion, eq(universeConstellation.regionId, universeRegion.id))
-    .where(eq(apMapSystem.id, mapSystemId));
-  if (!row) throw new Error('System row vanished mid-transaction.');
-
-  const staticRows = await tx
-    .select({ code: universeWormhole.name })
-    .from(universeSystemStatic)
-    .innerJoin(universeWormhole, eq(universeSystemStatic.typeId, universeWormhole.typeId))
-    .where(eq(universeSystemStatic.systemId, row.systemId));
-
-  return {
-    id: row.id.toString(),
-    systemId: row.systemId,
-    name: row.name,
-    alias: row.alias,
-    tag: row.tag,
-    status: row.status,
-    security: row.security,
-    trueSec: row.trueSec,
-    effect: row.effect,
-    regionName: row.regionName,
-    constellationName: row.constellationName,
-    statics: staticRows.map((s) => s.code),
-    locked: row.locked,
-    positionX: row.positionX,
-    positionY: row.positionY,
-  };
-}
+// `buildSystemNode` moved to `../systemNode.ts` so the Stage 12.2 location-poll
+// fold (`src/lib/jobs/locationCommit.ts`) can share the same payload builder
+// without inheriting this file's `'server-only'` guard.

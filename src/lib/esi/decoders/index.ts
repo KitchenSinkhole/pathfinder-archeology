@@ -9,3 +9,11 @@
 export { statusSchema, type EsiStatus } from './status';
 export { locationSchema, type EsiLocation } from './location';
 export { routeSchema, type EsiRoute } from './route';
+export { characterOnlineSchema, type EsiCharacterOnline } from './online';
+export { characterShipSchema, type EsiCharacterShip } from './ship';
+export {
+  universeSystemJumpsSchema,
+  universeSystemKillsSchema,
+  type EsiUniverseSystemJumps,
+  type EsiUniverseSystemKills,
+} from './systemActivity';

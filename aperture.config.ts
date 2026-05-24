@@ -113,7 +113,8 @@ export const apertureConfig = {
   /**
    * Default lifetime of a (non-EOL) wormhole connection from creation. Legacy
    * `EXPIRE_CONNECTIONS_WH = 172800s` (48h). Used for the canvas "expires in X"
-   * hint when the connection has not yet been flagged EOL.
+   * hint when the connection has not yet been flagged EOL, and by Stage 11's
+   * expired-connection cleanup cron as the practical lifetime cap.
    */
   WORMHOLE_DEFAULT_LIFETIME_MS: 172_800_000,
 
@@ -122,6 +123,48 @@ export const apertureConfig = {
    * this`). Legacy `EXPIRE_SIGNATURES = 259200s` (5d); matches SPEC §347.
    */
   SIGNATURE_DEFAULT_TTL_MS: 259_200_000,
+
+  /**
+   * graphile-worker concurrency: how many task handlers may run in parallel in
+   * one worker process. The current task set is light (housekeeping deletes +
+   * one ESI fetch); a single worker is enough. Stage 11.
+   */
+  JOB_WORKER_CONCURRENCY: 4,
+
+  /**
+   * graphile-worker job poll interval (ms). LISTEN/NOTIFY drives dispatch on
+   * the fast path; this is the fallback poll cadence for scheduled retries.
+   * Stage 11.
+   */
+  JOB_POLL_INTERVAL_MS: 2_000,
+
+  /**
+   * `ap_job_run.error_text` cap. Caller's `Error.message` is truncated to keep
+   * pathological stack traces from blowing up the row. Stage 11.
+   */
+  JOB_INSTRUMENTATION_ERROR_MAX_LENGTH: 2_000,
+
+  /**
+   * `ap_job_run.notes` cap, applied to `JSON.stringify(notes).length`. A handler
+   * that returns a 1 MB blob shouldn't ship to history; large details belong in
+   * `ap_map_event` or job logs. Stage 11.
+   */
+  JOB_INSTRUMENTATION_NOTES_MAX_BYTES: 8_000,
+
+  /**
+   * Maps soft-deleted (`ap_map.deleted_at IS NOT NULL`) more than this many
+   * days ago are hard-purged at EVE downtime. Legacy `DAYS_UNTIL_MAP_DELETION`
+   * (30). Stage 11.
+   */
+  MAP_PURGE_GRACE_DAYS: 30,
+
+  /**
+   * Batch cap for housekeeping jobs that delete row-by-row through
+   * `commitMapEvent`. Bounds the per-run worst case: a thundering pg_notify
+   * herd at downtime is still bounded, and a partial batch means the next
+   * run picks up the rest. Stage 11.
+   */
+  JOB_DELETE_BATCH_SIZE: 500,
 } as const;
 
 export type ApertureConfig = typeof apertureConfig;

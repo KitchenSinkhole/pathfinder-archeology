@@ -17,7 +17,10 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "sde:bootstrap": "tsx scripts/sde-bootstrap.ts",
-    "seed:demo-map": "tsx scripts/seed-demo-map.ts"
+    "seed:demo-map": "tsx scripts/seed-demo-map.ts",
+    "worker:dev": "tsx scripts/worker-dev.ts",
+    "worker:once": "tsx scripts/worker-once.ts",
+    "jobs:status": "tsx scripts/jobs-status.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

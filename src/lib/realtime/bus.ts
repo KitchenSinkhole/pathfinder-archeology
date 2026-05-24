@@ -1,7 +1,12 @@
 import { Client } from 'pg';
 import { env } from '@/lib/env';
 import { apertureConfig } from '../../../aperture.config';
-import type { MapEventPayload, ServerToClientMessage } from './protocol';
+import {
+  characterUpdateLoadSchema,
+  type CharacterUpdateLoad,
+  type MapEventPayload,
+  type ServerToClientMessage,
+} from './protocol';
 
 /**
  * Server-side Postgres LISTEN multiplexer — the read end of the §6.5 realtime
@@ -152,18 +157,34 @@ class RealtimeBus {
       data = {};
     }
 
-    const kind =
-      data && typeof data === 'object' && typeof (data as { kind?: unknown }).kind === 'string'
-        ? (data as { kind: string }).kind
+    // Discriminator: the Stage 12.3 location-poll wraps its broadcasts as
+    // `{ task: 'characterUpdate', load: {...} }`. `commitMapEvent` payloads
+    // have no top-level `task` field (the trigger forwards the raw event
+    // payload, which discriminates internally on `kind`). The bus routes by
+    // the presence of `task` and falls through to mapUpdate otherwise.
+    const taskTag =
+      data && typeof data === 'object' && typeof (data as { task?: unknown }).task === 'string'
+        ? (data as { task: string }).task
         : undefined;
 
-    // Trusted passthrough: the trigger forwards a payload built by
-    // `commitMapEvent` (already validated against `mapEventPayloadSchema`), so
-    // the bus re-wraps it without re-parsing. Clients revalidate on receipt.
-    const message: ServerToClientMessage = {
-      task: 'mapUpdate',
-      load: { mapId: Number(mapId), kind, data: data as MapEventPayload | undefined },
-    };
+    let message: ServerToClientMessage;
+    if (taskTag === 'characterUpdate') {
+      const parsed = characterUpdateLoadSchema.safeParse((data as { load?: unknown }).load);
+      if (!parsed.success) return; // malformed envelope; drop silently
+      message = { task: 'characterUpdate', load: parsed.data as CharacterUpdateLoad };
+    } else {
+      const kind =
+        data && typeof data === 'object' && typeof (data as { kind?: unknown }).kind === 'string'
+          ? (data as { kind: string }).kind
+          : undefined;
+      // Trusted passthrough: the trigger forwards a payload built by
+      // `commitMapEvent` (already validated against `mapEventPayloadSchema`),
+      // so the bus re-wraps it without re-parsing. Clients revalidate.
+      message = {
+        task: 'mapUpdate',
+        load: { mapId: Number(mapId), kind, data: data as MapEventPayload | undefined },
+      };
+    }
 
     for (const listener of set) {
       try {
