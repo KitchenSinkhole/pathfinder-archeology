@@ -25,6 +25,7 @@ const handle = app.getRequestHandler();
 
 app.prepare().then(async () => {
   const { attachWsServer } = await import('@/lib/realtime/wsServer');
+  const { startWorker, stopWorker } = await import('@/lib/jobs/runner');
 
   const server = createServer((req, res) => {
     handle(req, res);
@@ -32,7 +33,30 @@ app.prepare().then(async () => {
 
   attachWsServer(server);
 
-  server.listen(port, () => {
+  server.listen(port, async () => {
     console.log(`▲ Aperture ready on http://${hostname}:${port} (ws ${dev ? 'dev' : 'prod'})`);
+    try {
+      await startWorker();
+      console.log('▲ graphile-worker started');
+    } catch (err) {
+      console.error('graphile-worker boot failed:', err);
+    }
   });
+
+  // Stop the worker before letting the HTTP server close; graphile-worker
+  // signals are disabled (runner.ts noHandleSignals) so we own shutdown.
+  let shuttingDown = false;
+  const shutdown = async (signal: NodeJS.Signals) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`Received ${signal}, shutting down…`);
+    try {
+      await stopWorker();
+    } catch (err) {
+      console.error('stopWorker failed:', err);
+    }
+    server.close(() => process.exit(0));
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 });

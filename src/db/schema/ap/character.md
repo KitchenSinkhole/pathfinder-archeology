@@ -16,6 +16,9 @@
 - `esi_scopes` — `text[]`.
 - `status` — `character_status` enum, default `active`; `status_changed_at` / `status_reason` accompany it.
 - `authz_level` — `authz_level` enum, default `member`.
+- `last_system_id`, `last_ship_type_id` — `integer`, nullable. Last-known location state cached by the Stage 12 `location-poll` job. No FK to `universe_system` / `universe_type` — a universe rebuild would otherwise have to honour every stale pointer, and the next poll tick overwrites the value anyway.
+- `last_online` — `boolean`, nullable. Most recent `getCharacterOnline` result; `NULL` before the first poll tick.
+- `last_location_at` — `timestamptz`, nullable. When `last_system_id` was last refreshed; stale when the character is offline (offline ticks update only `last_online`).
 - `created_at` / `updated_at` — `timestamptz`, default `now()`.
 
 The persisted refresh-token rotation invariant (SPEC §7, footgun #2) writes `esi_refresh_token` here **before** the rotated access token is returned to any caller — see `src/lib/auth/eve-provider.ts`.

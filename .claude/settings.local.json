@@ -2,7 +2,23 @@
   "permissions": {
     "allow": [
       "Bash(Get-ChildItem -Path 'D:\\\\DEV\\\\pathfinder\\\\app' -Directory)",
-      "Bash(Select-Object -ExpandProperty Name)"
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(pnpm db:generate --name job_run)",
+      "Bash(pnpm typecheck *)",
+      "Bash(pnpm lint *)",
+      "Bash(pnpm test *)",
+      "Bash(docker compose *)",
+      "Bash(docker version *)",
+      "Bash(git stash *)",
+      "Bash(cat C:\\\\\\\\Users\\\\\\\\colt2\\\\\\\\.claude\\\\\\\\projects\\\\\\\\C--Users-colt2-Documents-GitHub-KitchenSinkhole-aperture\\\\\\\\0634d139-18d1-45f5-aa36-7fba654b1826\\\\\\\\tool-results\\\\\\\\bcd2z0723.txt)",
+      "Bash(grep -oE 'system_jumps[^}]{0,300}')",
+      "Bash(python3 -c \"import json; d = json.load\\(open\\('docs/ESI/swagger.json'\\)\\); print\\(json.dumps\\(d['paths']['/universe/system_jumps/'], indent=2\\)\\)\")",
+      "Bash(node *)",
+      "Bash(pnpm db:generate --help)",
+      "Bash(pnpm db:generate --custom --name activity_rollup)",
+      "Bash(pnpm db:generate --custom --name partman_retention)",
+      "Bash(pnpm db:generate --name map_character_tracking)",
+      "Bash(pnpm db:generate --name character_location_state)"
     ]
   }
 }

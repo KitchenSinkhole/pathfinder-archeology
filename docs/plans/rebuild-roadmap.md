@@ -88,9 +88,10 @@ Infrastructure and the §11 Phase-0 deliverables that constrain every later phas
 ## Phase 3 — Background jobs + external integrations
 
 ### Stage 11 — graphile-worker runtime + standard jobs
-**Goal:** Single Node job runner backed by `graphile-worker` and Postgres LISTEN/NOTIFY dispatch. Port the legacy 13 jobs minus the dropped ones: signature reap, EOL connection expiry, deleteMapData (30-day grace cascade), per-system stats refresh, weekly activity-log materialized-view refresh (`REFRESH MATERIALIZED VIEW CONCURRENTLY`), structure resolution. Job duration + failure metrics are observable.
-**Touches:** `src/lib/jobs/index.ts`, `src/lib/jobs/*.ts`, `src/db/schema/pf/system_stats.ts` (partitioned), `src/db/views/activity_rollup.sql`.
-**Done when:** All cron jobs run on schedule for one full week with success metrics visible.
+**Goal:** Single Node job runner backed by `graphile-worker` and Postgres LISTEN/NOTIFY dispatch, embedded in the same Next.js deployment. Ports the legacy 13 jobs minus the dropped ones: signature reap, EOL connection expiry, expired-connection cleanup (48h cap), `deleteMapData` (30-day grace cascade), per-system stats refresh (ESI → `ap_system_stats`). New jobs that have no legacy analogue: hourly activity-log materialized-view refresh (`REFRESH MATERIALIZED VIEW CONCURRENTLY ap_activity_rollup`) and daily `pg_partman` partition maintenance. Job duration + failure metrics persist to `ap_job_run`. Row-level cleanups flow through `commitMapEvent` so client tabs see the disappearance.
+**Touches:** `src/lib/jobs/runner.ts`, `src/lib/jobs/registry.ts`, `src/lib/jobs/withInstrumentation.ts`, `src/lib/jobs/tasks/*.ts`, `src/db/migrations/0006_jobs.sql`, `src/db/migrations/0007_activity_rollup.sql`, `src/db/views/activity_rollup.sql`, `server.ts`, `src/lib/aperture.config.ts`.
+**Done when:** All cron jobs run on schedule for one full week with success metrics visible in `ap_job_run`.
+**Deferrals carried elsewhere:** `updateSovereigntyData` → Stage 13; `cleanUpCharacterData` → Stage 15; full `structure-resolve` handler body → Stage 17 (Stage 11 ships only a no-op stub so the cron entry and observability row exist).
 
 ### Stage 12 — Server-side character location tracking (hot path)
 **Goal:** One `graphile-worker` job per tracked character, running independent of any tab. Adaptive polling intervals (`LOCATION_POLL_ONLINE_MS` / `LOCATION_POLL_OFFLINE_MS`) hard-coded. On a non-gate-adjacent location change (lookup against `universe_stargate_edge`), upsert both systems onto the map and create an assumed wormhole connection. Closing a tab does not stop tracking.
@@ -98,9 +99,9 @@ Infrastructure and the §11 Phase-0 deliverables that constrain every later phas
 **Done when:** A character tracked with no browser tab open still emits map updates; gate jumps are not falsely flagged as wormholes.
 
 ### Stage 13 — Read-side external integrations
-**Goal:** zKillboard client (recent kills overlay), EVE-Scout sync, DOTLAN/EVEEYE/Anoik deep links, CCP image server URL helpers, GitHub changelog fetch. All client modules use the Stage 4 ESI pattern (Zod-decoded, breakered) where applicable.
-**Touches:** `src/lib/integrations/zkb.ts`, `src/lib/integrations/evescout.ts`, `src/lib/integrations/github.ts`, `src/components/sidebar/IntelModule.tsx`.
-**Done when:** Intel/killboard modules show live data; deep links resolve to the right external pages.
+**Goal:** zKillboard client (recent kills overlay), EVE-Scout sync, DOTLAN/EVEEYE/Anoik deep links, CCP image server URL helpers, GitHub changelog fetch. All client modules use the Stage 4 ESI pattern (Zod-decoded, breakered) where applicable. Also lands the legacy `updateSovereigntyData` job (deferred from Stage 11): a `sov-fw-refresh` graphile-worker task hosted on the Stage 11 runtime that pulls `getSovereigntyMap` + `getFactionWarSystems` from ESI and writes the sov/FW state used by the intel sidebar.
+**Touches:** `src/lib/integrations/zkb.ts`, `src/lib/integrations/evescout.ts`, `src/lib/integrations/github.ts`, `src/components/sidebar/IntelModule.tsx`, `src/lib/jobs/tasks/sovFwRefresh.ts`.
+**Done when:** Intel/killboard modules show live data; deep links resolve to the right external pages; the `sov-fw-refresh` job is running on schedule with success in `ap_job_run`.
 
 ### Stage 14 — Webhook fan-out
 **Goal:** Slack + Discord dispatcher reading `ap_map_webhook` rows. Rally events and history events fan out to the configured channels. Failure modes (404 webhook, rate limit) surface to the admin UI but never block the underlying map mutation.
@@ -112,9 +113,9 @@ Infrastructure and the §11 Phase-0 deliverables that constrain every later phas
 ## Phase 4 — Admin, permissions, parity catch-up
 
 ### Stage 15 — Permissions & access control
-**Goal:** `ap_role`, `ap_character_role`, `ap_map_role_access`, `ap_corporation_right` modeled and wired. `authz_level` enum gates admin actions; `character_status` enum enforces kick/ban. Every controller action has an explicit server-side right check (closes SPEC §11 Q8 — the legacy `map_share` / `map_import` / `map_export` bypass).
-**Touches:** `src/db/schema/pf/role.ts`, `src/lib/auth/rights.ts`, `src/lib/auth/middleware.ts`.
-**Done when:** Role-restricted maps are invisible to non-role characters across both API and UI; integration tests prove no bypass path remains.
+**Goal:** `ap_role`, `ap_character_role`, `ap_map_role_access`, `ap_corporation_right` modeled and wired. `authz_level` enum gates admin actions; `character_status` enum enforces kick/ban. Every controller action has an explicit server-side right check (closes SPEC §11 Q8 — the legacy `map_share` / `map_import` / `map_export` bypass). Also lands the legacy `cleanUpCharacterData` job (deferred from Stage 11): a `character-cleanup` graphile-worker task hosted on the Stage 11 runtime that processes pending `character_status` kick/ban transitions on the schedule the admin actions need.
+**Touches:** `src/db/schema/pf/role.ts`, `src/lib/auth/rights.ts`, `src/lib/auth/middleware.ts`, `src/lib/jobs/tasks/characterCleanup.ts`.
+**Done when:** Role-restricted maps are invisible to non-role characters across both API and UI; integration tests prove no bypass path remains; `character-cleanup` is running on schedule with success in `ap_job_run`.
 
 ### Stage 16 — Admin panel + setup wizard
 **Goal:** Admin routes for maps list, members, notification config, global settings. Kick / ban / activate / hard-delete actions are CSRF-safe and POST-only (no GET mutations). Setup wizard route gated by proxy HTTP Basic. Cookie `SameSite` / `Secure` flags set in app code (closes SPEC §11 Q9). Decide kick/ban orphaning rule (Q10) and document it.
@@ -122,9 +123,9 @@ Infrastructure and the §11 Phase-0 deliverables that constrain every later phas
 **Done when:** Every admin action from feature matrix §8 works; setup wizard provisions a fresh deployment end-to-end.
 
 ### Stage 17 — UI modules & dialogs catch-up
-**Goal:** Sweep the remaining 13 dialogs and 13 modules from spec docs 06–08 — gallery, task manager, shortcuts panel, status pages, system info dialog, system effects, killboard popouts, etc. — to feature-matrix parity. Replace DataTables (TanStack Table), Summernote (Tiptap), PNotify (sonner) wholesale per SPEC §5.4.
-**Touches:** `src/components/modules/**`, `src/components/dialogs/**`.
-**Done when:** SPEC §9 Phase 4 gate is green — every row in feature-matrix §§ 1–14 not dropped in §8.2 has a working implementation; SPEC §11 open-question list is closed except deferred items.
+**Goal:** Sweep the remaining 13 dialogs and 13 modules from spec docs 06–08 — gallery, task manager, shortcuts panel, status pages, system info dialog, system effects, killboard popouts, etc. — to feature-matrix parity. Replace DataTables (TanStack Table), Summernote (Tiptap), PNotify (sonner) wholesale per SPEC §5.4. Also lands the structure intel module's data dependencies: introduces `ap_structure` (and any related rows), and fills in the body of the `structure-resolve` graphile-worker task that Stage 11.6 registered as a no-op stub — handler resolves stale `ap_structure` rows via ESI `getUniverseStructure` on the Stage 11 runtime.
+**Touches:** `src/components/modules/**`, `src/components/dialogs/**`, `src/db/schema/ap/structure.ts`, `src/db/migrations/<next>_structure.sql`, `src/lib/jobs/tasks/structureResolve.ts` (replace stub with real handler).
+**Done when:** SPEC §9 Phase 4 gate is green — every row in feature-matrix §§ 1–14 not dropped in §8.2 has a working implementation; SPEC §11 open-question list is closed except deferred items; `structure-resolve` is doing real work (no longer returning the `deferred: 'stage-17'` marker into `ap_job_run.notes`).
 
 ---
 

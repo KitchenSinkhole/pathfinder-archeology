@@ -43,6 +43,41 @@
       "when": 1779475285225,
       "tag": "0005_blue_sway",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779572573412,
+      "tag": "0006_job_run",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779575936856,
+      "tag": "0007_activity_rollup",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779599053147,
+      "tag": "0008_partman_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1779600184244,
+      "tag": "0009_map_character_tracking",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1779600677920,
+      "tag": "0010_character_location_state",
+      "breakpoints": true
     }
   ]
 }

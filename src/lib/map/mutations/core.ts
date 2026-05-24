@@ -1,4 +1,9 @@
-import 'server-only';
+// No `import 'server-only'` here: this is the low-level commit primitive,
+// consumed by the high-level mutation wrappers (signatures.ts / connections.ts /
+// systems.ts — all of which DO carry `'server-only'` and define the surface a
+// client could accidentally import) AND by the Stage 11 graphile-worker tasks,
+// which run under plain Node via server.ts and would crash on the bare
+// `server-only/index.js` throw (no React `react-server` export condition).
 import { sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { apMapEvent } from '@/db/schema';

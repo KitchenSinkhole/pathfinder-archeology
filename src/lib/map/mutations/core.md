@@ -25,3 +25,6 @@ Side effects: one event-row insert (the trigger fires `pg_notify`); nothing else
 
 ### type CommitMapEventArgs<K>
 The argument bag for `commitMapEvent` (see parameters above).
+
+### Notes
+- **No `import 'server-only'`.** This module is the low-level commit primitive consumed by the high-level mutation wrappers (`signatures.ts` / `connections.ts` / `systems.ts` — all of which carry the guard) AND by the Stage 11 graphile-worker tasks under `src/lib/jobs/tasks/`, which run under plain Node (no React `react-server` export condition) and would crash on the bare `server-only/index.js` throw. The client-bundle guard lives at the wrapper layer instead, which is the API surface a Client Component might mistakenly reach for.

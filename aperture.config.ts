@@ -101,6 +101,64 @@ export const apertureConfig = {
     'esi-location.read_ship_type.v1',
     'esi-location.read_online.v1',
   ],
+
+  /**
+   * graphile-worker concurrency: how many task handlers may run in parallel in
+   * one worker process. The current task set is light (housekeeping deletes +
+   * one ESI fetch); a single worker is enough. Stage 11.
+   */
+  JOB_WORKER_CONCURRENCY: 4,
+
+  /**
+   * graphile-worker job poll interval (ms). LISTEN/NOTIFY drives dispatch on
+   * the fast path; this is the fallback poll cadence for scheduled retries.
+   * Stage 11.
+   */
+  JOB_POLL_INTERVAL_MS: 2_000,
+
+  /**
+   * `ap_job_run.error_text` cap. Caller's `Error.message` is truncated to keep
+   * pathological stack traces from blowing up the row. Stage 11.
+   */
+  JOB_INSTRUMENTATION_ERROR_MAX_LENGTH: 2_000,
+
+  /**
+   * `ap_job_run.notes` cap, applied to `JSON.stringify(notes).length`. A handler
+   * that returns a 1 MB blob shouldn't ship to history; large details belong in
+   * `ap_map_event` or job logs. Stage 11.
+   */
+  JOB_INSTRUMENTATION_NOTES_MAX_BYTES: 8_000,
+
+  /**
+   * EOL connections are deleted this many seconds after `is_eol` was first
+   * flipped to true. Legacy `PATHFINDER.CACHE.EXPIRE_CONNECTIONS_EOL = 15300`
+   * (4h 15m); kept verbatim so chain ops behaviour matches. Only applied on
+   * maps where `ap_map.delete_eol_connections = true`. Stage 11.
+   */
+  EOL_CONNECTION_EXPIRY_SECONDS: 15_300,
+
+  /**
+   * Wormhole connections older than this many seconds are deleted regardless
+   * of EOL flag — the practical wormhole-lifetime cap. Legacy
+   * `PATHFINDER.CACHE.EXPIRE_CONNECTIONS_WH = 172800` (48h). Only applied on
+   * maps where `ap_map.delete_expired_connections = true`. Stage 11.
+   */
+  WH_CONNECTION_EXPIRY_SECONDS: 172_800,
+
+  /**
+   * Maps soft-deleted (`ap_map.deleted_at IS NOT NULL`) more than this many
+   * days ago are hard-purged at EVE downtime. Legacy `DAYS_UNTIL_MAP_DELETION`
+   * (30). Stage 11.
+   */
+  MAP_PURGE_GRACE_DAYS: 30,
+
+  /**
+   * Batch cap for housekeeping jobs that delete row-by-row through
+   * `commitMapEvent`. Bounds the per-run worst case: a thundering pg_notify
+   * herd at downtime is still bounded, and a partial batch means the next
+   * run picks up the rest. Stage 11.
+   */
+  JOB_DELETE_BATCH_SIZE: 500,
 } as const;
 
 export type ApertureConfig = typeof apertureConfig;

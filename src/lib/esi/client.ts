@@ -27,6 +27,8 @@ import { inDowntimeWindow } from './downtime';
  *   - `EsiRateLimitError`    — ESI error budget exhausted; carries reset seconds.
  *   - `EsiHttpError`         — non-2xx / network / timeout (counted by breaker).
  *   - `EsiDecodeError`       — 2xx body failed Zod validation (schema drift).
+ *   - `EsiTokenError`        — character-authed call couldn't resolve a token
+ *                              (missing row, refresh failed, decryption failed).
  */
 
 export class EsiBreakerOpenError extends Error {
@@ -74,6 +76,24 @@ export class EsiDecodeError extends Error {
   }
 }
 
+export class EsiTokenError extends Error {
+  /**
+   * Raised when a character-authed call can't resolve a usable access token —
+   * either the row has no stored token, the refresh-token exchange failed, or
+   * decryption blew up. The Stage 12 location-poll uses this to stop polling
+   * a character whose token has gone bad; re-enabling tracking later requires
+   * the user to re-authenticate.
+   */
+  constructor(
+    public readonly characterId: bigint,
+    public readonly cause?: unknown,
+  ) {
+    const reason = cause instanceof Error ? cause.message : 'no usable token';
+    super(`ESI token unavailable for character ${characterId}: ${reason}`);
+    this.name = 'EsiTokenError';
+  }
+}
+
 export interface EsiCallOptions<T> {
   /** Zod schema the 200 body is parsed through. */
   schema: z.ZodType<T>;
@@ -102,14 +122,22 @@ async function resolveCharacterToken(characterId: bigint): Promise<string> {
     .where(eq(apCharacter.id, characterId));
 
   if (!row?.accessToken || !row.expires) {
-    throw new Error(`No ESI access token stored for character ${characterId}`);
+    throw new EsiTokenError(characterId);
   }
 
   const bufferMs = apertureConfig.SSO_TOKEN_REFRESH_BUFFER_S * 1000;
   if (row.expires.getTime() - bufferMs <= Date.now()) {
-    return refreshAccessToken(characterId);
+    try {
+      return await refreshAccessToken(characterId);
+    } catch (err) {
+      throw new EsiTokenError(characterId, err);
+    }
   }
-  return decryptToken(row.accessToken);
+  try {
+    return decryptToken(row.accessToken);
+  } catch (err) {
+    throw new EsiTokenError(characterId, err);
+  }
 }
 
 function buildUrl(
