@@ -161,6 +161,8 @@ async function ensureConnection(
           isFrigate: apMapConnection.isFrigate,
           preserveMass: apMapConnection.preserveMass,
           isRolling: apMapConnection.isRolling,
+          eolAt: apMapConnection.eolAt,
+          createdAt: apMapConnection.createdAt,
         });
       return {
         id: row!.id.toString(),
@@ -173,6 +175,8 @@ async function ensureConnection(
         isFrigate: row!.isFrigate,
         preserveMass: row!.preserveMass,
         isRolling: row!.isRolling,
+        eolAt: row!.eolAt ? row!.eolAt.toISOString() : null,
+        createdAt: row!.createdAt.toISOString(),
       };
     },
   });
