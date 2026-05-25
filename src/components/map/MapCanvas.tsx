@@ -6,9 +6,11 @@ import {
   ConnectionMode,
   Controls,
   ReactFlow,
+  applyNodeChanges,
   type Connection,
   type Edge,
   type Node,
+  type NodeChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import type { MapEventPayload, MapSystemNode, MapViewData } from '@/types';
@@ -54,6 +56,15 @@ export function MapCanvas({
 }) {
   const [selected, setSelected] = useState<SelectionRef | null>(null);
   const [viewData, setViewData] = useState<MapViewData>(data);
+  const [nodes, setNodes] = useState<Node<SystemNodeData>[]>(() =>
+    data.systems.map((s) => ({
+      id: s.id,
+      type: 'system' as const,
+      position: { x: s.positionX, y: s.positionY },
+      data: s,
+      selected: false,
+    })),
+  );
   const appliedEventIds = useRef<Set<number>>(new Set());
 
   useMapSubscription(Number(data.map.id));
@@ -110,6 +121,10 @@ export function MapCanvas({
 
   // ---- xyflow → server callbacks -----------------------------------------
   const mapId = viewData.map.id;
+
+  const onNodesChange = useCallback((changes: NodeChange<Node<SystemNodeData>>[]) => {
+    setNodes((nds) => applyNodeChanges(changes, nds));
+  }, []);
 
   const onNodeDragStop = useCallback(
     (_event: React.MouseEvent | unknown, node: Node) => {
@@ -261,21 +276,46 @@ export function MapCanvas({
 
   // ---- xyflow nodes/edges ------------------------------------------------
   //
-  // xyflow treats `node.selected` / `edge.selected` as the source of truth when
-  // `nodes` / `edges` are passed as props. Rebuilding the arrays without that
-  // flag would wipe selection on every optimistic patch (e.g. a keystroke in
-  // the inspector), so we reflect our `selected` state back into the objects.
-  const nodes = useMemo<Node<SystemNodeData>[]>(
-    () =>
-      viewData.systems.map((s) => ({
-        id: s.id,
-        type: 'system',
-        position: { x: s.positionX, y: s.positionY },
-        data: { ...s, onAliasOrTagCommit },
-        selected: selected?.kind === 'system' && selected.id === s.id,
-      })),
-    [viewData.systems, onAliasOrTagCommit, selected],
-  );
+  // `nodes` is xyflow-managed via `applyNodeChanges` (so the visual drag is
+  // smooth — without `onNodesChange` xyflow would emit position events with
+  // nowhere to land). When `viewData.systems` or `selected` change we
+  // reconcile xyflow's nodes state against them, preserving each node's
+  // in-flight drag position (xyflow sets `dragging: true` mid-drag) and
+  // xyflow-internal fields (`measured`, etc.) by spreading the existing node
+  // — without that xyflow would re-measure on every sync and the nodes
+  // briefly flicker out. We sync during render (rather than in an effect) so
+  // React discards the pre-sync render before commit instead of cascading.
+  // `onAliasOrTagCommit` isn't in the sync key because it's stable for the
+  // component's lifetime (its dep chain bottoms out at `mapId` + `useCallback`s
+  // with empty deps).
+  const [lastSync, setLastSync] = useState<{
+    systems: MapViewData['systems'];
+    selected: SelectionRef | null;
+  } | null>(null);
+  if (
+    !lastSync ||
+    lastSync.systems !== viewData.systems ||
+    lastSync.selected !== selected
+  ) {
+    setLastSync({ systems: viewData.systems, selected });
+    setNodes((prev) => {
+      const prevById = new Map(prev.map((n) => [n.id, n]));
+      return viewData.systems.map((s) => {
+        const existing = prevById.get(s.id);
+        const position = existing?.dragging
+          ? existing.position
+          : { x: s.positionX, y: s.positionY };
+        return {
+          ...(existing ?? {}),
+          id: s.id,
+          type: 'system' as const,
+          position,
+          data: { ...s, onAliasOrTagCommit },
+          selected: selected?.kind === 'system' && selected.id === s.id,
+        };
+      });
+    });
+  }
 
   const edges = useMemo<Edge<ConnectionEdgeData>[]>(
     () =>
@@ -306,6 +346,7 @@ export function MapCanvas({
           onNodeClick={onNodeClick}
           onEdgeClick={onEdgeClick}
           onPaneClick={onPaneClick}
+          onNodesChange={onNodesChange}
           onNodeDragStop={onNodeDragStop}
           onConnect={onConnect}
           nodesDraggable
