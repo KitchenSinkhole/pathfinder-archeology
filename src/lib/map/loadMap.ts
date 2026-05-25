@@ -41,7 +41,7 @@ export type MapSystemNode = {
   effect: string | null;
   regionName: string;
   constellationName: string;
-  /** Wormhole static codes (e.g. `["C247", "N062"]`); empty for k-space. */
+  /** Target-class labels for each wormhole static (e.g. `["C3", "C5"]`); empty for k-space. */
   statics: string[];
   locked: boolean;
   positionX: number;
@@ -246,11 +246,12 @@ async function loadStatics(systemIds: number[]): Promise<Map<number, string[]>> 
   const grouped = new Map<number, string[]>();
   if (systemIds.length === 0) return grouped;
   const rows = await db
-    .select({ systemId: universeSystemStatic.systemId, code: universeWormhole.name })
+    .select({ systemId: universeSystemStatic.systemId, code: universeWormhole.targetClass })
     .from(universeSystemStatic)
     .innerJoin(universeWormhole, eq(universeSystemStatic.typeId, universeWormhole.typeId))
     .where(inArray(universeSystemStatic.systemId, systemIds));
   for (const r of rows) {
+    if (!r.code) continue; // K162: null target_class resolves from the far side
     const list = grouped.get(r.systemId);
     if (list) list.push(r.code);
     else grouped.set(r.systemId, [r.code]);

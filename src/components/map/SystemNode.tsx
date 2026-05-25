@@ -3,7 +3,7 @@
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { Lock } from 'lucide-react';
 import type { MapSystemNode } from '@/lib/map/loadMap';
-import { systemStatusColor } from './styling';
+import { systemClassColor, systemStatusColor } from './styling';
 import { InlineTextEdit } from './InlineTextEdit';
 
 // System tile. Status stripe + security badge + tag + alias/name + lock + a
@@ -38,7 +38,10 @@ export function SystemNode({ data, selected }: NodeProps & { data: SystemNodeDat
       <Handle type="source" position={Position.Left} style={{ opacity: 0.2 }} />
 
       <div className="flex items-center gap-1.5 px-2 py-1">
-        <span className="rounded bg-muted px-1 font-mono text-[10px] leading-tight text-muted-foreground">
+        <span
+          className="rounded bg-muted px-1 font-mono text-[10px] leading-tight"
+          style={{ color: systemClassColor(data.security) }}
+        >
           {securityLabel(data)}
         </span>
         {onAliasOrTagCommit ? (
@@ -77,7 +80,13 @@ export function SystemNode({ data, selected }: NodeProps & { data: SystemNodeDat
       {(isWormhole || data.effect) && (
         <div className="flex items-center gap-1 border-t border-foreground/10 px-2 py-0.5 text-[10px] text-muted-foreground">
           {data.effect && <span className="capitalize">{data.effect}</span>}
-          {data.statics.length > 0 && <span className="truncate">{data.statics.join(' · ')}</span>}
+          {data.statics.length > 0 && (
+            <span className="flex items-center gap-1">
+              {data.statics.map((cls, i) => (
+                <span key={i} className="font-bold" style={{ color: systemClassColor(cls) }}>{cls}</span>
+              ))}
+            </span>
+          )}
         </div>
       )}
     </div>

@@ -44,4 +44,7 @@ Pinned-build constants. Bump deliberately and re-validate the Phase-0 gate count
 Downloads the pinned zip into `.sde-cache/` if not already present; returns its path.
 
 ### runIngest(): Promise<IngestResult>
-Orchestrates the full ingest in FK-safe order. Upserts via `onConflictDoUpdate` (re-runnable). Returns `{ build, counts }` (row counts per logical table). Bulk inserts chunked at 1000.
+Orchestrates the full ingest in FK-safe order (SDE YAML + vendored CSVs). Upserts via `onConflictDoUpdate` (re-runnable). Returns `{ build, counts }` (row counts per logical table). Bulk inserts chunked at 1000. Invoked by `scripts/sde-bootstrap.ts` (`pnpm sde:bootstrap`).
+
+### runCsvIngest(): Promise<IngestResult>
+Re-ingests only the three vendored CSVs (`system-static.csv`, `wormhole-overrides.csv`, `wormhole-classes.csv`) without touching the SDE zip. Derives `systemIds`, `typeIds`, and `wormholeCodeToTypeId` by querying `universe_system` and `universe_type` — requires those tables to be populated first. Invoked by `scripts/csv-ingest.ts` (`pnpm sde:csv`).

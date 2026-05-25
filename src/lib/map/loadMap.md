@@ -18,7 +18,7 @@ All maps where `deleted_at IS NULL`, ordered by name. Feeds the `/maps` list.
 ---
 
 ### Types
-- `MapSystemNode` — a visible system flattened with its universe metadata + statics.
+- `MapSystemNode` — a visible system flattened with its universe metadata + statics. `statics` holds `universe_wormhole.target_class` labels (e.g. `["C3","C5"]`), not wormhole type names.
 - `MapConnectionEdge` — a connection with scope/mass/EOL/flag fields; endpoints are `ap_map_system.id` strings. `eolAt` (ISO or null) and `createdAt` (ISO) flow through so the canvas can compute the EOL countdown.
 - `MapSignature` — a scan signature inside a placed system. `expiresAt` is an ISO string.
 - `MapViewData` — `{ map, systems, connections, signatures }`, the page's full payload.

@@ -9,7 +9,7 @@ Receives xyflow `NodeProps` with `data: SystemNodeData` and `selected`.
 `SystemNodeData` extends `MapSystemNode` with an optional `onAliasOrTagCommit(mapSystemId, field, next)` callback wired by `MapCanvas`. When the callback is present, the alias and tag chips render via `InlineTextEdit` (double-click to edit, Enter commits, Esc cancels, blur cancels, empty commits as null). When absent the chips fall back to plain spans (legacy read-only path).
 
 ### Renders
-A card with a left status stripe (colour from `systemStatusColor`), a head row (security label, tag chip, alias-or-name, lock icon), and — for wormhole systems or systems with an effect — a secondary line listing the effect and static codes. Region/constellation shown as the hover title.
+A card with a left status stripe (colour from `systemStatusColor`), a head row (security label, tag chip, alias-or-name, lock icon), and — for wormhole systems or systems with an effect — a secondary line listing the effect and static target-class labels (e.g. "C3 C5"). Each static label is coloured via `systemClassColor`. Region/constellation shown as the hover title.
 
 ### Behaviour & Interactions
 - Drag handles on all four sides (top / right / bottom / left) are visible at low opacity to invite connections; xyflow `nodesConnectable` / `nodesDraggable` are controlled by `MapCanvas`. All four are declared as `type="source"` and the canvas runs in `ConnectionMode.Loose` so any side can act as either end of a new connection. `ConnectionEdge` picks which two sides to render against at draw time based on relative node centres, so the stored handle pair is incidental.
@@ -19,4 +19,4 @@ A card with a left status stripe (colour from `systemStatusColor`), a head row (
 - All other field edits (status, intel notes, locked, rally, signatures, remove) live in `InspectorModule`.
 
 ### Depends On
-- `@xyflow/react` (`Handle`, `Position`, `NodeProps`), `./styling` (`systemStatusColor`), `./InlineTextEdit`, `lucide-react` (`Lock`).
+- `@xyflow/react` (`Handle`, `Position`, `NodeProps`), `./styling` (`systemStatusColor`, `systemClassColor`), `./InlineTextEdit`, `lucide-react` (`Lock`).

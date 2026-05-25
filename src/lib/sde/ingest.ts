@@ -506,6 +506,36 @@ export interface IngestResult {
 }
 
 /**
+ * Re-runnable ingest of only the vendored CSV files (system statics,
+ * attr-3974 overrides, WH catalog). Derives the needed ID sets from the DB
+ * rather than from an SDE zip, so it can run independently of sde:bootstrap.
+ */
+export async function runCsvIngest(): Promise<IngestResult> {
+  const systemRows = await db.select({ id: universeSystem.id }).from(universeSystem);
+  const systemIds = new Set(systemRows.map((r) => r.id));
+
+  const typeRows = await db
+    .select({ id: universeType.id, groupId: universeType.groupId, name: universeType.name })
+    .from(universeType);
+  const typeIds = new Set(typeRows.map((r) => r.id));
+  const wormholeCodeToTypeId = new Map<string, number>();
+  for (const r of typeRows) {
+    if (r.groupId === WORMHOLE_GROUP_ID) {
+      const code = r.name?.split(' ').pop();
+      if (code) wormholeCodeToTypeId.set(code.toUpperCase(), r.id);
+    }
+  }
+
+  const counts: Record<string, number> = {};
+  console.log('Ingesting vendored CSVs (system statics, overrides, wormhole catalog) ...');
+  counts.systemStatics = await ingestSystemStatics(systemIds, typeIds);
+  counts.typeOverrides = await ingestTypeOverrides(wormholeCodeToTypeId);
+  counts.wormholes = await ingestWormholeCatalog(wormholeCodeToTypeId);
+
+  return { build: SDE_BUILD, counts };
+}
+
+/**
  * One-shot, re-runnable ingest of the pinned SDE build into every `universe_*`
  * table. Downloads the zip if absent, then upserts in FK-safe order. Vendored
  * CSVs seed WH statics and the attr-3974 overrides.

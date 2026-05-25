@@ -5,6 +5,28 @@ import type { MapConnectionEdge, MapSystemNode } from '@/lib/map/loadMap';
 // legacy hex) with explicit values so the canvas is readable without Tailwind
 // tokens leaking into SVG.
 
+// Covers universe_system.security labels: H, L, 0.0, C1–C6, P (Pochven), A (Abyssal).
+// C1–C6 progress from cool blue to orangy-red to signal increasing danger.
+const SYSTEM_CLASS_COLORS: Partial<Record<string, string>> = {
+  H: '#22c55e',    // high-sec — green
+  L: '#fb923c',    // low-sec — orange
+  '0.0': '#dc2626', // null-sec — firetruck red
+  P: '#9f1239',    // Pochven — deep red with purple
+  A: '#2dd4bf',    // Abyssal — teal
+  C1: '#38bdf8',
+  C2: '#06b6d4',
+  C3: '#9ab910',
+  C4: '#eab308',
+  C5: '#f97316',
+  C6: '#ea580c',   // orangy-red
+};
+
+/** Colour for a `universe_system.security` or `universe_wormhole.target_class` label. */
+export function systemClassColor(cls: string | null | undefined): string {
+  if (!cls) return '#6b7280';
+  return SYSTEM_CLASS_COLORS[cls] ?? '#6b7280';
+}
+
 const STATUS_COLORS: Record<MapSystemNode['status'], string> = {
   unknown: '#6b7280',
   friendly: '#3b82f6',
