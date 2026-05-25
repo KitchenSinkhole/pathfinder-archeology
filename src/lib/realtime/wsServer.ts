@@ -87,7 +87,6 @@ async function existingMapIds(mapIds: number[]): Promise<Set<bigint>> {
 let attached = false;
 
 export function attachWsServer(httpServer: HttpServer): WebSocketServer {
-  console.log('Attaching WebSocket server to HTTP server');
   const wss = new WebSocketServer({ noServer: true });
   const clients = new Map<WebSocket, ClientState>();
 
@@ -108,7 +107,6 @@ export function attachWsServer(httpServer: HttpServer): WebSocketServer {
   });
 
   wss.on('connection', (ws: WebSocket, _req: IncomingMessage, session: SessionClaims) => {
-    console.log('WebSocket connection established for session:', session);
     const state: ClientState = { session, isAlive: true, subscriptions: new Map() };
     clients.set(ws, state);
 

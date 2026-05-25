@@ -71,7 +71,6 @@ interface PollNotes {
 }
 
 async function poll(payload: LocationPollPayload, helpers: JobHelpers): Promise<PollNotes> {
-  console.log(`Polling location for character ${payload.characterId}…`);
   const characterId = BigInt(payload.characterId);
 
   // Step 1 — bail early if the character isn't tracked anywhere. The
@@ -142,7 +141,6 @@ async function poll(payload: LocationPollPayload, helpers: JobHelpers): Promise<
       esiCall('getCharacterLocation', { schema: locationSchema, pathParams: { character_id: characterId }, characterId }),
       esiCall('getCharacterShip', { schema: characterShipSchema, pathParams: { character_id: characterId }, characterId }),
     ]);
-    console.log(`Character ${characterId} is online in system ${location.solar_system_id} flying ship type ${ship.ship_type_id}`);
     const locationAt = new Date();
     await db
       .update(apCharacter)
