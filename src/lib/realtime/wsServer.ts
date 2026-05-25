@@ -7,6 +7,7 @@ import { env } from '@/lib/env';
 import { apertureConfig } from '../../../aperture.config';
 import { db } from '@/db/client';
 import { apMap } from '@/db/schema';
+import { startTrackingCharacter } from '@/lib/jobs/tracking';
 import { bus } from './bus';
 import { clientToServerMessageSchema, type ServerToClientMessage } from './protocol';
 
@@ -38,7 +39,6 @@ const COOKIE_NAMES = [
 ] as const;
 
 function parseCookies(header: string | undefined): Map<string, string> {
-  console.log('Parsing cookies:', header);
   const out = new Map<string, string>();
   if (!header) return out;
   for (const part of header.split(';')) {
@@ -52,7 +52,6 @@ function parseCookies(header: string | undefined): Map<string, string> {
 }
 
 async function resolveSession(req: IncomingMessage): Promise<SessionClaims | null> {
-  console.log('Resolving session for request:', req.url);
   if (!env.AUTH_SECRET) return null;
   const cookies = parseCookies(req.headers.cookie);
   for (const name of COOKIE_NAMES) {
@@ -144,10 +143,17 @@ export function attachWsServer(httpServer: HttpServer): WebSocketServer {
 
   async function subscribe(ws: WebSocket, state: ClientState, mapIds: number[]): Promise<void> {
     const allowed = await existingMapIds(mapIds);
+    const characterId = BigInt(state.session.characterId);
     for (const id of allowed) {
-      if (state.subscriptions.has(id)) continue;
-      const off = bus.subscribe(id, (message) => send(ws, message));
-      state.subscriptions.set(id, off);
+      if (!state.subscriptions.has(id)) {
+        const off = bus.subscribe(id, (message) => send(ws, message));
+        state.subscriptions.set(id, off);
+      }
+      // Start server-side tracking for this character on this map. Idempotent —
+      // safe to call on every subscribe (re-subscribe after reconnect, multiple
+      // tabs). Tracking survives tab close by design; stop is an explicit user
+      // action (Stage 15 tracking toggle).
+      void startTrackingCharacter({ mapId: id, characterId });
     }
   }
 

@@ -41,6 +41,7 @@ export async function startTrackingCharacter(
   // row pointing at a soft-deleted map would be harmless (the handler joins
   // through `WHERE deleted_at IS NULL`), but the failure mode of "I clicked
   // the toggle and nothing happened" is worse than a clean error here.
+  console.log(`Starting tracking for character ${args.characterId} on map ${args.mapId}…`);
   const [map] = await db
     .select({ id: apMap.id, deletedAt: apMap.deletedAt })
     .from(apMap)
@@ -61,7 +62,7 @@ export async function startTrackingCharacter(
   await db.execute(
     sql`SELECT graphile_worker.add_job(
           'location-poll',
-          json_build_object('characterId', ${args.characterId.toString()})::json,
+          json_build_object('characterId', ${args.characterId.toString()}::text)::json,
           job_key => ${locationPollJobKey(args.characterId)},
           job_key_mode => 'preserve_run_at',
           run_at => now()

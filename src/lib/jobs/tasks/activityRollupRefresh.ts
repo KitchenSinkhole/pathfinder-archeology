@@ -23,7 +23,19 @@ const NAME = 'activity-rollup-refresh';
 
 async function refresh(): Promise<{ durationMs: number }> {
   const started = Date.now();
-  await db.execute(sql`REFRESH MATERIALIZED VIEW CONCURRENTLY "ap_activity_rollup"`);
+  // CONCURRENTLY is forbidden on a view that has never been populated (Postgres
+  // rejects it with "ERROR: cannot refresh materialized view concurrently").
+  // Use relispopulated to detect the cold-start case and fall back to a
+  // blocking refresh; every subsequent run can use CONCURRENTLY.
+  const result = await db.execute<{ populated: boolean }>(
+    sql`SELECT relispopulated AS populated FROM pg_class WHERE relname = 'ap_activity_rollup'`,
+  );
+  const populated = result.rows[0]?.populated ?? false;
+  if (populated) {
+    await db.execute(sql`REFRESH MATERIALIZED VIEW CONCURRENTLY "ap_activity_rollup"`);
+  } else {
+    await db.execute(sql`REFRESH MATERIALIZED VIEW "ap_activity_rollup"`);
+  }
   return { durationMs: Date.now() - started };
 }
 

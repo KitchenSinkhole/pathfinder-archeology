@@ -38,6 +38,7 @@ The poll emits its breadcrumb via `pg_notify('map:<id>', envelope)` where the en
 
 ### Notes
 - **`payload.characterId` is a string** because the JSON payload of graphile-worker jobs has no `bigint`. The handler `BigInt()`s it back on entry.
+- **`pathParams: { character_id: characterId }`** must be passed to every character-authed `esiCall` alongside `characterId`. The `characterId` option resolves only the bearer token; the URL path placeholder `{character_id}` is substituted separately from `pathParams`.
 - The character record's `updated_at` is bumped on every tick (`set({ updatedAt: sql\`now()\` })`) so a stuck tracking row is observable from outside the job system.
 - **Re-enqueue happens BEFORE the fan-out and broadcast.** If a downstream step throws, the next poll tick is already scheduled — the failure shows up in `ap_job_run.success = false` for this tick but the loop keeps going. The fold's per-step idempotency rules (`src/lib/jobs/locationCommit.md`) make the retry safe.
 - **`token-loss` returns success = true.** The stop reason lands in `notes.stopped`. An operator looking at `pnpm jobs:status` sees a clean stop, not a failing job — distinct from breaker-open which IS a failure (transient).
