@@ -1,8 +1,10 @@
 import 'server-only';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { db } from '@/db/client';
 import {
+  apCharacter,
   apMap,
+  apMapCharacterTracking,
   apMapConnection,
   apMapSignature,
   apMapSystem,
@@ -14,6 +16,7 @@ import {
   universeRegion,
   universeSystem,
   universeSystemStatic,
+  universeType,
   universeWormhole,
   whJumpMass,
   whMass,
@@ -84,12 +87,32 @@ export type MapSignature = {
   expiresAt: string;
 };
 
+/**
+ * Initial roster of online tracked pilots currently in known systems. The
+ * client `MapPresenceContext` seeds from this and then merges incoming
+ * `characterUpdate` envelopes on top. Mirrors the envelope's resolved fields
+ * (characterName + shipTypeName) so the canvas hover panel renders without a
+ * follow-up SDE lookup.
+ */
+export type MapPresenceEntry = {
+  characterId: number;
+  characterName: string;
+  /** EVE solar-system id (`universe_system.id`). */
+  systemId: number;
+  shipTypeId: number | null;
+  shipTypeName: string | null;
+  /** ISO timestamp; non-null because the loader filters to characters that have completed at least one online tick. */
+  locationAt: string;
+};
+
 /** Everything the read-only map page needs to render one map. */
 export type MapViewData = {
   map: { id: string; name: string; scope: MapScope; type: MapType };
   systems: MapSystemNode[];
   connections: MapConnectionEdge[];
   signatures: MapSignature[];
+  /** Tracked characters online + located on this map at load time. Realtime updates fold on top of this on the client. */
+  presence: MapPresenceEntry[];
 };
 
 /** A map row for the maps list. */
@@ -179,6 +202,8 @@ export async function loadMapForView(mapId: bigint): Promise<MapViewData | null>
         .orderBy(apMapSignature.sigId)
     : [];
 
+  const presence = await loadMapPresence(mapId);
+
   return {
     map: { id: map.id.toString(), name: map.name, scope: map.scope, type: map.type },
     systems: systemRows.map((s) => ({
@@ -223,7 +248,52 @@ export async function loadMapForView(mapId: bigint): Promise<MapViewData | null>
       description: r.description,
       expiresAt: r.expiresAt.toISOString(),
     })),
+    presence,
   };
+}
+
+/**
+ * Online tracked pilots currently in a known system on this map. Joins
+ * `ap_map_character_tracking` × `ap_character`, left-joins `universe_type` to
+ * resolve the ship name. Filters to `last_online = true AND last_system_id IS NOT NULL`
+ * — offline pilots are hidden per the presence-badge UX (see SystemNode).
+ */
+export async function loadMapPresence(mapId: bigint): Promise<MapPresenceEntry[]> {
+  const rows = await db
+    .select({
+      characterId: apCharacter.id,
+      characterName: apCharacter.name,
+      systemId: apCharacter.lastSystemId,
+      shipTypeId: apCharacter.lastShipTypeId,
+      shipTypeName: universeType.name,
+      locationAt: apCharacter.lastLocationAt,
+    })
+    .from(apMapCharacterTracking)
+    .innerJoin(apCharacter, eq(apCharacter.id, apMapCharacterTracking.characterId))
+    .leftJoin(universeType, eq(universeType.id, apCharacter.lastShipTypeId))
+    .where(
+      and(
+        eq(apMapCharacterTracking.mapId, mapId),
+        eq(apCharacter.lastOnline, true),
+        isNotNull(apCharacter.lastSystemId),
+      ),
+    )
+    .orderBy(asc(apCharacter.name));
+
+  return rows.flatMap((r) => {
+    // `systemId` is non-null by the WHERE clause but Drizzle's column type stays
+    // nullable; the locationAt invariant follows from `lastOnline = true`
+    // because the online branch of the poll stamps both atomically.
+    if (r.systemId === null || r.locationAt === null) return [];
+    return [{
+      characterId: Number(r.characterId),
+      characterName: r.characterName,
+      systemId: r.systemId,
+      shipTypeId: r.shipTypeId,
+      shipTypeName: r.shipTypeName,
+      locationAt: r.locationAt.toISOString(),
+    }];
+  });
 }
 
 /** All non-soft-deleted maps, ordered by name. Feeds the maps list. */

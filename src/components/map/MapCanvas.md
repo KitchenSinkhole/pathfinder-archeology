@@ -32,8 +32,10 @@ A `ReactFlow` canvas (custom `system` nodes, `connection` edges, `Background`, `
 - `applyEvent` — pure reducer applied for every event and every optimistic patch.
 - `@/lib/map/client` — all eight mutation wrappers + `fetchWormholeTypes` (via the inspector).
 
+- Wraps the canvas subtree in `MapPresenceProvider` seeded from `data.presence` (`MapPresenceContext`) so each `SystemNode` can pull its system's online-pilot slice via `usePresenceForSystem` without prop-drilling. The provider also folds incoming `characterUpdate` envelopes onto that store.
+
 ### Depends On
-- `@xyflow/react`, `./SystemNode`, `./ConnectionEdge`
+- `@xyflow/react`, `./SystemNode`, `./ConnectionEdge`, `./MapPresenceContext`
 - `RouteModule`, `KillStatsModule`, `InspectorModule`
 - `applyEvent` (`@/lib/map/applyEvent`)
 - `mapUpdateLoadSchema` (`@/lib/realtime/protocol`)

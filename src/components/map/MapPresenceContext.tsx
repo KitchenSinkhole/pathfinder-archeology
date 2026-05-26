@@ -1,0 +1,181 @@
+'use client';
+
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
+import type { MapPresenceEntry } from '@/lib/map/loadMap';
+import {
+  characterUpdateLoadSchema,
+  type CharacterUpdateLoad,
+} from '@/lib/realtime/protocol';
+import { useRealtime } from '@/lib/realtime/useRealtime';
+
+// Client-side fan-in for the pilot-presence badge on `SystemNode`.
+//
+// The store is keyed by EVE solar-system id. It's seeded from `MapViewData.presence`
+// (server-loaded online + located tracked pilots) and then folds incoming
+// `characterUpdate` envelopes on top. Each SystemNode subscribes only to its
+// own system's slice via `useSyncExternalStore`, so a single character moving
+// re-renders at most two nodes (the source and the destination) instead of
+// every node on the map.
+
+type Subscriber = () => void;
+
+const EMPTY: readonly MapPresenceEntry[] = Object.freeze([]) as readonly MapPresenceEntry[];
+
+class PresenceStore {
+  private bySystem = new Map<number, MapPresenceEntry[]>();
+  private byCharacterSystem = new Map<number, number>();
+  private subs = new Map<number, Set<Subscriber>>();
+
+  seed(initial: MapPresenceEntry[]): void {
+    const before = new Set<number>(this.bySystem.keys());
+    const grouped = new Map<number, MapPresenceEntry[]>();
+    const byChar = new Map<number, number>();
+    for (const entry of initial) {
+      const list = grouped.get(entry.systemId);
+      if (list) list.push(entry);
+      else grouped.set(entry.systemId, [entry]);
+      byChar.set(entry.characterId, entry.systemId);
+    }
+    for (const list of grouped.values()) list.sort(byName);
+    this.bySystem = grouped;
+    this.byCharacterSystem = byChar;
+    const changed = new Set<number>(before);
+    for (const k of grouped.keys()) changed.add(k);
+    this.notify(changed);
+  }
+
+  apply(load: CharacterUpdateLoad): void {
+    const changed = new Set<number>();
+    const prev = this.byCharacterSystem.get(load.characterId);
+    if (prev !== undefined) {
+      const list = this.bySystem.get(prev);
+      if (list) {
+        const next = list.filter((e) => e.characterId !== load.characterId);
+        if (next.length === 0) this.bySystem.delete(prev);
+        else this.bySystem.set(prev, next);
+        changed.add(prev);
+      }
+      this.byCharacterSystem.delete(load.characterId);
+    }
+
+    // Hide offline pilots entirely — only insert when online AND located.
+    if (
+      load.online === true &&
+      load.systemId !== null &&
+      load.locationAt !== null
+    ) {
+      const entry: MapPresenceEntry = {
+        characterId: load.characterId,
+        characterName: load.characterName,
+        systemId: load.systemId,
+        shipTypeId: load.shipTypeId,
+        shipTypeName: load.shipTypeName,
+        locationAt: load.locationAt,
+      };
+      const existing = this.bySystem.get(entry.systemId);
+      const next = existing ? [...existing, entry] : [entry];
+      next.sort(byName);
+      this.bySystem.set(entry.systemId, next);
+      this.byCharacterSystem.set(entry.characterId, entry.systemId);
+      changed.add(entry.systemId);
+    }
+
+    this.notify(changed);
+  }
+
+  subscribe(systemId: number, sub: Subscriber): () => void {
+    let set = this.subs.get(systemId);
+    if (!set) {
+      set = new Set();
+      this.subs.set(systemId, set);
+    }
+    set.add(sub);
+    return () => {
+      const s = this.subs.get(systemId);
+      if (!s) return;
+      s.delete(sub);
+      if (s.size === 0) this.subs.delete(systemId);
+    };
+  }
+
+  getForSystem(systemId: number): readonly MapPresenceEntry[] {
+    return this.bySystem.get(systemId) ?? EMPTY;
+  }
+
+  private notify(systemIds: Set<number>): void {
+    for (const id of systemIds) {
+      const set = this.subs.get(id);
+      if (!set) continue;
+      for (const sub of set) sub();
+    }
+  }
+}
+
+function byName(a: MapPresenceEntry, b: MapPresenceEntry): number {
+  return a.characterName.localeCompare(b.characterName);
+}
+
+const PresenceContext = createContext<PresenceStore | null>(null);
+
+export function MapPresenceProvider({
+  initial,
+  children,
+}: {
+  initial: MapPresenceEntry[];
+  children: ReactNode;
+}) {
+  // Seed synchronously so the first paint shows badges instead of empty +
+  // flash-fill on the next tick.
+  const [store] = useState(() => {
+    const s = new PresenceStore();
+    s.seed(initial);
+    return s;
+  });
+
+  // Re-seed only when the server-sent presence reference actually changes
+  // (e.g. on a soft navigation back to this map page). The first-mount call
+  // is a no-op against the constructor seed.
+  const seededRef = useRef(initial);
+  useEffect(() => {
+    if (seededRef.current === initial) return;
+    seededRef.current = initial;
+    store.seed(initial);
+  }, [initial, store]);
+
+  const { lastEvent } = useRealtime();
+  useEffect(() => {
+    if (!lastEvent || lastEvent.task !== 'characterUpdate') return;
+    const parsed = characterUpdateLoadSchema.safeParse(lastEvent.load);
+    if (!parsed.success) return;
+    store.apply(parsed.data);
+  }, [lastEvent, store]);
+
+  return <PresenceContext.Provider value={store}>{children}</PresenceContext.Provider>;
+}
+
+/**
+ * Returns the pilot-presence slice for one EVE solar-system. The returned
+ * array reference is stable until that system's slice changes (so the calling
+ * component only re-renders when *its* system gains or loses a pilot).
+ */
+export function usePresenceForSystem(systemId: number): readonly MapPresenceEntry[] {
+  const store = useContext(PresenceContext);
+  const subscribe = useCallback(
+    (cb: () => void) => store?.subscribe(systemId, cb) ?? (() => {}),
+    [store, systemId],
+  );
+  const getSnapshot = useCallback(
+    () => store?.getForSystem(systemId) ?? EMPTY,
+    [store, systemId],
+  );
+  return useSyncExternalStore(subscribe, getSnapshot, () => EMPTY);
+}

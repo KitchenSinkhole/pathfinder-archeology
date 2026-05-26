@@ -1,14 +1,19 @@
 'use client';
 
 import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { Lock } from 'lucide-react';
+import { PreviewCard } from '@base-ui/react/preview-card';
+import { Lock, Users } from 'lucide-react';
 import type { MapSystemNode } from '@/lib/map/loadMap';
 import { systemClassColor, systemStatusColor } from './styling';
 import { InlineTextEdit } from './InlineTextEdit';
+import { usePresenceForSystem } from './MapPresenceContext';
 
-// System tile. Status stripe + security badge + tag + alias/name + lock + a
-// J-space statics line. Alias and tag are inline double-click-to-edit; all
-// other edits (status, intel, rally, locked) live in the sidebar inspector.
+// System tile. Status stripe + security badge + tag + alias/name + presence
+// badge + lock + a J-space statics line. Alias and tag are inline
+// double-click-to-edit; all other edits (status, intel, rally, locked) live in
+// the sidebar inspector. The presence badge shows the count of online tracked
+// pilots currently in this system, with a hover panel listing each pilot and
+// their ship (legacy Pathfinder parity).
 
 export type SystemNodeData = MapSystemNode & {
   /** Wired by `MapCanvas`; absent on the (now legacy) read-only path. */
@@ -25,6 +30,7 @@ export function SystemNode({ data, selected }: NodeProps & { data: SystemNodeDat
   const color = systemStatusColor(data.status);
   const isWormhole = data.statics.length > 0 || /^J\d{6}$/.test(data.name);
   const onAliasOrTagCommit = data.onAliasOrTagCommit;
+  const pilots = usePresenceForSystem(data.systemId);
 
   return (
     <div
@@ -74,6 +80,7 @@ export function SystemNode({ data, selected }: NodeProps & { data: SystemNodeDat
         ) : (
           <span className="flex-1 truncate font-medium">{data.alias ?? data.name}</span>
         )}
+        {pilots.length > 0 && <PresenceBadge pilots={pilots} />}
         {data.locked && <Lock className="size-3 text-muted-foreground" />}
       </div>
 
@@ -90,5 +97,41 @@ export function SystemNode({ data, selected }: NodeProps & { data: SystemNodeDat
         </div>
       )}
     </div>
+  );
+}
+
+function PresenceBadge({
+  pilots,
+}: {
+  pilots: readonly import('@/lib/map/loadMap').MapPresenceEntry[];
+}) {
+  return (
+    <PreviewCard.Root>
+      <PreviewCard.Trigger
+        // `nodrag nopan` so opening the hover panel doesn't trigger xyflow's
+        // pan/drag — same pattern as InlineTextEdit. Render as a button so
+        // it's keyboard-focusable; default `<a>` would suggest a navigation.
+        render={<button type="button" />}
+        className="nodrag nopan inline-flex items-center gap-0.5 rounded-full bg-primary px-1.5 text-[10px] font-semibold leading-tight text-primary-foreground"
+        aria-label={`${pilots.length} pilot${pilots.length === 1 ? '' : 's'} in system`}
+      >
+        <Users className="size-2.5" aria-hidden />
+        {pilots.length}
+      </PreviewCard.Trigger>
+      <PreviewCard.Portal>
+        <PreviewCard.Positioner sideOffset={4} side="top" align="end">
+          <PreviewCard.Popup className="nodrag nopan z-50 min-w-40 rounded-md border bg-popover px-2 py-1.5 text-xs text-popover-foreground shadow-md">
+            <ul className="space-y-0.5">
+              {pilots.map((p) => (
+                <li key={p.characterId} className="flex items-baseline justify-between gap-3">
+                  <span className="font-medium">{p.characterName}</span>
+                  <span className="text-muted-foreground">{p.shipTypeName ?? '—'}</span>
+                </li>
+              ))}
+            </ul>
+          </PreviewCard.Popup>
+        </PreviewCard.Positioner>
+      </PreviewCard.Portal>
+    </PreviewCard.Root>
   );
 }

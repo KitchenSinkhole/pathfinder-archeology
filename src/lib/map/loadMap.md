@@ -6,9 +6,14 @@
 ---
 
 ### loadMapForView(mapId: bigint): Promise<MapViewData | null>
-Loads one map for rendering. Returns `null` if the map is missing or soft-deleted (`deleted_at` set). Joins visible `ap_map_system` rows to `universe_system` / constellation / region, attaches wormhole static codes, loads all `ap_map_connection` rows, and loads `ap_map_signature` rows for every visible system. All `bigint` ids and `timestamptz`s are stringified (ISO for dates) so the result is serialisable across the Server→Client boundary.
+Loads one map for rendering. Returns `null` if the map is missing or soft-deleted (`deleted_at` set). Joins visible `ap_map_system` rows to `universe_system` / constellation / region, attaches wormhole static codes, loads all `ap_map_connection` rows, and loads `ap_map_signature` rows for every visible system. Also calls `loadMapPresence(mapId)` so the returned `MapViewData` carries the initial roster of online tracked pilots. All `bigint` ids and `timestamptz`s are stringified (ISO for dates) so the result is serialisable across the Server→Client boundary.
 
 **Interim access:** no per-map permission model exists yet (Stage 15). Any logged-in character may view any non-soft-deleted map.
+
+---
+
+### loadMapPresence(mapId: bigint): Promise<MapPresenceEntry[]>
+Online tracked pilots currently in a known system on this map. Joins `ap_map_character_tracking` × `ap_character`, left-joins `universe_type` for the ship name. Filters to `last_online = true AND last_system_id IS NOT NULL` — offline pilots are hidden from the badge per UX choice. Ordered by character name for stable hover-list rendering. The companion to the realtime `characterUpdate` envelope: same per-pilot shape (minus the always-true `online` flag), so the client merges live updates on top without converting between forms.
 
 ---
 
@@ -21,7 +26,8 @@ All maps where `deleted_at IS NULL`, ordered by name. Feeds the `/maps` list.
 - `MapSystemNode` — a visible system flattened with its universe metadata + statics. `statics` holds `universe_wormhole.target_class` labels (e.g. `["C3","C5"]`), not wormhole type names.
 - `MapConnectionEdge` — a connection with scope/mass/EOL/flag fields; endpoints are `ap_map_system.id` strings. `eolAt` (ISO or null) and `createdAt` (ISO) flow through so the canvas can compute the EOL countdown.
 - `MapSignature` — a scan signature inside a placed system. `expiresAt` is an ISO string.
-- `MapViewData` — `{ map, systems, connections, signatures }`, the page's full payload.
+- `MapPresenceEntry` — one online tracked pilot: `{ characterId, characterName, systemId, shipTypeId, shipTypeName, locationAt }`. `systemId` is the EVE solar-system id; `locationAt` is ISO.
+- `MapViewData` — `{ map, systems, connections, signatures, presence }`, the page's full payload.
 - `MapListItem` — a map row for the list.
 
 These are re-exported from `src/types/index.ts`.

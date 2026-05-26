@@ -290,14 +290,23 @@ export const mapConnectionAccessLoadSchema = z.object({
  * either may be `null`. `online` is `null` between the very first enqueue and
  * the first completed tick.
  *
+ * `characterName` rides every envelope so the client never needs a roster
+ * lookup to render the breadcrumb. `shipTypeName` is the resolved `universe_type.name`
+ * for `shipTypeId` — null when `shipTypeId` is null or the row is missing.
+ * The envelope stays self-contained per the payload philosophy (see the
+ * mapEventPayloadSchema preamble above) at the cost of one tiny universe_type
+ * lookup per poll tick.
+ *
  * Numbers ride the wire (JSON has no `bigint`); the EVE character id and
  * solar-system id both fit comfortably in `number.MAX_SAFE_INTEGER`.
  */
 export const characterUpdateLoadSchema = z.object({
   characterId: z.number().int().positive(),
+  characterName: z.string(),
   online: z.boolean().nullable(),
   systemId: z.number().int().nullable(),
   shipTypeId: z.number().int().nullable(),
+  shipTypeName: z.string().nullable(),
   locationAt: z.string().nullable(),
 });
 

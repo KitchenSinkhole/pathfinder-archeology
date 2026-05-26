@@ -2,7 +2,7 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { JobHelpers } from 'graphile-worker';
 import { apertureConfig } from '../../../../aperture.config';
 import { db } from '@/db/client';
-import { apCharacter, apMap, apMapCharacterTracking } from '@/db/schema';
+import { apCharacter, apMap, apMapCharacterTracking, universeType } from '@/db/schema';
 import {
   esiCall,
   EsiBreakerOpenError,
@@ -90,6 +90,7 @@ async function poll(payload: LocationPollPayload, helpers: JobHelpers): Promise<
   // the breadcrumb even when the offline tick itself doesn't refresh location.
   const [character] = await db
     .select({
+      name: apCharacter.name,
       status: apCharacter.status,
       lastSystemId: apCharacter.lastSystemId,
       lastShipTypeId: apCharacter.lastShipTypeId,
@@ -127,6 +128,7 @@ async function poll(payload: LocationPollPayload, helpers: JobHelpers): Promise<
       await broadcastCharacterUpdate({
         trackedMapIds,
         characterId,
+        characterName: character.name,
         online: false,
         systemId: character.lastSystemId,
         shipTypeId: character.lastShipTypeId,
@@ -194,6 +196,7 @@ async function poll(payload: LocationPollPayload, helpers: JobHelpers): Promise<
     await broadcastCharacterUpdate({
       trackedMapIds,
       characterId,
+      characterName: character.name,
       online: true,
       systemId: location.solar_system_id,
       shipTypeId: ship.ship_type_id,
@@ -243,6 +246,7 @@ async function loadActiveTrackedMaps(characterId: bigint): Promise<bigint[]> {
 interface BroadcastArgs {
   trackedMapIds: bigint[];
   characterId: bigint;
+  characterName: string;
   online: boolean;
   systemId: number | null;
   shipTypeId: number | null;
@@ -251,14 +255,27 @@ interface BroadcastArgs {
 
 async function broadcastCharacterUpdate(args: BroadcastArgs): Promise<void> {
   if (args.trackedMapIds.length === 0) return;
+  // Resolve the ship type name once per tick so every subscribed client can
+  // render the hover panel without doing its own SDE lookup. Null when no ship
+  // type is known yet, or when the typeId disappears between SDE rebuilds.
+  let shipTypeName: string | null = null;
+  if (args.shipTypeId !== null) {
+    const [row] = await db
+      .select({ name: universeType.name })
+      .from(universeType)
+      .where(eq(universeType.id, args.shipTypeId));
+    shipTypeName = row?.name ?? null;
+  }
   // The bus discriminates by the top-level `task` field — see `src/lib/realtime/bus.ts`.
   const envelope = JSON.stringify({
     task: 'characterUpdate',
     load: {
       characterId: Number(args.characterId),
+      characterName: args.characterName,
       online: args.online,
       systemId: args.systemId,
       shipTypeId: args.shipTypeId,
+      shipTypeName,
       locationAt: args.locationAt ? args.locationAt.toISOString() : null,
     },
   });

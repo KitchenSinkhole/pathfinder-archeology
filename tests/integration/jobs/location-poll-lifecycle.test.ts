@@ -227,11 +227,16 @@ describe.skipIf(!run)('Stage 12.3 location-poll lifecycle (real Postgres)', () =
     if (last.task !== 'characterUpdate') throw new Error('expected characterUpdate');
     expect(last.load).toMatchObject({
       characterId: Number(CHAR_ID),
+      characterName: 'Lifecycle Test',
       online: true,
       systemId: TARGET,
       shipTypeId: SHIP_TYPE,
     });
     expect(typeof last.load.locationAt).toBe('string');
+    // shipTypeName is null when the SDE row for SHIP_TYPE isn't present in the
+    // test DB; otherwise it's the resolved `universe_type.name`. Either way it
+    // must be a string-or-null per the envelope contract.
+    expect(last.load.shipTypeName === null || typeof last.load.shipTypeName === 'string').toBe(true);
   });
 });
 

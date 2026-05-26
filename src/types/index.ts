@@ -91,6 +91,7 @@ export type {
   MapSystemNode,
   MapConnectionEdge,
   MapSignature,
+  MapPresenceEntry,
   MapViewData,
   MapListItem,
 } from '@/lib/map/loadMap';

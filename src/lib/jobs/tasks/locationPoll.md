@@ -34,7 +34,9 @@ A single `try/catch` wraps steps 3–8:
 - Other errors propagate untouched; graphile-worker handles retry per its own `max_attempts`.
 
 ### `characterUpdate` broadcast
-The poll emits its breadcrumb via `pg_notify('map:<id>', envelope)` where the envelope is JSON of the form `{ task: 'characterUpdate', load: { characterId, online, systemId, shipTypeId, locationAt } }`. `bus.ts` (Stage 12.3-tightened) discriminates by the top-level `task` field — payloads without it stay on the `mapUpdate` path. The WS server forwards the resulting `ServerToClientMessage` unchanged.
+The poll emits its breadcrumb via `pg_notify('map:<id>', envelope)` where the envelope is JSON of the form `{ task: 'characterUpdate', load: { characterId, characterName, online, systemId, shipTypeId, shipTypeName, locationAt } }`. `bus.ts` (Stage 12.3-tightened) discriminates by the top-level `task` field — payloads without it stay on the `mapUpdate` path. The WS server forwards the resulting `ServerToClientMessage` unchanged.
+
+`characterName` reads from the row already loaded in step 2 (`apCharacter.name`). `shipTypeName` is resolved per tick with one `SELECT name FROM universe_type WHERE id = $shipTypeId` lookup; null when `shipTypeId` is null or the row is missing. Both fields ride every broadcast so the client renders the presence-badge hover panel without a separate roster fetch.
 
 ### Notes
 - **`payload.characterId` is a string** because the JSON payload of graphile-worker jobs has no `bigint`. The handler `BigInt()`s it back on entry.
