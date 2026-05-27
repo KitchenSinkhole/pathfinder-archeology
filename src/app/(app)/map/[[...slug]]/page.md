@@ -1,6 +1,6 @@
 ## page.tsx (map view)
 
-**Purpose:** Read-only map view route (`/map/<id>`) — server-loads a map and renders it on the xyflow canvas with route + kill-stats sidebar.
+**Purpose:** Read-only map view route (`/map/<id>`) — server-loads a map and renders it on the xyflow canvas with route, intel, and kill-stats sidebars.
 **File:** `src/app/(app)/map/[[...slug]]/page.tsx`
 
 ### Renders
@@ -9,8 +9,8 @@ The map name/meta header above `<MapCanvas>`. Empty-state `Card` (with a back-to
 ### Behaviour & Interactions
 - Optional catch-all slug; the first segment is the map id (numeric → bigint, else empty state).
 - `loadMapForView(mapId)` returns null for missing/soft-deleted maps → "Map not found".
-- Precomputes hub routes (`routesForSystems`) and 24h stats (`statsForSystems`) for all visible systems in parallel and passes them to the client canvas. Initial pilot-presence (`MapViewData.presence`) ships with the map payload from `loadMapForView`.
+- Precomputes hub routes (`routesForSystems`), 24h stats (`statsForSystems`), and read-side intel (`intelForSystems`) for all visible systems in parallel and passes them to the client canvas. Initial pilot-presence (`MapViewData.presence`) ships with the map payload from `loadMapForView`.
 - Session gating is handled by the `(app)` layout. No edit affordances.
 
 ### Depends On
-- `@/lib/map/loadMap`, `@/lib/map/route`, `@/lib/map/stats`, `@/components/map/MapCanvas`, `@/components/ui/card`.
+- `@/lib/map/loadMap`, `@/lib/map/route`, `@/lib/map/stats`, `@/lib/map/intel`, `@/components/map/MapCanvas`, `@/components/ui/card`.

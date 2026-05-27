@@ -17,3 +17,9 @@ export {
   type EsiUniverseSystemJumps,
   type EsiUniverseSystemKills,
 } from './systemActivity';
+export {
+  sovereigntyMapSchema,
+  factionWarSystemsSchema,
+  type EsiSovereigntyMap,
+  type EsiFactionWarSystems,
+} from './sovereignty';

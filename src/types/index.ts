@@ -17,6 +17,8 @@ import type {
   universeStargateEdge,
   universeSystem,
   universeSystemStatic,
+  universeSovereigntyMap,
+  universeFactionWarSystem,
   universeType,
   universeTypeAttribute,
   universeTypeOverride,
@@ -55,6 +57,12 @@ export type NewUniverseTypeOverride = InferInsertModel<typeof universeTypeOverri
 
 export type UniverseSystemStatic = InferSelectModel<typeof universeSystemStatic>;
 export type NewUniverseSystemStatic = InferInsertModel<typeof universeSystemStatic>;
+
+export type UniverseSovereigntyMap = InferSelectModel<typeof universeSovereigntyMap>;
+export type NewUniverseSovereigntyMap = InferInsertModel<typeof universeSovereigntyMap>;
+
+export type UniverseFactionWarSystem = InferSelectModel<typeof universeFactionWarSystem>;
+export type NewUniverseFactionWarSystem = InferInsertModel<typeof universeFactionWarSystem>;
 
 export type UniverseWormhole = InferSelectModel<typeof universeWormhole>;
 export type NewUniverseWormhole = InferInsertModel<typeof universeWormhole>;
@@ -98,6 +106,19 @@ export type {
 
 // Route module view-model (computed in src/lib/map/route.ts).
 export type { HubRoute } from '@/lib/map/route';
+
+// Read-side intel module view-models (computed in src/lib/map/intel.ts).
+export type {
+  SovereigntyIntel,
+  FactionWarIntel,
+  SystemExternalLinks,
+  SystemIntelSummary,
+} from '@/lib/map/intel';
+
+// Third-party read-side integration summaries.
+export type { RecentKillSummary } from '@/lib/integrations/zkb';
+export type { EveScoutConnectionSummary } from '@/lib/integrations/evescout';
+export type { ChangelogRelease } from '@/lib/integrations/github';
 
 // Realtime WebSocket wire contracts (schemas in src/lib/realtime/protocol.ts).
 export type {
@@ -160,4 +181,10 @@ export type { ResolvedSigRow } from '@/lib/map/signatureReader';
 export type { OpKey, OpDef } from '@/lib/esi/opkeys';
 
 // ESI client decoded-response types (Stage 4).
-export type { EsiStatus, EsiLocation, EsiRoute } from '@/lib/esi/decoders';
+export type {
+  EsiStatus,
+  EsiLocation,
+  EsiRoute,
+  EsiSovereigntyMap,
+  EsiFactionWarSystems,
+} from '@/lib/esi/decoders';

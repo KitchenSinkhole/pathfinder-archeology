@@ -4,6 +4,7 @@ import { MapCanvas } from '@/components/map/MapCanvas';
 import { loadMapForView } from '@/lib/map/loadMap';
 import { routesForSystems } from '@/lib/map/route';
 import { statsForSystems } from '@/lib/map/stats';
+import { intelForSystems } from '@/lib/map/intel';
 
 function parseMapId(slug?: string[]): bigint | null {
   const raw = slug?.[0];
@@ -39,9 +40,10 @@ export default async function MapPage({ params }: { params: Promise<{ slug?: str
   }
 
   const systemIds = data.systems.map((s) => s.systemId);
-  const [routes, stats] = await Promise.all([
+  const [routes, stats, intel] = await Promise.all([
     routesForSystems(systemIds),
     statsForSystems(systemIds),
+    intelForSystems(systemIds),
   ]);
 
   return (
@@ -52,7 +54,7 @@ export default async function MapPage({ params }: { params: Promise<{ slug?: str
           {data.map.type} · {data.map.scope} · {data.systems.length} systems
         </p>
       </div>
-      <MapCanvas data={data} routes={routes} stats={stats} />
+      <MapCanvas data={data} routes={routes} stats={stats} intel={intel} />
     </div>
   );
 }

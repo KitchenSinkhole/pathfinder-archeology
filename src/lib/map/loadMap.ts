@@ -316,15 +316,20 @@ async function loadStatics(systemIds: number[]): Promise<Map<number, string[]>> 
   const grouped = new Map<number, string[]>();
   if (systemIds.length === 0) return grouped;
   const rows = await db
-    .select({ systemId: universeSystemStatic.systemId, code: universeWormhole.targetClass })
+    .select({
+      systemId: universeSystemStatic.systemId,
+      name: universeWormhole.name,
+      targetClass: universeWormhole.targetClass,
+    })
     .from(universeSystemStatic)
     .innerJoin(universeWormhole, eq(universeSystemStatic.typeId, universeWormhole.typeId))
     .where(inArray(universeSystemStatic.systemId, systemIds));
   for (const r of rows) {
-    if (!r.code) continue; // K162: null target_class resolves from the far side
+    const code = r.targetClass ?? r.name;
+    if (!code) continue; // K162-style rows can have no resolvable far-side class.
     const list = grouped.get(r.systemId);
-    if (list) list.push(r.code);
-    else grouped.set(r.systemId, [r.code]);
+    if (list) list.push(code);
+    else grouped.set(r.systemId, [code]);
   }
   return grouped;
 }

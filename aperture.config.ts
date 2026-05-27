@@ -33,6 +33,12 @@ export const apertureConfig = {
   /** Per-request ESI timeout. Legacy Guzzle used a 5s cap. SPEC §05 §1. */
   ESI_REQUEST_TIMEOUT_MS: 5_000,
 
+  /** Per-request timeout for read-side third-party integrations (zKillboard, EVE-Scout, GitHub). */
+  INTEGRATION_REQUEST_TIMEOUT_MS: 5_000,
+
+  /** Repository slug used by the changelog integration. Normalised from the legacy fork mismatch. */
+  GITHUB_CHANGELOG_REPO: 'exodus4d/pathfinder',
+
   /** ESI `datasource` query param. `tranquility` (live) vs `singularity` (test server). */
   ESI_DATASOURCE: 'tranquility',
 

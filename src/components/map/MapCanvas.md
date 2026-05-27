@@ -9,9 +9,10 @@
 | data | MapViewData | yes | Initial map + systems + connections + signatures (from `loadMapForView`). |
 | routes | Record<number, HubRoute[]> | yes | Precomputed hub jumps keyed by EVE system id. |
 | stats | Record<number, SystemStatsSummary> | yes | Precomputed 24h kill stats keyed by EVE system id. |
+| intel | Record<number, SystemIntelSummary> | yes | Read-side integration intel keyed by EVE system id. |
 
 ### Renders
-A `ReactFlow` canvas (custom `system` nodes, `connection` edges, `Background`, `Controls`) beside a sidebar containing `InspectorModule`, `RouteModule`, and `KillStatsModule`.
+A `ReactFlow` canvas (custom `system` nodes, `connection` edges, `Background`, `Controls`) beside a sidebar containing `InspectorModule`, `RouteModule`, `IntelModule`, and `KillStatsModule`.
 
 ### Behaviour & Interactions
 - `viewData` is seeded from `data` and mutated by both realtime events and local optimistic patches; the canvas is the single source of canvas-render state.
@@ -37,6 +38,7 @@ A `ReactFlow` canvas (custom `system` nodes, `connection` edges, `Background`, `
 ### Depends On
 - `@xyflow/react`, `./SystemNode`, `./ConnectionEdge`, `./MapPresenceContext`
 - `RouteModule`, `KillStatsModule`, `InspectorModule`
+- `IntelModule`
 - `applyEvent` (`@/lib/map/applyEvent`)
 - `mapUpdateLoadSchema` (`@/lib/realtime/protocol`)
 - `useMapSubscription`, `useRealtime` (`@/lib/realtime/useRealtime`)

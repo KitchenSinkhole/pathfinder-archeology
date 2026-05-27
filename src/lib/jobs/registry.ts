@@ -7,6 +7,7 @@ import { mapPurge } from './tasks/mapPurge';
 import { partitionMaintenance } from './tasks/partitionMaintenance';
 import { signatureReap } from './tasks/signatureReap';
 import { structureResolve } from './tasks/structureResolve';
+import { sovFwRefresh } from './tasks/sovFwRefresh';
 import { systemStatsRefresh } from './tasks/systemStatsRefresh';
 
 /**
@@ -42,6 +43,7 @@ const modules: readonly JobModule[] = [
   mapPurge,
   // Stage 11.3 — per-system stats refresh from ESI.
   systemStatsRefresh,
+  sovFwRefresh,
   // Stage 11.4 — activity-log materialized-view refresh.
   activityRollupRefresh,
   // Stage 11.5 — pg_partman maintenance (premake + retention).

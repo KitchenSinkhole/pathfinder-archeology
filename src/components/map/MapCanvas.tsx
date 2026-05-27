@@ -16,6 +16,7 @@ import '@xyflow/react/dist/style.css';
 import type { MapEventPayload, MapSystemNode, MapViewData } from '@/types';
 import type { HubRoute } from '@/lib/map/route';
 import type { SystemStatsSummary } from '@/lib/map/stats';
+import type { SystemIntelSummary } from '@/lib/map/intel';
 import { applyEvent } from '@/lib/map/applyEvent';
 import {
   createConnectionOnServer,
@@ -35,6 +36,7 @@ import { mapUpdateLoadSchema } from '@/lib/realtime/protocol';
 import { useMapSubscription, useRealtime } from '@/lib/realtime/useRealtime';
 import { RouteModule } from '@/components/sidebar/RouteModule';
 import { KillStatsModule } from '@/components/sidebar/KillStatsModule';
+import { IntelModule } from '@/components/sidebar/IntelModule';
 import {
   InspectorModule,
   type SelectionRef,
@@ -50,10 +52,12 @@ export function MapCanvas({
   data,
   routes,
   stats,
+  intel,
 }: {
   data: MapViewData;
   routes: Record<number, HubRoute[]>;
   stats: Record<number, SystemStatsSummary>;
+  intel: Record<number, SystemIntelSummary>;
 }) {
   const [selected, setSelected] = useState<SelectionRef | null>(null);
   const [viewData, setViewData] = useState<MapViewData>(data);
@@ -381,6 +385,10 @@ export function MapCanvas({
           <RouteModule
             system={selectedSystem}
             routes={selectedSystem ? routes[selectedSystem.systemId] : undefined}
+          />
+          <IntelModule
+            system={selectedSystem}
+            intel={selectedSystem ? intel[selectedSystem.systemId] : undefined}
           />
           <KillStatsModule
             system={selectedSystem}

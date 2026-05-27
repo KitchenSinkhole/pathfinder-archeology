@@ -48,3 +48,5 @@ Stage 11 (graphile-worker runtime) adds:
 
 ### ApertureConfig
 Inferred type alias for `typeof apertureConfig` so consumers don't need to import the runtime value just to type a parameter.
+
+Stage 13 adds `INTEGRATION_REQUEST_TIMEOUT_MS` for read-side third-party clients and `GITHUB_CHANGELOG_REPO` for the GitHub changelog feed.
