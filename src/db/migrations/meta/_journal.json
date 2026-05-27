@@ -92,6 +92,13 @@
       "when": 1779602400000,
       "tag": "0012_webhook",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1779603600000,
+      "tag": "0013_stage15_permissions",
+      "breakpoints": true
     }
   ]
 }

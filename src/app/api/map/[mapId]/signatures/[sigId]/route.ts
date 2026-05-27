@@ -3,7 +3,7 @@ import { type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { getSession } from '@/lib/session';
 import { deleteSignature, updateSignature } from '@/lib/map/mutations/signatures';
-import { guardMap, parseBigInt } from '../../../utils';
+import { parseBigInt, requireMapMutate } from '../../../utils';
 
 /**
  * PATCH /api/map/[mapId]/signatures/[sigId] — update a signature's fields.
@@ -11,7 +11,7 @@ import { guardMap, parseBigInt } from '../../../utils';
  *
  * [sigId] is `ap_map_signature.id` (the DB row id), NOT the in-game 3-char sig code.
  *
- * INTERIM ACCESS: any logged-in character may call this. Stage 15 adds per-map rights.
+ * Access: `map_update` right on the target map.
  */
 
 const updateSignatureBodySchema = z.object({
@@ -31,11 +31,11 @@ export async function PATCH(
   { params }: { params: Promise<{ mapId: string; sigId: string }> },
 ) {
   const session = await getSession();
-  if (!session?.characterId) return Response.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
-
   const { mapId: rawMapId, sigId: rawSigId } = await params;
-  const guard = await guardMap(rawMapId);
-  if (!guard) return Response.json({ ok: false, error: 'Map not found.' }, { status: 404 });
+  const guard = await requireMapMutate(rawMapId, session, 'map_update');
+  if (!guard.ok) {
+    return Response.json({ ok: false, error: guard.error }, { status: guard.status });
+  }
 
   const signatureId = parseBigInt(rawSigId);
   if (!signatureId) return Response.json({ ok: false, error: 'Invalid signature id.' }, { status: 400 });
@@ -78,7 +78,7 @@ export async function PATCH(
   const result = await updateSignature({
     mapId: guard.mapId,
     signatureId,
-    characterId: BigInt(session.characterId),
+    characterId: guard.characterId,
     patch,
   });
 
@@ -90,11 +90,11 @@ export async function DELETE(
   { params }: { params: Promise<{ mapId: string; sigId: string }> },
 ) {
   const session = await getSession();
-  if (!session?.characterId) return Response.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
-
   const { mapId: rawMapId, sigId: rawSigId } = await params;
-  const guard = await guardMap(rawMapId);
-  if (!guard) return Response.json({ ok: false, error: 'Map not found.' }, { status: 404 });
+  const guard = await requireMapMutate(rawMapId, session, 'map_update');
+  if (!guard.ok) {
+    return Response.json({ ok: false, error: guard.error }, { status: guard.status });
+  }
 
   const signatureId = parseBigInt(rawSigId);
   if (!signatureId) return Response.json({ ok: false, error: 'Invalid signature id.' }, { status: 400 });
@@ -102,7 +102,7 @@ export async function DELETE(
   const result = await deleteSignature({
     mapId: guard.mapId,
     signatureId,
-    characterId: BigInt(session.characterId),
+    characterId: guard.characterId,
   });
 
   return Response.json(result, { status: result.ok ? 200 : 400 });

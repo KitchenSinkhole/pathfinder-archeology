@@ -23,3 +23,13 @@ export {
   type EsiSovereigntyMap,
   type EsiFactionWarSystems,
 } from './sovereignty';
+export {
+  characterPublicSchema,
+  characterRolesSchema,
+  characterTitleSchema,
+  characterTitlesSchema,
+  type EsiCharacterPublic,
+  type EsiCharacterRoles,
+  type EsiCharacterTitle,
+  type EsiCharacterTitles,
+} from './character';

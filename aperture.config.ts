@@ -100,13 +100,51 @@ export const apertureConfig = {
   /**
    * Default ESI scopes requested at login. Minimal location set for the
    * Phase-3 hot path plus public data; later stages widen as features need them. SPEC §7.
+   *
+   * Stage 15 adds:
+   *   - `esi-characters.read_corporation_roles.v1` — drives the Director → admin
+   *     authz promotion in `syncCharacterAuthz`.
+   *   - `esi-characters.read_titles.v1` — mirrors EVE corporation titles into
+   *     `ap_role` (`source='corp_title'`) so per-map access can be granted by title.
+   * Adding scopes invalidates existing access tokens; users re-consent on next login.
+   * No backwards-compat shim per CLAUDE.md ("No backwards-compatibility hacks").
    */
   ESI_SCOPES: [
     'publicData',
     'esi-location.read_location.v1',
     'esi-location.read_ship_type.v1',
     'esi-location.read_online.v1',
+    'esi-characters.read_corporation_roles.v1',
+    'esi-characters.read_titles.v1',
   ],
+
+  /**
+   * Stage 15. `character-cleanup` cron cadence. Drives both kick-expiry sweeps
+   * (5-minute clearing latency on minimum 5-minute kicks is acceptable) and the
+   * authz resync pass that throttles by `authz_synced_at`.
+   */
+  CHARACTER_CLEANUP_CRON: '*/5 * * * *',
+
+  /**
+   * Stage 15. A character's `authz_level` is resynced by `character-cleanup` if
+   * `authz_synced_at` is older than this (or NULL). 6 hours keeps director
+   * status reasonably fresh without bombarding ESI for every active character
+   * every cron tick.
+   */
+  CHARACTER_AUTHZ_RESYNC_STALE_AFTER_MS: 6 * 60 * 60 * 1000,
+
+  /**
+   * Stage 15. Per-tick batch cap for `character-cleanup`'s authz resync pass.
+   * Bounds ESI call volume per tick; the next tick picks up the rest.
+   */
+  CHARACTER_AUTHZ_RESYNC_BATCH_SIZE: 25,
+
+  /**
+   * Stage 15. The ESI corporation role string that promotes a character to
+   * `authz_level='admin'`. ESI returns role names with capital first letter
+   * (per CCP's swagger); the comparison is case-sensitive.
+   */
+  AUTHZ_ADMIN_ROLE: 'Director',
 
   /**
    * How long a wormhole connection has left from the moment it goes EOL to the

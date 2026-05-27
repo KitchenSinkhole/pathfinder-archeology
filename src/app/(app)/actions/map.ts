@@ -4,11 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/db/client';
-import { apMap, mapScope, mapType } from '@/db/schema';
+import { apCharacter, apMap, mapScope, mapType } from '@/db/schema';
 import { requireSession } from '@/lib/session';
 import type { InferInsertModel } from 'drizzle-orm';
 import { commitMapEvent, type ActionResult } from '@/lib/map/mutations/core';
 import type { MapEventPatch, MapEventPayload } from '@/lib/realtime/protocol';
+import { canCreateMap, requireMapRight } from '@/lib/auth/rights';
 
 /**
  * Low-frequency, user-initiated map mutations via Server Actions (CLAUDE.md
@@ -16,8 +17,14 @@ import type { MapEventPatch, MapEventPayload } from '@/lib/realtime/protocol';
  * the natural next step). Each one validates input, lands exactly one
  * `ap_map_event` through `commitMapEvent`, and revalidates the maps list.
  *
- * INTERIM ACCESS: mirrors Stage 7 — any logged-in character may mutate any
- * non-soft-deleted map. The real per-map rights model lands in Stage 15.
+ * Stage 15 access:
+ *   - `createMapAction`         requires `canCreateMap` (corp-right grant or admin).
+ *                               Sets the owner FK that matches the chosen `type`.
+ *   - `updateMapSettingsAction` requires `map_update` right.
+ *   - `deleteMapAction`         requires `map_delete` right via the same per-type
+ *                               rule (private: owner/admin; corp/alliance: owning
+ *                               entity member + corp-right grant). Corps that want
+ *                               to restrict deletion simply omit the grant row.
  */
 
 const createMapSchema = z.object({
@@ -51,6 +58,43 @@ export async function createMapAction(
   }
   const { name, scope, type, icon } = parsed.data;
 
+  const characterId = BigInt(session.characterId);
+  if (!(await canCreateMap(characterId))) {
+    return { ok: false, error: 'You do not have permission to create maps.' };
+  }
+
+  // Resolve the owner FK for the chosen scope. For corp/alliance the actor's
+  // affiliation must be present — without an affiliation we have no entity to
+  // hand ownership to.
+  const [actor] = await db
+    .select({
+      corporationId: apCharacter.corporationId,
+      allianceId: apCharacter.allianceId,
+    })
+    .from(apCharacter)
+    .where(eq(apCharacter.id, characterId));
+
+  let ownerCharacterId: bigint | null = null;
+  let ownerCorporationId: bigint | null = null;
+  let ownerAllianceId: bigint | null = null;
+  switch (type) {
+    case 'private':
+      ownerCharacterId = characterId;
+      break;
+    case 'corp':
+      if (!actor?.corporationId) {
+        return { ok: false, error: 'Cannot create a corporation map without a corporation.' };
+      }
+      ownerCorporationId = actor.corporationId;
+      break;
+    case 'alliance':
+      if (!actor?.allianceId) {
+        return { ok: false, error: 'Cannot create an alliance map without an alliance.' };
+      }
+      ownerAllianceId = actor.allianceId;
+      break;
+  }
+
   // The map id is needed both as the event's `map_id` FK and in the payload, so
   // pre-allocate it from the sequence before the row is inserted (mirrors the
   // `eventId` pre-allocation in commitMapEvent). Sequences are non-transactional.
@@ -61,10 +105,19 @@ export async function createMapAction(
 
   const result = await commitMapEvent({
     mapId,
-    characterId: BigInt(session.characterId),
+    characterId,
     kind: 'map.create',
     mutate: async (tx) => {
-      await tx.insert(apMap).values({ id: mapId, name, scope, type, icon: icon ?? null });
+      await tx.insert(apMap).values({
+        id: mapId,
+        name,
+        scope,
+        type,
+        icon: icon ?? null,
+        ownerCharacterId,
+        ownerCorporationId,
+        ownerAllianceId,
+      });
       return { id: mapId.toString(), name, scope, type, icon: icon ?? null };
     },
   });
@@ -79,9 +132,14 @@ export async function deleteMapAction(mapId: string): Promise<ActionResult<MapEv
   if (!/^\d+$/.test(mapId)) return { ok: false, error: 'Invalid map id.' };
   const id = BigInt(mapId);
 
+  const guard = await requireMapRight(session, id, 'map_delete');
+  if (!guard.ok) {
+    return { ok: false, error: guard.error };
+  }
+
   const result = await commitMapEvent({
     mapId: id,
-    characterId: BigInt(session.characterId),
+    characterId: guard.characterId,
     kind: 'map.delete',
     mutate: async (tx) => {
       const deletedAt = new Date();
@@ -111,9 +169,14 @@ export async function updateMapSettingsAction(
   const { mapId, ...patch } = parsed.data;
   const id = BigInt(mapId);
 
+  const guard = await requireMapRight(session, id, 'map_update');
+  if (!guard.ok) {
+    return { ok: false, error: guard.error };
+  }
+
   const result = await commitMapEvent({
     mapId: id,
-    characterId: BigInt(session.characterId),
+    characterId: guard.characterId,
     kind: 'map.update',
     mutate: async (tx) => {
       const set: Partial<InferInsertModel<typeof apMap>> = { updatedAt: new Date() };

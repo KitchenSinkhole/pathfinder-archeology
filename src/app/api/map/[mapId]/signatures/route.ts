@@ -3,14 +3,14 @@ import { type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { getSession } from '@/lib/session';
 import { createSignature } from '@/lib/map/mutations/signatures';
-import { guardMap, parseBigInt } from '../../utils';
+import { parseBigInt, requireMapMutate } from '../../utils';
 
 /**
  * POST /api/map/[mapId]/signatures
  * Create a scan signature in a map system.
  * Returns { ok, data, eventId }.
  *
- * INTERIM ACCESS: any logged-in character may call this. Stage 15 adds per-map rights.
+ * Access: `map_update` right on the target map.
  */
 
 const createSignatureBodySchema = z.object({
@@ -31,11 +31,11 @@ export async function POST(
   { params }: { params: Promise<{ mapId: string }> },
 ) {
   const session = await getSession();
-  if (!session?.characterId) return Response.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
-
   const { mapId: rawMapId } = await params;
-  const guard = await guardMap(rawMapId);
-  if (!guard) return Response.json({ ok: false, error: 'Map not found.' }, { status: 404 });
+  const guard = await requireMapMutate(rawMapId, session, 'map_update');
+  if (!guard.ok) {
+    return Response.json({ ok: false, error: guard.error }, { status: guard.status });
+  }
 
   let body: unknown;
   try {
@@ -66,7 +66,7 @@ export async function POST(
     mapId: guard.mapId,
     mapSystemId,
     mapConnectionId,
-    characterId: BigInt(session.characterId),
+    characterId: guard.characterId,
     sigId: parsed.data.sigId,
     groupId: parsed.data.groupId,
     typeId: parsed.data.typeId,

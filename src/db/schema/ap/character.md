@@ -15,7 +15,9 @@
 - `esi_access_token_expires` — `timestamptz`.
 - `esi_scopes` — `text[]`.
 - `status` — `character_status` enum, default `active`; `status_changed_at` / `status_reason` accompany it.
-- `authz_level` — `authz_level` enum, default `member`.
+- `status_expires_at` — `timestamptz`, nullable. Set on `kicked` rows to the moment the timeout ends; the Stage 15.6 `character-cleanup` cron flips `status` back to `active` and clears this column when `now() >= status_expires_at`. NULL on `active` / `banned` rows.
+- `authz_level` — `authz_level` enum, default `member`. Derived state: `syncCharacterAuthz` sets `admin` ↔ `member` based on whether ESI returns the `Director` corp role; `manager` is reserved for explicit admin-panel grants (Stage 16) and is never auto-overwritten.
+- `authz_synced_at` — `timestamptz`, nullable. When `syncCharacterAuthz` last reconciled `authz_level` and `ap_character_role` membership against ESI. Used by the `character-cleanup` job to throttle resync to stale rows.
 - `last_system_id`, `last_ship_type_id` — `integer`, nullable. Last-known location state cached by the Stage 12 `location-poll` job. No FK to `universe_system` / `universe_type` — a universe rebuild would otherwise have to honour every stale pointer, and the next poll tick overwrites the value anyway.
 - `last_online` — `boolean`, nullable. Most recent `getCharacterOnline` result; `NULL` before the first poll tick.
 - `last_location_at` — `timestamptz`, nullable. When `last_system_id` was last refreshed; stale when the character is offline (offline ticks update only `last_online`).

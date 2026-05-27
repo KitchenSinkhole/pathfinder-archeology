@@ -8,7 +8,7 @@
 ### POST /api/map/[mapId]/signatures/resolve
 **Body:** `{ rows: ParsedSigRow[] }` — capped at 500 entries.
 
-**Auth & guards:** `getSession()` → 401; `guardMap()` → 404.
+**Auth & guards:** `requireMapView(rawMapId, session)` — view-only; 401 / 404. The bulk POST enforces the actual `map_update` right.
 
 **Returns:** `{ ok: true, data: ResolvedSigRow[] }`. Preview-only — the bulk POST resolves again authoritatively before committing, so a stale preview cannot desync the final state.
 

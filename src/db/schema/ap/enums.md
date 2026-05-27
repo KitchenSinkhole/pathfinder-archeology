@@ -34,3 +34,9 @@
 
 ### apWebhookEvent
 `pgEnum('ap_webhook_event', ['history', 'rally'])` — which class of map events a webhook subscribes to. `history` mirrors every `ap_map_event` insert on the map; `rally` fires only when a `system.updated` event carries a non-null `rallyAt` (rally set, not cleared).
+
+### mapRight
+`pgEnum('map_right', ['map_create', 'map_update', 'map_delete', 'map_import', 'map_export', 'map_share'])` — Stage 15. The six rights a corp may grant via `ap_corporation_right`. `map_create` is a global capability; the others gate per-map mutations. Names match the legacy `right.name` strings (SPEC §6.5).
+
+### roleSource
+`pgEnum('role_source', ['builtin', 'corp_title', 'external'])` — Stage 15. Where an `ap_role` row originates. `corp_title` rows are mirrored from EVE corporation titles; `external_ref` is `'<corp_id>:<title_id>'`. `external` rows come from Discord/third-party syncs.

@@ -12,11 +12,9 @@ Every route in this tree obeys these invariants:
 
 3. **`{ ok, data, eventId }` response shape.** Every mutation route returns this JSON body (HTTP 200 on success, 400 on mutation-layer failure). Error responses before the mutation layer (401, 404, 400 for invalid input) also use `{ ok: false, error: string }`.
 
-4. **Session required.** All routes call `getSession()` and return 401 if no session exists.
+4. **Session + rights guard.** Every mutation route calls `requireMapMutate(rawMapId, session, '<right>')` from `utils.ts` (which chains session check + bigint parse + `requireMapRight` from `@/lib/auth/rights`). Read endpoints (e.g. `wormhole-types`, signature paste resolver) call `requireMapView`. The tuple result is mapped straight into a 401/403/404 response. Existence is never leaked: missing maps and non-viewable maps both return 404.
 
-5. **Map guard.** All routes call `guardMap()` to confirm the map exists and is not soft-deleted before proceeding.
-
-6. **INTERIM ACCESS (→ Stage 15).** Any logged-in character may call any route. The per-map rights model (`ap_map_access`) is added in Stage 15.
+5. **Closes SPEC §11 Q8.** Stage 15 explicitly enforces `map_update` (mutations) and the owner-or-admin restriction on `map_delete` / `map_share`. There is no controller path that bypasses these checks; the static-analysis test in `tests/integration/permissions/` blocks regressions.
 
 ## Routes
 
@@ -42,6 +40,7 @@ After each mutation the `tg_map_event_notify` Postgres trigger fires `pg_notify(
 
 ## Shared helpers
 
-- `src/app/api/map/utils.ts` — `parseBigInt`, `guardMap`.
+- `src/app/api/map/utils.ts` — `parseBigInt`, `guardMap`, `requireMapMutate`, `requireMapView`.
+- `src/lib/auth/rights.ts` — the underlying `canViewMap` / `canMutateMap` / `requireMapRight` helpers.
 - `src/lib/map/mutations/` — one file per entity: `core.ts`, `systems.ts`, `connections.ts`, `signatures.ts`.
 - `src/lib/map/wormholeTypes.ts` — `wormholeTypesForSystem`, `staticMatchForConnection`.

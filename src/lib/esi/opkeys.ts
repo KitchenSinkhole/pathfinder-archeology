@@ -37,6 +37,7 @@ export const OP_KEYS = {
   getCharacter: { operationId: 'get_characters_character_id', auth: 'none' },
   getCharacterAffiliation: { operationId: 'post_characters_affiliation', auth: 'none' },
   getCharacterRoles: { operationId: 'get_characters_character_id_roles', auth: 'character' },
+  getCharacterTitles: { operationId: 'get_characters_character_id_titles', auth: 'character' },
   getCharacterClones: { operationId: 'get_characters_character_id_clones', auth: 'character' },
   getCharacterOnline: { operationId: 'get_characters_character_id_online', auth: 'character' },
   getCharacterLocation: { operationId: 'get_characters_character_id_location', auth: 'character' },

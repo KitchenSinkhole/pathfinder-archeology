@@ -26,3 +26,4 @@ Builds graphile-worker cron items for modules whose `cron` is set. The identifie
 - Per-task cron expressions live on each task module.
 - Stage 13 registers `sov-fw-refresh`, the hourly sovereignty / faction-warfare ESI refresh task.
 - Stage 14 registers `webhook-dispatch`, a non-cron task enqueued by `commitMapEvent` per `ap_map_event` insert on maps with at least one configured Discord webhook.
+- Stage 15.6 registers `character-cleanup`, the 5-minute cron that clears expired kicks and resyncs stale `authz_level` rows against ESI (replaces legacy `cleanUpCharacterData`).

@@ -8,6 +8,7 @@ import { encryptToken } from '@/lib/crypto';
 import { eveProvider, refreshAccessToken } from '@/lib/auth/eve-provider';
 import type { EveProfile } from '@/lib/auth/eve-provider';
 import { clearLinkCookie, readLinkUserId } from '@/lib/auth/link-cookie';
+import { syncCharacterAuthz } from '@/lib/auth/syncCharacterAuthz';
 
 // Auth.js v5, stateless JWT sessions (no DB session store, no Redis — SPEC §7).
 // The JWT carries only the active character/user ids; ESI tokens never leave
@@ -103,6 +104,17 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
         token.characterId = eve.characterId.toString();
         token.userId = userId;
         token.accessTokenExpiresAt = expiresAt;
+        // Stage 15. Promote / demote authz, refresh affiliation, mirror corp
+        // titles. Best-effort: ESI failure logs a warning but does not block
+        // login — the user can still see the maps they already had access to.
+        try {
+          await syncCharacterAuthz(eve.characterId);
+        } catch (err) {
+          console.warn(
+            `[auth] syncCharacterAuthz failed for character ${eve.characterId}:`,
+            err,
+          );
+        }
         return token;
       }
 

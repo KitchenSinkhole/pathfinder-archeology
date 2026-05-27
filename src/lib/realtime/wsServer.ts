@@ -2,11 +2,9 @@ import type { IncomingMessage, Server as HttpServer } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { decode } from 'next-auth/jwt';
-import { and, inArray, isNull } from 'drizzle-orm';
 import { env } from '@/lib/env';
 import { apertureConfig } from '../../../aperture.config';
-import { db } from '@/db/client';
-import { apMap } from '@/db/schema';
+import { canViewMap } from '@/lib/auth/rights';
 import { startTrackingCharacter } from '@/lib/jobs/tracking';
 import { bus } from './bus';
 import { clientToServerMessageSchema, type ServerToClientMessage } from './protocol';
@@ -17,9 +15,9 @@ import { clientToServerMessageSchema, type ServerToClientMessage } from './proto
  * server fans `mapUpdate` envelopes sourced from the Postgres LISTEN bus.
  *
  * Authorization is the Auth.js session, read off the upgrade request's cookies.
- * INTERIM ACCESS (Stage 8): any logged-in character may subscribe to any
- * non-soft-deleted map — same policy as `loadMapForView`. Per-map rights land
- * in Stage 15.
+ * Stage 15: subscriptions are gated by `canViewMap` — a request for a map the
+ * actor can't see is silently dropped (no acknowledgement; we don't leak
+ * existence over realtime any more than we do over HTTP).
  */
 
 type SessionClaims = { userId: number; characterId: string };
@@ -74,14 +72,19 @@ function send(socket: WebSocket, message: ServerToClientMessage): void {
   if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(message));
 }
 
-/** Map ids from the request that exist and are not soft-deleted. */
-async function existingMapIds(mapIds: number[]): Promise<Set<bigint>> {
+/** Map ids the actor can view (existence + soft-delete + Stage 15 rights). */
+async function viewableMapIds(
+  characterId: bigint,
+  mapIds: number[],
+): Promise<Set<bigint>> {
   if (mapIds.length === 0) return new Set();
-  const rows = await db
-    .select({ id: apMap.id })
-    .from(apMap)
-    .where(and(inArray(apMap.id, mapIds.map(BigInt)), isNull(apMap.deletedAt)));
-  return new Set(rows.map((r) => r.id));
+  const checks = await Promise.all(
+    mapIds.map(async (raw) => {
+      const id = BigInt(raw);
+      return (await canViewMap(characterId, id)) ? id : null;
+    }),
+  );
+  return new Set(checks.filter((x): x is bigint => x !== null));
 }
 
 let attached = false;
@@ -140,8 +143,8 @@ export function attachWsServer(httpServer: HttpServer): WebSocketServer {
   });
 
   async function subscribe(ws: WebSocket, state: ClientState, mapIds: number[]): Promise<void> {
-    const allowed = await existingMapIds(mapIds);
     const characterId = BigInt(state.session.characterId);
+    const allowed = await viewableMapIds(characterId, mapIds);
     for (const id of allowed) {
       if (!state.subscriptions.has(id)) {
         const off = bus.subscribe(id, (message) => send(ws, message));

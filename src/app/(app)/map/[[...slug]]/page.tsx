@@ -5,6 +5,7 @@ import { loadMapForView } from '@/lib/map/loadMap';
 import { routesForSystems } from '@/lib/map/route';
 import { statsForSystems } from '@/lib/map/stats';
 import { intelForSystems } from '@/lib/map/intel';
+import { requireSession } from '@/lib/session';
 
 function parseMapId(slug?: string[]): bigint | null {
   const raw = slug?.[0];
@@ -17,6 +18,7 @@ function parseMapId(slug?: string[]): bigint | null {
 }
 
 export default async function MapPage({ params }: { params: Promise<{ slug?: string[] }> }) {
+  const session = await requireSession();
   const { slug } = await params;
   const mapId = parseMapId(slug);
 
@@ -29,7 +31,7 @@ export default async function MapPage({ params }: { params: Promise<{ slug?: str
     );
   }
 
-  const data = await loadMapForView(mapId);
+  const data = await loadMapForView(mapId, BigInt(session.characterId));
   if (!data) {
     return (
       <EmptyState

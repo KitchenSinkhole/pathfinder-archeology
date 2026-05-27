@@ -20,7 +20,7 @@
 }
 ```
 
-**Auth & guards:** `getSession()` → 401; `guardMap()` → 404 (same as every other map route).
+**Auth & guards:** `requireMapMutate(rawMapId, session, 'map_update')` (Stage 15) — 401 / 403 / 404.
 
 **Behaviour:** Re-resolves `rows` via `resolveSignatureRows` (authoritative source — preview is best-effort), then dispatches `pasteSignatures` with `defaultExpiresAt = now + SIGNATURE_DEFAULT_TTL_MS`. The orchestrator commits all events under one transaction.
 

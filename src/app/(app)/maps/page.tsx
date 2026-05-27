@@ -1,12 +1,17 @@
 import Link from 'next/link';
-import { getActiveCharacter } from '@/lib/session';
+import { getActiveCharacter, requireSession } from '@/lib/session';
 import { listViewableMaps } from '@/lib/map/loadMap';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CreateMapDialog } from '@/components/maps/CreateMapDialog';
 import { DeleteMapButton } from '@/components/maps/DeleteMapButton';
 
 export default async function MapsPage() {
-  const [active, maps] = await Promise.all([getActiveCharacter(), listViewableMaps()]);
+  const session = await requireSession();
+  const viewerCharacterId = BigInt(session.characterId);
+  const [active, maps] = await Promise.all([
+    getActiveCharacter(),
+    listViewableMaps(viewerCharacterId),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">

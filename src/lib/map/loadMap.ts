@@ -21,6 +21,7 @@ import {
   whJumpMass,
   whMass,
 } from '@/db/schema';
+import { canViewMap, viewableMapPredicate } from '@/lib/auth/rights';
 
 type SystemStatus = (typeof systemStatus.enumValues)[number];
 type ConnectionScope = (typeof connectionScope.enumValues)[number];
@@ -126,12 +127,16 @@ export type MapListItem = {
 
 /**
  * Load one map for the read-only view. Returns `null` when the map does not
- * exist or is soft-deleted (`deleted_at` set).
- *
- * INTERIM ACCESS: there is no per-map access model yet (Stage 15). Any logged-in
- * character may view any non-soft-deleted map. Real right-checks land in Stage 15.
+ * exist, is soft-deleted, or the viewer is not allowed to see it (Stage 15
+ * `canViewMap`). The viewer-id parameter is required — passing the wrong id
+ * is an access-control bug that the type system should catch.
  */
-export async function loadMapForView(mapId: bigint): Promise<MapViewData | null> {
+export async function loadMapForView(
+  mapId: bigint,
+  viewerCharacterId: bigint,
+): Promise<MapViewData | null> {
+  if (!(await canViewMap(viewerCharacterId, mapId))) return null;
+
   const [map] = await db
     .select({ id: apMap.id, name: apMap.name, scope: apMap.scope, type: apMap.type })
     .from(apMap)
@@ -296,8 +301,20 @@ export async function loadMapPresence(mapId: bigint): Promise<MapPresenceEntry[]
   });
 }
 
-/** All non-soft-deleted maps, ordered by name. Feeds the maps list. */
-export async function listViewableMaps(): Promise<MapListItem[]> {
+/**
+ * Maps the viewer is allowed to see, ordered by name. Feeds the maps list.
+ * Stage 15: filtered server-side by `viewableMapPredicate` — admins see every
+ * non-soft-deleted map; members see maps where they are the owner (by scope)
+ * or where any of their roles appear in `ap_map_role_access`.
+ */
+export async function listViewableMaps(
+  viewerCharacterId: bigint,
+): Promise<MapListItem[]> {
+  const viewPredicate = await viewableMapPredicate(viewerCharacterId);
+  const where = viewPredicate
+    ? and(isNull(apMap.deletedAt), viewPredicate)
+    : isNull(apMap.deletedAt);
+
   const rows = await db
     .select({
       id: apMap.id,
@@ -307,7 +324,7 @@ export async function listViewableMaps(): Promise<MapListItem[]> {
       icon: apMap.icon,
     })
     .from(apMap)
-    .where(isNull(apMap.deletedAt))
+    .where(where)
     .orderBy(apMap.name);
   return rows.map((r) => ({ ...r, id: r.id.toString() }));
 }

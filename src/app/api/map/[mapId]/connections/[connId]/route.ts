@@ -4,13 +4,13 @@ import { z } from 'zod';
 import { getSession } from '@/lib/session';
 import { deleteConnection, updateConnection } from '@/lib/map/mutations/connections';
 import { connectionScope, whJumpMass, whMass } from '@/db/schema/ap/enums';
-import { guardMap, parseBigInt } from '../../../utils';
+import { parseBigInt, requireMapMutate } from '../../../utils';
 
 /**
  * PATCH /api/map/[mapId]/connections/[connId] — update a connection's flags.
  * DELETE /api/map/[mapId]/connections/[connId] — hard-delete (wormholes don't come back).
  *
- * INTERIM ACCESS: any logged-in character may call this. Stage 15 adds per-map rights.
+ * Access: `map_update` right on the target map.
  */
 
 const updateConnectionBodySchema = z.object({
@@ -30,11 +30,11 @@ export async function PATCH(
   { params }: { params: Promise<{ mapId: string; connId: string }> },
 ) {
   const session = await getSession();
-  if (!session?.characterId) return Response.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
-
   const { mapId: rawMapId, connId: rawConnId } = await params;
-  const guard = await guardMap(rawMapId);
-  if (!guard) return Response.json({ ok: false, error: 'Map not found.' }, { status: 404 });
+  const guard = await requireMapMutate(rawMapId, session, 'map_update');
+  if (!guard.ok) {
+    return Response.json({ ok: false, error: guard.error }, { status: guard.status });
+  }
 
   const connectionId = parseBigInt(rawConnId);
   if (!connectionId) return Response.json({ ok: false, error: 'Invalid connection id.' }, { status: 400 });
@@ -57,7 +57,7 @@ export async function PATCH(
   const result = await updateConnection({
     mapId: guard.mapId,
     connectionId,
-    characterId: BigInt(session.characterId),
+    characterId: guard.characterId,
     patch: parsed.data,
   });
 
@@ -69,11 +69,11 @@ export async function DELETE(
   { params }: { params: Promise<{ mapId: string; connId: string }> },
 ) {
   const session = await getSession();
-  if (!session?.characterId) return Response.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
-
   const { mapId: rawMapId, connId: rawConnId } = await params;
-  const guard = await guardMap(rawMapId);
-  if (!guard) return Response.json({ ok: false, error: 'Map not found.' }, { status: 404 });
+  const guard = await requireMapMutate(rawMapId, session, 'map_update');
+  if (!guard.ok) {
+    return Response.json({ ok: false, error: guard.error }, { status: guard.status });
+  }
 
   const connectionId = parseBigInt(rawConnId);
   if (!connectionId) return Response.json({ ok: false, error: 'Invalid connection id.' }, { status: 400 });
@@ -81,7 +81,7 @@ export async function DELETE(
   const result = await deleteConnection({
     mapId: guard.mapId,
     connectionId,
-    characterId: BigInt(session.characterId),
+    characterId: guard.characterId,
   });
 
   return Response.json(result, { status: result.ok ? 200 : 400 });

@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { getSession } from '@/lib/session';
 import { removeSystem, updateSystem } from '@/lib/map/mutations/systems';
 import { systemStatus } from '@/db/schema/ap/enums';
-import { guardMap, parseBigInt } from '../../../utils';
+import { parseBigInt, requireMapMutate } from '../../../utils';
 
 /**
  * PATCH /api/map/[mapId]/systems/[systemId]  — update a placed system's fields.
@@ -12,7 +12,7 @@ import { guardMap, parseBigInt } from '../../../utils';
  *
  * [systemId] is `ap_map_system.id` (the xyflow node id), NOT the EVE solar-system id.
  *
- * INTERIM ACCESS: any logged-in character may call this. Stage 15 adds per-map rights.
+ * Access: `map_update` right on the target map.
  */
 
 const updateSystemBodySchema = z.object({
@@ -33,11 +33,11 @@ export async function PATCH(
   { params }: { params: Promise<{ mapId: string; systemId: string }> },
 ) {
   const session = await getSession();
-  if (!session?.characterId) return Response.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
-
   const { mapId: rawMapId, systemId: rawSystemId } = await params;
-  const guard = await guardMap(rawMapId);
-  if (!guard) return Response.json({ ok: false, error: 'Map not found.' }, { status: 404 });
+  const guard = await requireMapMutate(rawMapId, session, 'map_update');
+  if (!guard.ok) {
+    return Response.json({ ok: false, error: guard.error }, { status: guard.status });
+  }
 
   const mapSystemId = parseBigInt(rawSystemId);
   if (!mapSystemId) return Response.json({ ok: false, error: 'Invalid system id.' }, { status: 400 });
@@ -67,7 +67,7 @@ export async function PATCH(
   const result = await updateSystem({
     mapId: guard.mapId,
     mapSystemId,
-    characterId: BigInt(session.characterId),
+    characterId: guard.characterId,
     patch,
   });
 
@@ -79,11 +79,11 @@ export async function DELETE(
   { params }: { params: Promise<{ mapId: string; systemId: string }> },
 ) {
   const session = await getSession();
-  if (!session?.characterId) return Response.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
-
   const { mapId: rawMapId, systemId: rawSystemId } = await params;
-  const guard = await guardMap(rawMapId);
-  if (!guard) return Response.json({ ok: false, error: 'Map not found.' }, { status: 404 });
+  const guard = await requireMapMutate(rawMapId, session, 'map_update');
+  if (!guard.ok) {
+    return Response.json({ ok: false, error: guard.error }, { status: guard.status });
+  }
 
   const mapSystemId = parseBigInt(rawSystemId);
   if (!mapSystemId) return Response.json({ ok: false, error: 'Invalid system id.' }, { status: 400 });
@@ -91,7 +91,7 @@ export async function DELETE(
   const result = await removeSystem({
     mapId: guard.mapId,
     mapSystemId,
-    characterId: BigInt(session.characterId),
+    characterId: guard.characterId,
   });
 
   return Response.json(result, { status: result.ok ? 200 : 400 });

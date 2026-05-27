@@ -10,7 +10,7 @@ Wires a `noServer` `ws` server onto the HTTP server's `upgrade` event. Only upgr
 
 Per connection:
 - **Auth at upgrade:** decodes the Auth.js v5 session cookie (`__Secure-authjs.session-token` / `authjs.session-token`) via `next-auth/jwt` `decode` keyed on `AUTH_SECRET`. No/invalid session → `401` and the socket is destroyed.
-- **subscribe:** validated by `clientToServerMessageSchema`; map ids are filtered to those that exist and are not soft-deleted (interim authz — any logged-in character, matching `loadMapForView`; per-map rights are Stage 15), then each is wired to `bus.subscribe` and `startTrackingCharacter` is called (idempotent — safe on reconnect / multi-tab). Tracking is server-side and survives tab close; stopping it is an explicit user action (Stage 15).
+- **subscribe:** validated by `clientToServerMessageSchema`; each map id is filtered through `canViewMap(characterId, mapId)` (Stage 15 — existence + soft-delete + scope/owner/role rights all in one). Requests for maps the actor cannot see are silently dropped (no acknowledgement; existence is not leaked over realtime). Allowed ids are wired to `bus.subscribe` and `startTrackingCharacter` is called (idempotent — safe on reconnect / multi-tab). Tracking is server-side and survives tab close; stopping it is an explicit user action.
 - **unsubscribe:** tears down the matching bus subscriptions (does not stop location tracking).
 - Malformed frames are dropped silently.
 - **Heartbeat:** every `WS_HEARTBEAT_MS` the server `ping`s each socket (terminating any that missed the prior pong) and sends an app-level `healthCheck` envelope so a quiet map still clears the client's degraded banner.
@@ -26,4 +26,4 @@ Whether `attachWsServer` has run in this process.
 - No `import 'server-only'`: loaded by the custom `server.ts` outside Next's bundler (the `server-only` shim doesn't resolve there); only `server.ts` and tests import it.
 
 ### Depends On
-- `ws`, `next-auth/jwt` (`decode`), `drizzle-orm`, `@/db/client` + `apMap`, `@/lib/jobs/tracking` (`startTrackingCharacter`), `./bus`, `./protocol`, `aperture.config`, `@/lib/env`.
+- `ws`, `next-auth/jwt` (`decode`), `@/lib/auth/rights` (`canViewMap`), `@/lib/jobs/tracking` (`startTrackingCharacter`), `./bus`, `./protocol`, `aperture.config`, `@/lib/env`.

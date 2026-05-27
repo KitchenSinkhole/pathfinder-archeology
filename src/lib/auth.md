@@ -11,7 +11,7 @@ The standard Auth.js v5 exports. `handlers` is mounted by the `[...nextauth]` ro
 ### Config
 - `providers: [eveProvider()]`, `session.strategy: 'jwt'` (no DB session store — SPEC §7).
 - **`jwt` callback:**
-  - On initial sign-in (`account` + `profile` present): reads the signed `ap_link` cookie (`link-cookie.ts`) to resolve an "Add character" link target, calls `persistLogin(..., linkUserId)`, clears the cookie, then the token carries `characterId` (string — bigint isn't JSON-safe), `userId`, and `accessTokenExpiresAt`.
+  - On initial sign-in (`account` + `profile` present): reads the signed `ap_link` cookie (`link-cookie.ts`) to resolve an "Add character" link target, calls `persistLogin(..., linkUserId)`, clears the cookie, then the token carries `characterId` (string — bigint isn't JSON-safe), `userId`, and `accessTokenExpiresAt`. **Stage 15:** also fires `syncCharacterAuthz(characterId)` to reconcile `authz_level`, affiliations, and corp-title role memberships against ESI — best-effort, ESI failure is logged but does not block login.
   - On `trigger === 'update'` (character switch): re-validates that the requested `characterId` belongs to `token.userId` and is `active`, then re-points `characterId` and resets `accessTokenExpiresAt` from that character's DB expiry. An invalid target leaves the token unchanged.
   - On later calls: if within `SSO_TOKEN_REFRESH_BUFFER_S` of expiry, calls `refreshAccessToken` (which persists the rotated refresh token before returning) and refreshes the expiry hint from the DB. Refresh failures are swallowed so a revoked token degrades to logged-out rather than throwing.
 - **`session` callback:** exposes `characterId` and `userId` only — never raw ESI tokens.
@@ -25,5 +25,5 @@ Adds `characterId`/`userId` to `Session` and `characterId`/`userId`/`accessToken
 ---
 
 Notes:
-- Corp/alliance ids are left null here; they require the ESI client (Stage 4) and are backfilled later.
+- Corp/alliance ids are refreshed by `syncCharacterAuthz` on every sign-in (Stage 15). The legacy "filled in later" note no longer applies.
 - Node runtime only (crypto + pg).

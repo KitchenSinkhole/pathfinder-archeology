@@ -5,10 +5,8 @@
 
 ---
 
-### loadMapForView(mapId: bigint): Promise<MapViewData | null>
-Loads one map for rendering. Returns `null` if the map is missing or soft-deleted (`deleted_at` set). Joins visible `ap_map_system` rows to `universe_system` / constellation / region, attaches wormhole static codes, loads all `ap_map_connection` rows, and loads `ap_map_signature` rows for every visible system. Also calls `loadMapPresence(mapId)` so the returned `MapViewData` carries the initial roster of online tracked pilots. All `bigint` ids and `timestamptz`s are stringified (ISO for dates) so the result is serialisable across the Server→Client boundary.
-
-**Interim access:** no per-map permission model exists yet (Stage 15). Any logged-in character may view any non-soft-deleted map.
+### loadMapForView(mapId: bigint, viewerCharacterId: bigint): Promise<MapViewData | null>
+Loads one map for rendering. Returns `null` if the map is missing, soft-deleted, or the viewer is not allowed to see it (Stage 15 `canViewMap`). The viewer-id is required — passing the wrong one is an access-control bug the type system catches. Joins visible `ap_map_system` rows to `universe_system` / constellation / region, attaches wormhole static codes, loads all `ap_map_connection` rows, and loads `ap_map_signature` rows for every visible system. Also calls `loadMapPresence(mapId)` so the returned `MapViewData` carries the initial roster of online tracked pilots. All `bigint` ids and `timestamptz`s are stringified (ISO for dates) so the result is serialisable across the Server→Client boundary.
 
 ---
 
@@ -17,8 +15,8 @@ Online tracked pilots currently in a known system on this map. Joins `ap_map_cha
 
 ---
 
-### listViewableMaps(): Promise<MapListItem[]>
-All maps where `deleted_at IS NULL`, ordered by name. Feeds the `/maps` list.
+### listViewableMaps(viewerCharacterId: bigint): Promise<MapListItem[]>
+Maps the viewer can see, ordered by name. Feeds the `/maps` list. Stage 15 filters server-side via `viewableMapPredicate` — admins see every non-soft-deleted map; members see maps where they are the owner (by scope) or where one of their roles appears in `ap_map_role_access`.
 
 ---
 
@@ -33,4 +31,4 @@ All maps where `deleted_at IS NULL`, ordered by name. Feeds the `/maps` list.
 These are re-exported from `src/types/index.ts`.
 
 ### Depends on
-- `@/db/client` (`db`), `@/db/schema` (tables + enums).
+- `@/db/client` (`db`), `@/db/schema` (tables + enums), `@/lib/auth/rights` (`canViewMap`, `viewableMapPredicate`).

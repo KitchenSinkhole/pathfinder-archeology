@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { getSession } from '@/lib/session';
 import { resolveSignatureRows } from '@/lib/map/signatureReader';
 import type { ParsedSigRow } from '@/lib/map/signatureParser';
-import { guardMap } from '../../../utils';
+import { requireMapView } from '../../../utils';
 
 /**
  * POST /api/map/[mapId]/signatures/resolve — best-effort preview resolver for
@@ -12,6 +12,9 @@ import { guardMap } from '../../../utils';
  * re-resolves authoritatively, so this endpoint can never desync the final
  * commit. POST (not GET) because a 30-sig paste can easily exceed a sensible
  * URL length.
+ *
+ * Access: view-only — anyone who can see the map may preview-resolve a paste.
+ * The bulk commit endpoint enforces the actual `map_update` right.
  */
 
 const parsedRowSchema = z.object({
@@ -32,12 +35,11 @@ export async function POST(
   { params }: { params: Promise<{ mapId: string }> },
 ) {
   const session = await getSession();
-  if (!session?.characterId)
-    return Response.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
-
   const { mapId: rawMapId } = await params;
-  const guard = await guardMap(rawMapId);
-  if (!guard) return Response.json({ ok: false, error: 'Map not found.' }, { status: 404 });
+  const guard = await requireMapView(rawMapId, session);
+  if (!guard.ok) {
+    return Response.json({ ok: false, error: guard.error }, { status: guard.status });
+  }
 
   let body: unknown;
   try {

@@ -7,7 +7,7 @@
 A "Maps" heading + "Signed in as {name}" line with a `CreateMapDialog` ("New map") trigger in the header row, then a responsive grid of map `Card`s (name + type · scope) linking to `/map/<id>`, each with a `DeleteMapButton` overlaid top-right. Falls back to an empty-state card when there are no maps.
 
 ### Behaviour & Interactions
-- Server component; reads the active character via `getActiveCharacter` and maps via `listViewableMaps` (all non-soft-deleted maps — interim, pre-permissions).
+- Server component; reads the active character via `getActiveCharacter` and the viewer-scoped maps via `listViewableMaps(viewerCharacterId)` (Stage 15: scope+owner+role-overlay filtered SQL).
 - The per-card delete button is a sibling of the `Link` (not nested) to keep valid HTML; the card title reserves right padding so it doesn't sit under the button.
 - Create / delete mutate via Server Actions that `revalidatePath('/maps')`, so this list re-renders after either.
 

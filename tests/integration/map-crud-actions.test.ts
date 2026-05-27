@@ -3,7 +3,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { db, pool } from '@/db/client';
-import { apMap } from '@/db/schema';
+import { apCharacter, apMap, apUser } from '@/db/schema';
 import { commitMapEvent } from '@/lib/map/mutations/core';
 import { listViewableMaps } from '@/lib/map/loadMap';
 import { mapEventPayloadSchema } from '@/lib/realtime/protocol';
@@ -21,14 +21,29 @@ import { mapEventPayloadSchema } from '@/lib/realtime/protocol';
 const run = process.env.RUN_DB_TESTS === '1';
 
 let mapId = 0n;
+// Stage 15: `listViewableMaps` now requires a viewer. Use a synthetic admin so
+// the test still asserts "the row appears in the viewer-scoped query".
+const TEST_VIEWER_ID = 98030001n;
+let testUserId = 0;
 
 describe.skipIf(!run)('map CRUD pipeline (real Postgres)', () => {
   beforeAll(async () => {
     await migrate(db, { migrationsFolder: 'src/db/migrations' });
+    const [u] = await db.insert(apUser).values({}).returning({ id: apUser.id });
+    testUserId = u!.id;
+    await db.insert(apCharacter).values({
+      id: TEST_VIEWER_ID,
+      userId: testUserId,
+      name: 'CRUD Test Viewer',
+      ownerHash: 'crud-test-hash',
+      authzLevel: 'admin',
+    });
   });
 
   afterAll(async () => {
     if (mapId) await db.delete(apMap).where(eq(apMap.id, mapId));
+    await db.delete(apCharacter).where(eq(apCharacter.id, TEST_VIEWER_ID));
+    if (testUserId) await db.delete(apUser).where(eq(apUser.id, testUserId));
     await pool.end();
   });
 
@@ -61,7 +76,7 @@ describe.skipIf(!run)('map CRUD pipeline (real Postgres)', () => {
     expect(() => mapEventPayloadSchema.parse(created.data)).not.toThrow();
     expect(created.data).toMatchObject({ kind: 'map.create', name: 'CRUD Test Map', scope: 'wh' });
 
-    const list = await listViewableMaps();
+    const list = await listViewableMaps(TEST_VIEWER_ID);
     expect(list.some((m) => m.id === mapId.toString())).toBe(true);
     expect(await eventCount('map.create')).toBe(1);
   });
@@ -96,7 +111,7 @@ describe.skipIf(!run)('map CRUD pipeline (real Postgres)', () => {
     if (!deleted.ok) return;
     expect(deleted.data).toMatchObject({ kind: 'map.delete' });
 
-    const list = await listViewableMaps();
+    const list = await listViewableMaps(TEST_VIEWER_ID);
     expect(list.some((m) => m.id === mapId.toString())).toBe(false);
 
     // Soft delete, not hard delete: the row persists with deleted_at set.

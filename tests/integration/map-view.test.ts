@@ -4,7 +4,9 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { and, eq, inArray } from 'drizzle-orm';
 import { db, pool } from '@/db/client';
 import {
+  apCharacter,
   apMap,
+  apUser,
   universeCategory,
   universeConstellation,
   universeGroup,
@@ -31,6 +33,10 @@ const HUB = apertureConfig.ROUTE_HUBS[0]!.systemId; // Jita
 
 let mapId = 0n;
 let hubInserted = false;
+// Stage 15: read paths now require a viewer character. Provision a synthetic
+// admin so the test exercises the same path as a real `/maps` request.
+const TEST_VIEWER_ID = 98020999n;
+let testUserId = 0;
 
 describe('read-only map view (real Postgres)', () => {
   beforeAll(async () => {
@@ -78,10 +84,27 @@ describe('read-only map view (real Postgres)', () => {
       .values({ typeId: WH_TYPE, name: 'XYZ', sourceClass: 'C3', targetClass: null });
     await db.insert(universeSystemStatic).values({ systemId: WH, typeId: WH_TYPE });
 
+    // Synthetic viewer with admin authz so `loadMapForView` passes the rights
+    // gate. Reuses the existing user row if a previous failed run left it.
+    const [u] = await db.insert(apUser).values({}).returning({ id: apUser.id });
+    testUserId = u!.id;
+    await db.insert(apCharacter).values({
+      id: TEST_VIEWER_ID,
+      userId: testUserId,
+      name: 'View Test Viewer',
+      ownerHash: 'view-test-hash',
+      authzLevel: 'admin',
+    });
+
     // The map: K2 (k-space) connected by a fresh wormhole to WH (j-space).
     const [map] = await db
       .insert(apMap)
-      .values({ name: 'View Test Map', scope: 'all', type: 'private' })
+      .values({
+        name: 'View Test Map',
+        scope: 'all',
+        type: 'private',
+        ownerCharacterId: TEST_VIEWER_ID,
+      })
       .returning({ id: apMap.id });
     mapId = map!.id;
   });
@@ -112,7 +135,7 @@ describe('read-only map view (real Postgres)', () => {
       massStatus: 'fresh',
     });
 
-    const data = await loadMapForView(mapId);
+    const data = await loadMapForView(mapId, TEST_VIEWER_ID);
     expect(data).not.toBeNull();
     expect(data!.systems).toHaveLength(2); // invisible K1 excluded
     const wh = data!.systems.find((s) => s.systemId === WH)!;
@@ -127,7 +150,7 @@ describe('read-only map view (real Postgres)', () => {
 
   it('returns null for a soft-deleted map', async () => {
     await db.update(apMap).set({ deletedAt: new Date() }).where(eq(apMap.id, mapId));
-    expect(await loadMapForView(mapId)).toBeNull();
+    expect(await loadMapForView(mapId, TEST_VIEWER_ID)).toBeNull();
     await db.update(apMap).set({ deletedAt: null }).where(eq(apMap.id, mapId));
   });
 
@@ -150,6 +173,11 @@ describe('read-only map view (real Postgres)', () => {
 async function cleanup() {
   if (mapId) await db.delete(apMap).where(eq(apMap.id, mapId));
   await db.delete(apMap).where(eq(apMap.name, 'View Test Map'));
+  await db.delete(apCharacter).where(eq(apCharacter.id, TEST_VIEWER_ID));
+  if (testUserId) {
+    await db.delete(apUser).where(eq(apUser.id, testUserId));
+    testUserId = 0;
+  }
   await db.delete(universeSystemStatic).where(eq(universeSystemStatic.systemId, WH));
   await db.delete(universeWormhole).where(eq(universeWormhole.typeId, WH_TYPE));
   await db.delete(universeType).where(eq(universeType.id, WH_TYPE));

@@ -28,7 +28,17 @@ export const apCharacter = pgTable('ap_character', {
   status: characterStatus('status').notNull().default('active'),
   statusChangedAt: timestamp('status_changed_at', { withTimezone: true }),
   statusReason: text('status_reason'),
+  // Stage 15. Set on a `kicked` row to the moment the timeout expires; the
+  // `character-cleanup` cron flips `status` back to `'active'` and clears this
+  // when `now() >= status_expires_at`. NULL for `'active'` and `'banned'` rows
+  // (bans are permanent).
+  statusExpiresAt: timestamp('status_expires_at', { withTimezone: true }),
   authzLevel: authzLevel('authz_level').notNull().default('member'),
+  // Stage 15. When `syncCharacterAuthz` last reconciled this row's
+  // `authz_level`, `corporation_id`, `alliance_id`, and `ap_character_role`
+  // membership against ESI. Used by the `character-cleanup` job to throttle
+  // resync work to stale rows only.
+  authzSyncedAt: timestamp('authz_synced_at', { withTimezone: true }),
   // SPEC §5.3 / Stage 12. Last-known state cached on the row by the
   // location-poll job; nullable until the first successful tick. No FK to
   // `universe_system` — a universe rebuild would otherwise have to honour

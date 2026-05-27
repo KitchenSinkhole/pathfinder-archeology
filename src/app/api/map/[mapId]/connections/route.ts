@@ -4,14 +4,14 @@ import { z } from 'zod';
 import { getSession } from '@/lib/session';
 import { createConnection } from '@/lib/map/mutations/connections';
 import { connectionScope, whJumpMass, whMass } from '@/db/schema/ap/enums';
-import { guardMap, parseBigInt } from '../../utils';
+import { parseBigInt, requireMapMutate } from '../../utils';
 
 /**
  * POST /api/map/[mapId]/connections
  * Create a connection between two map systems.
  * Returns { ok, data, eventId }.
  *
- * INTERIM ACCESS: any logged-in character may call this. Stage 15 adds per-map rights.
+ * Access: `map_update` right on the target map.
  */
 
 const createConnectionBodySchema = z.object({
@@ -33,11 +33,11 @@ export async function POST(
   { params }: { params: Promise<{ mapId: string }> },
 ) {
   const session = await getSession();
-  if (!session?.characterId) return Response.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
-
   const { mapId: rawMapId } = await params;
-  const guard = await guardMap(rawMapId);
-  if (!guard) return Response.json({ ok: false, error: 'Map not found.' }, { status: 404 });
+  const guard = await requireMapMutate(rawMapId, session, 'map_update');
+  if (!guard.ok) {
+    return Response.json({ ok: false, error: guard.error }, { status: guard.status });
+  }
 
   let body: unknown;
   try {
@@ -62,7 +62,7 @@ export async function POST(
 
   const result = await createConnection({
     mapId: guard.mapId,
-    characterId: BigInt(session.characterId),
+    characterId: guard.characterId,
     sourceMapSystemId: sourceId,
     targetMapSystemId: targetId,
     scope: parsed.data.scope,

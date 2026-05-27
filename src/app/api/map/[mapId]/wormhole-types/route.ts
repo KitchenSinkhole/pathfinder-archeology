@@ -2,14 +2,14 @@ import 'server-only';
 import { type NextRequest } from 'next/server';
 import { getSession } from '@/lib/session';
 import { wormholeTypesForSystem } from '@/lib/map/wormholeTypes';
-import { guardMap } from '../../utils';
+import { requireMapView } from '../../utils';
 
 /**
  * GET /api/map/[mapId]/wormhole-types?systemId=<universeSystemId>
  * Returns wormhole type options filtered to the given system's class — fed by
  * the wormhole-type dropdown in the signature inspector (SPEC §6.4).
  *
- * INTERIM ACCESS: any logged-in character may call this. Stage 15 adds per-map rights.
+ * Access: view-only — anyone who can see the map may read the WH catalog.
  */
 
 export const runtime = 'nodejs';
@@ -19,11 +19,11 @@ export async function GET(
   { params }: { params: Promise<{ mapId: string }> },
 ) {
   const session = await getSession();
-  if (!session?.characterId) return Response.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
-
   const { mapId: rawMapId } = await params;
-  const guard = await guardMap(rawMapId);
-  if (!guard) return Response.json({ ok: false, error: 'Map not found.' }, { status: 404 });
+  const guard = await requireMapView(rawMapId, session);
+  if (!guard.ok) {
+    return Response.json({ ok: false, error: guard.error }, { status: guard.status });
+  }
 
   const rawSystemId = request.nextUrl.searchParams.get('systemId');
   if (!rawSystemId || !/^\d+$/.test(rawSystemId)) {

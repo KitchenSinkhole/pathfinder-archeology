@@ -1,5 +1,6 @@
 import type { CronItem, Task, TaskList } from 'graphile-worker';
 import { activityRollupRefresh } from './tasks/activityRollupRefresh';
+import { characterCleanup } from './tasks/characterCleanup';
 import { eolExpiry } from './tasks/eolExpiry';
 import { expiredConnections } from './tasks/expiredConnections';
 import { locationPoll } from './tasks/locationPoll';
@@ -55,6 +56,8 @@ const modules: readonly JobModule[] = [
   locationPoll,
   // Stage 14 — per-event Discord webhook dispatch (no cron; enqueued by commitMapEvent).
   webhookDispatch,
+  // Stage 15.6 — kick expiry + periodic authz resync (replaces legacy cleanUpCharacterData).
+  characterCleanup,
 ];
 
 export function jobModules(): readonly JobModule[] {

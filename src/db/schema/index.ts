@@ -17,3 +17,6 @@ export * from './ap/system_stats';
 export * from './ap/job_run';
 export * from './ap/map_character_tracking';
 export * from './ap/webhook';
+export * from './ap/corporation';
+export * from './ap/role';
+export * from './ap/corporation_right';

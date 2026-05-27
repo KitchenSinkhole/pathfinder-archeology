@@ -1,12 +1,17 @@
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 import type {
   apCharacter,
+  apCharacterRole,
+  apCorporation,
+  apCorporationRight,
   apEventKind,
   apMap,
   apMapConnection,
   apMapEvent,
+  apMapRoleAccess,
   apMapSignature,
   apMapSystem,
+  apRole,
   apSystemStats,
   apUser,
   universeCategory,
@@ -24,6 +29,7 @@ import type {
   universeTypeOverride,
   universeWormhole,
 } from '@/db/schema';
+import type { authzLevel, mapRight, mapType, roleSource } from '@/db/schema/ap/enums';
 
 export type UniverseRegion = InferSelectModel<typeof universeRegion>;
 export type NewUniverseRegion = InferInsertModel<typeof universeRegion>;
@@ -93,6 +99,28 @@ export type NewApEventKind = InferInsertModel<typeof apEventKind>;
 
 export type ApSystemStats = InferSelectModel<typeof apSystemStats>;
 export type NewApSystemStats = InferInsertModel<typeof apSystemStats>;
+
+export type ApCorporation = InferSelectModel<typeof apCorporation>;
+export type NewApCorporation = InferInsertModel<typeof apCorporation>;
+
+export type ApRole = InferSelectModel<typeof apRole>;
+export type NewApRole = InferInsertModel<typeof apRole>;
+
+export type ApCharacterRole = InferSelectModel<typeof apCharacterRole>;
+export type NewApCharacterRole = InferInsertModel<typeof apCharacterRole>;
+
+export type ApMapRoleAccess = InferSelectModel<typeof apMapRoleAccess>;
+export type NewApMapRoleAccess = InferInsertModel<typeof apMapRoleAccess>;
+
+export type ApCorporationRight = InferSelectModel<typeof apCorporationRight>;
+export type NewApCorporationRight = InferInsertModel<typeof apCorporationRight>;
+
+// Stage 15 enum unions. `pgEnum` exposes its values via `.enumValues`; the
+// `[number]` index extracts the union of string literals.
+export type AuthzLevel = (typeof authzLevel.enumValues)[number];
+export type MapRight = (typeof mapRight.enumValues)[number];
+export type MapType = (typeof mapType.enumValues)[number];
+export type RoleSource = (typeof roleSource.enumValues)[number];
 
 // Read-only map view-model types (shaped in src/lib/map/loadMap.ts).
 export type {

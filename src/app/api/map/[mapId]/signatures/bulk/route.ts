@@ -6,7 +6,7 @@ import { pasteSignatures } from '@/lib/map/mutations/bulkSignatures';
 import { resolveSignatureRows } from '@/lib/map/signatureReader';
 import type { ParsedSigRow } from '@/lib/map/signatureParser';
 import { apertureConfig } from '../../../../../../../aperture.config';
-import { guardMap, parseBigInt } from '../../../utils';
+import { parseBigInt, requireMapMutate } from '../../../utils';
 
 /**
  * POST /api/map/[mapId]/signatures/bulk — diff a paste against a system's sigs
@@ -17,7 +17,7 @@ import { guardMap, parseBigInt } from '../../../utils';
  * Server re-resolves the parsed rows authoritatively; the dialog's own resolve
  * call is best-effort preview only.
  *
- * INTERIM ACCESS: any logged-in character may call this. Stage 15 adds per-map rights.
+ * Access: `map_update` right on the target map.
  */
 
 const parsedRowSchema = z.object({
@@ -45,12 +45,11 @@ export async function POST(
   { params }: { params: Promise<{ mapId: string }> },
 ) {
   const session = await getSession();
-  if (!session?.characterId)
-    return Response.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
-
   const { mapId: rawMapId } = await params;
-  const guard = await guardMap(rawMapId);
-  if (!guard) return Response.json({ ok: false, error: 'Map not found.' }, { status: 404 });
+  const guard = await requireMapMutate(rawMapId, session, 'map_update');
+  if (!guard.ok) {
+    return Response.json({ ok: false, error: guard.error }, { status: guard.status });
+  }
 
   let body: unknown;
   try {
@@ -76,7 +75,7 @@ export async function POST(
   const result = await pasteSignatures({
     mapId: guard.mapId,
     mapSystemId,
-    characterId: BigInt(session.characterId),
+    characterId: guard.characterId,
     rows: resolved,
     options: parsed.data.options,
     defaultExpiresAt: new Date(Date.now() + apertureConfig.SIGNATURE_DEFAULT_TTL_MS),

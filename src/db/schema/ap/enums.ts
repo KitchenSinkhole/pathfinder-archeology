@@ -52,3 +52,28 @@ export const apWebhookChannel = pgEnum('ap_webhook_channel', ['discord']);
  * event carries a non-null `rallyAt` (rally set, not cleared).
  */
 export const apWebhookEvent = pgEnum('ap_webhook_event', ['history', 'rally']);
+
+/**
+ * Stage 15. The six rights a corp may grant its members on `ap_corporation_right`.
+ * Names match the legacy `right.name` strings (SPEC §6.5, 09-permissions-and-admin.md).
+ * `map_create` is a global capability checked against the actor's corp rights;
+ * the remaining five are per-map.
+ */
+export const mapRight = pgEnum('map_right', [
+  'map_create',
+  'map_update',
+  'map_delete',
+  'map_import',
+  'map_export',
+  'map_share',
+]);
+
+/**
+ * Stage 15. Where an `ap_role` row originates.
+ * - `builtin` — created by the app itself (e.g. seed roles, admin-panel hand-grants).
+ * - `corp_title` — mirrored from an EVE corporation title pulled via
+ *   `esi-characters.read_titles.v1`; `external_ref` is `'<corporation_id>:<title_id>'`.
+ * - `external` — synced from a third-party system (Discord, etc.); `external_ref`
+ *   carries the upstream role id.
+ */
+export const roleSource = pgEnum('role_source', ['builtin', 'corp_title', 'external']);
