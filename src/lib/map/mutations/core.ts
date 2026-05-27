@@ -14,6 +14,8 @@ import {
   type MapEventPayload,
 } from '@/lib/realtime/protocol';
 
+const WEBHOOK_DISPATCH_TASK = 'webhook-dispatch';
+
 /**
  * The single canonical commit point for every map mutation (CLAUDE.md "Mutation
  * pathways"). Each mutation lands as exactly ONE `INSERT INTO ap_map_event`; the
@@ -91,18 +93,62 @@ export async function commitMapEvent<K extends MapEventKind>(
       .values({ id: BigInt(eventId), mapId, characterId, occurredAt, kind, payload })
       .returning({ id: apMapEvent.id });
 
-    return { eventId, payload };
+    return { eventId, payload, occurredAt };
   };
 
   if (outerTx) {
+    // Joined to a caller's outer transaction (bulk paste path). Skip the
+    // webhook enqueue here: the outer transaction hasn't committed yet, so
+    // dispatching could race with rollback. Bulk paths can enqueue once after
+    // their outer commit if Stage-17 surfaces a use case (today none does).
     const result = await run(outerTx);
     return { ok: true, data: result.payload, eventId: result.eventId };
   }
 
   try {
     const result = await db.transaction(run);
+    await enqueueWebhookDispatch(mapId, result.eventId, result.occurredAt);
     return { ok: true, data: result.payload, eventId: result.eventId };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Mutation failed.' };
+  }
+}
+
+/**
+ * Best-effort fire-and-forget enqueue of the Stage 14 webhook-dispatch job.
+ * The EXISTS short-circuit keeps the common case (map with no webhooks
+ * configured) free of any graphile-worker traffic. Failures are logged and
+ * swallowed — webhook delivery never blocks the underlying map mutation.
+ */
+async function enqueueWebhookDispatch(
+  mapId: bigint,
+  eventId: number,
+  occurredAt: Date,
+): Promise<void> {
+  try {
+    const existsRows = (
+      await db.execute(
+        sql`SELECT EXISTS(SELECT 1 FROM ap_map_webhook WHERE map_id = ${mapId}) AS has_webhook`,
+      )
+    ).rows as Array<{ has_webhook: boolean }>;
+    if (!existsRows[0]?.has_webhook) return;
+
+    await db.execute(sql`
+      SELECT graphile_worker.add_job(
+        ${WEBHOOK_DISPATCH_TASK},
+        json_build_object(
+          'mapId', ${mapId.toString()}::text,
+          'eventId', ${eventId.toString()}::text,
+          'occurredAt', ${occurredAt.toISOString()}::text
+        )
+      )
+    `);
+  } catch (err) {
+    console.warn(
+      'webhook-dispatch enqueue failed (map=%s, event=%s):',
+      mapId.toString(),
+      eventId,
+      err instanceof Error ? err.message : err,
+    );
   }
 }

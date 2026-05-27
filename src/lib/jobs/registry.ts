@@ -9,6 +9,7 @@ import { signatureReap } from './tasks/signatureReap';
 import { structureResolve } from './tasks/structureResolve';
 import { sovFwRefresh } from './tasks/sovFwRefresh';
 import { systemStatsRefresh } from './tasks/systemStatsRefresh';
+import { webhookDispatch } from './tasks/webhookDispatch';
 
 /**
  * The registry every Stage-11 task module is bound to. Each `JobModule` exports
@@ -52,6 +53,8 @@ const modules: readonly JobModule[] = [
   structureResolve,
   // Stage 12.1 — per-character location poll (no cron; self-re-enqueueing).
   locationPoll,
+  // Stage 14 — per-event Discord webhook dispatch (no cron; enqueued by commitMapEvent).
+  webhookDispatch,
 ];
 
 export function jobModules(): readonly JobModule[] {

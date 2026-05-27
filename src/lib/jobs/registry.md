@@ -25,3 +25,4 @@ Builds graphile-worker cron items for modules whose `cron` is set. The identifie
 - No `taskDirectory` - explicit imports keep wiring greppable and TypeScript-checked.
 - Per-task cron expressions live on each task module.
 - Stage 13 registers `sov-fw-refresh`, the hourly sovereignty / faction-warfare ESI refresh task.
+- Stage 14 registers `webhook-dispatch`, a non-cron task enqueued by `commitMapEvent` per `ap_map_event` insert on maps with at least one configured Discord webhook.

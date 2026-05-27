@@ -38,3 +38,17 @@ export const whMass = pgEnum('wh_mass', ['fresh', 'reduced', 'critical']);
 
 /** Per-jump mass class of a wormhole (max ship size). Nullable for non-WH links. */
 export const whJumpMass = pgEnum('wh_jump_mass', ['s', 'm', 'l', 'xl']);
+
+/**
+ * Outbound chat channel for `ap_map_webhook`. Stage 14 ships Discord only;
+ * adding `'slack'` later is one `ALTER TYPE ap_webhook_channel ADD VALUE` plus
+ * a sibling `src/lib/integrations/slack.ts`.
+ */
+export const apWebhookChannel = pgEnum('ap_webhook_channel', ['discord']);
+
+/**
+ * Which event class a webhook subscribes to. `history` mirrors every
+ * `ap_map_event` insert on the map; `rally` fires only when a `system.updated`
+ * event carries a non-null `rallyAt` (rally set, not cleared).
+ */
+export const apWebhookEvent = pgEnum('ap_webhook_event', ['history', 'rally']);

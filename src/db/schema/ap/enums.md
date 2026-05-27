@@ -28,3 +28,9 @@
 
 ### whJumpMass
 `pgEnum('wh_jump_mass', ['s', 'm', 'l', 'xl'])` — per-jump mass class (max ship size) of a wormhole. Nullable on `ap_map_connection` (non-WH links leave it null).
+
+### apWebhookChannel
+`pgEnum('ap_webhook_channel', ['discord'])` — outbound chat channel for an `ap_map_webhook` row. Stage 14 ships Discord only; adding `'slack'` later is a one-line `ALTER TYPE` migration plus a sibling client module.
+
+### apWebhookEvent
+`pgEnum('ap_webhook_event', ['history', 'rally'])` — which class of map events a webhook subscribes to. `history` mirrors every `ap_map_event` insert on the map; `rally` fires only when a `system.updated` event carries a non-null `rallyAt` (rally set, not cleared).
