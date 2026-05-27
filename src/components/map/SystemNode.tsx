@@ -43,9 +43,9 @@ export function SystemNode({ data, selected }: NodeProps & { data: SystemNodeDat
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0.2 }} />
       <Handle type="source" position={Position.Left} style={{ opacity: 0.2 }} />
 
-      <div className="flex items-center gap-1.5 px-2 py-1">
+      <div className="flex items-center px-2 py-1">
         <span
-          className="rounded bg-muted px-1 font-mono text-[10px] leading-tight"
+          className="rounded bg-muted px-0.5 font-mono text-[10px] leading-tight"
           style={{ color: systemClassColor(data.security) }}
         >
           {securityLabel(data)}
@@ -57,7 +57,7 @@ export function SystemNode({ data, selected }: NodeProps & { data: SystemNodeDat
             ariaLabel="Tag"
             maxLength={50}
             onCommit={(next) => onAliasOrTagCommit(data.id, 'tag', next)}
-            className="rounded bg-primary/15 px-1 text-[10px] font-medium text-primary empty:hidden"
+            className="rounded bg-primary/15 px-0.5 text-[10px] font-mono leading-tight empty:hidden"
             inputClassName="w-12"
           />
         ) : (
@@ -74,7 +74,7 @@ export function SystemNode({ data, selected }: NodeProps & { data: SystemNodeDat
             ariaLabel="Alias"
             maxLength={100}
             onCommit={(next) => onAliasOrTagCommit(data.id, 'alias', next)}
-            className="flex-1 truncate font-medium"
+            className="flex-1 truncate font-medium pl-1"
             inputClassName="w-full"
           />
         ) : (
