@@ -36,6 +36,12 @@ Pure corp-right check; no target. Admin always passes.
 ### isAdmin(session): Promise<boolean>
 Cheap session-level admin probe — does not touch any map table.
 
+### isManagerOrAdmin(session): Promise<boolean>
+True iff the active character is `status='active'` AND `authz_level >= 'manager'`. The admin-panel layout gate (`/admin/*`). Returns `false` for kicked/banned characters even at manager level — defence in depth.
+
+### adminVisibilityScope(session): Promise<AdminVisibilityScope | null>
+Returns `{ kind: 'global' }` for admin, `{ kind: 'corp', corporationId, allianceId }` for an active manager with a non-null `corporation_id`, and `null` otherwise (member/none, kicked/banned, or manager with NULL corp). Callers branch on `null` and redirect / 403 as appropriate. The `allianceId` is included so dashboard queries can scope `ap_map.owner_alliance_id` without an extra DB read.
+
 ### requireMapRight(session, mapId, right): Promise<RightGuard>
 Tuple-shaped guard for API routes. Returns `{ ok: true, characterId }` or `{ ok: false, status, error }`. Status codes:
 - `401` — no session.

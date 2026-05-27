@@ -374,5 +374,36 @@ export async function viewableMapPredicate(characterId: bigint) {
   return or(...ownerMatches, roleAccess);
 }
 
+/** True iff the active character is `active` AND `authz_level >= 'manager'`. */
+export async function isManagerOrAdmin(session: Session | null | undefined): Promise<boolean> {
+  if (!session?.characterId) return false;
+  const actor = await loadActor(BigInt(session.characterId));
+  if (actor === null || actor.status !== 'active') return false;
+  return AUTHZ_ORDINAL[actor.authzLevel] >= AUTHZ_ORDINAL.manager;
+}
+
+export type AdminVisibilityScope =
+  | { kind: 'global' }
+  | { kind: 'corp'; corporationId: bigint; allianceId: bigint | null };
+
+/**
+ * Scope primitive for admin-panel pages. Returns `null` for member/none so the
+ * layout can redirect; admin → `{ kind: 'global' }`; manager → `{ kind: 'corp', corporationId, allianceId }`.
+ * A manager row with `corporation_id IS NULL` is treated as no-scope (returns
+ * null) — the row is broken and shouldn't see any panel content.
+ */
+export async function adminVisibilityScope(
+  session: Session | null | undefined,
+): Promise<AdminVisibilityScope | null> {
+  if (!session?.characterId) return null;
+  const actor = await loadActor(BigInt(session.characterId));
+  if (actor === null || actor.status !== 'active') return null;
+  if (actor.authzLevel === 'admin') return { kind: 'global' };
+  if (actor.authzLevel === 'manager' && actor.corporationId !== null) {
+    return { kind: 'corp', corporationId: actor.corporationId, allianceId: actor.allianceId };
+  }
+  return null;
+}
+
 /** Re-export for ergonomic imports at call sites. */
 export type { Session };

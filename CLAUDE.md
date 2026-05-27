@@ -183,6 +183,7 @@ There are exactly three pathways. Pick the right one; do not invent a fourth.
 - **Per-endpoint circuit breakers** on ESI. Treat the CCP downtime window (`±8m` around `CCP_SSO_DOWNTIME`) as expected.
 - **All ESI responses go through Zod decoders.** ESI schema drift must surface as a decoder error, not a silent `undefined` cascade.
 - **Admin gating** uses the `ap_character.authz_level` enum, not a second Auth.js provider.
+- **Kick / ban orphaning (SPEC §11 Q10):** kick/ban status lives on `ap_character.status` and is cascade-removed with the account (`ap_character` → `ap_user` is `ON DELETE CASCADE`). A player returning under a new account on the same character lands with `status='active'`; the prior kick/ban does not revive. See `docs/spec/09-permissions-and-admin.md` Q7 for the canonical record.
 
 ### Config
 - Env vars + a typed `aperture.config.ts` for app constants. Do not reintroduce `.ini` files.

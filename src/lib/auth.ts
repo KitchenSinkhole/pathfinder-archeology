@@ -9,6 +9,7 @@ import { eveProvider, refreshAccessToken } from '@/lib/auth/eve-provider';
 import type { EveProfile } from '@/lib/auth/eve-provider';
 import { clearLinkCookie, readLinkUserId } from '@/lib/auth/link-cookie';
 import { syncCharacterAuthz } from '@/lib/auth/syncCharacterAuthz';
+import { AUTH_COOKIE_OPTIONS } from '@/lib/cookies';
 
 // Auth.js v5, stateless JWT sessions (no DB session store, no Redis — SPEC §7).
 // The JWT carries only the active character/user ids; ESI tokens never leave
@@ -81,6 +82,14 @@ async function persistLogin(
 export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   providers: [eveProvider()],
   session: { strategy: 'jwt' },
+  // SPEC §11 Q9 — make the cookie contract explicit at the call site rather
+  // than relying on Auth.js defaults. Flags live in `@/lib/cookies` so any
+  // bespoke signed cookie can read from the same constant.
+  cookies: {
+    sessionToken: { options: AUTH_COOKIE_OPTIONS },
+    callbackUrl: { options: AUTH_COOKIE_OPTIONS },
+    csrfToken: { options: AUTH_COOKIE_OPTIONS },
+  },
   callbacks: {
     async jwt({ token, account, profile, trigger, session }) {
       // Initial sign-in: `account` carries the freshly-exchanged tokens and
