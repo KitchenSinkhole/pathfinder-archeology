@@ -4,7 +4,7 @@
 **File:** `src/app/(app)/maps/page.tsx`
 
 ### Renders
-A "Maps" heading + "Signed in as {name}" line with a `CreateMapDialog` ("New map") trigger in the header row, then a responsive grid of map `Card`s (name + type · scope) linking to `/map/<id>`, each with a `DeleteMapButton` overlaid top-right. Falls back to an empty-state card when there are no maps.
+A "Maps" heading + "Signed in as {name}" line with a `CreateMapDialog` ("New map") trigger in the header row, then a responsive grid of map `Card`s (name + type · scope) linking to `/map/<id>`, each with a `DeleteMapButton` overlaid top-right. Falls back to an empty-state card when there are no maps. Content is wrapped in a `mx-auto max-w-6xl` container because the `(app)` layout's `<main>` is now full-width.
 
 ### Behaviour & Interactions
 - Server component; reads the active character via `getActiveCharacter` and the viewer-scoped maps via `listViewableMaps(viewerCharacterId)` (Stage 15: scope+owner+role-overlay filtered SQL).

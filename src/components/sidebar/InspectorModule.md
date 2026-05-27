@@ -4,21 +4,19 @@
 **File:** `src/components/sidebar/InspectorModule.tsx`
 
 ### Props
+
 | Prop | Type | Required | Description |
 |---|---|---|---|
-| mapId | string | yes | `ap_map.id` — forwarded to the signature module + WH-types endpoint. |
 | selected | SelectionRef \| null | yes | `{ kind: 'system' \| 'connection', id }` or `null`. |
-| viewData | MapViewData | yes | Source of the system / connection / signature being edited. |
+| viewData | MapViewData | yes | Source of the system / connection being edited. |
 | onSystemPatch | (mapSystemId, patch: UpdateSystemBody) => void | yes | Issue a PATCH on the system. |
 | onSystemRemove | (mapSystemId) => void | yes | DELETE the system (visible=false). |
 | onConnectionPatch | (connectionId, patch: UpdateConnectionBody) => void | yes | PATCH the connection. |
 | onConnectionDelete | (connectionId) => void | yes | DELETE the connection (hard). |
-| onSignatureCreate / onSignaturePatch / onSignatureDelete | callbacks | yes | Forwarded into `SignatureModule`. |
-| onSignatureBulkPaste | (payloads: MapEventPayload[]) => void | yes | Forwarded into `SignatureModule` / `SignaturePasteDialog`. |
 
 ### Renders
 One of three sub-views:
-- **`SystemInspector`** — status select, alias / tag inputs (per-keystroke commit), intel notes textarea (committed on blur), locked checkbox, rally set / clear buttons, nested `SignatureModule`, "Remove from map" button.
+- **`SystemInspector`** — status select, alias / tag inputs (per-keystroke commit), intel notes textarea (committed on blur), locked checkbox, rally set / clear buttons, "Remove from map" button. Signatures are now a separate full-width panel below the map (see `SignatureModule`).
 - **`ConnectionInspector`** — scope / mass / jump-mass selects, EOL / Frigate / Preserve / Rolling checkboxes, a live "Expires in X" / "EOL expires in X" hint (`ConnectionExpiryHint`, derived from `connectionTimeLeftMs` + `formatRelativeFromMs`, hidden for non-wormhole scopes), "Delete connection" button.
 - **`EmptyInspector`** — placeholder card prompting the user to select something.
 
@@ -29,9 +27,8 @@ One of three sub-views:
 - A jump-mass value of `__none__` maps to `null` on the wire.
 
 ### Depends On
-- `SignatureModule`, `WormholeTypeSelect`
 - `Select*`, `Card*`, `Button`, `Input` shadcn primitives
 - `connectionTimeLeftMs` (`@/lib/map/connectionState`) + `formatRelativeFromMs` (`@/lib/map/relativeTime`) for the expiry hint
 - Enum value lists from `@/lib/map/enumLabels`
-- `MapViewData`, `MapSystemNode`, `MapConnectionEdge`, `MapSignature` from `@/types`
+- `MapViewData`, `MapSystemNode`, `MapConnectionEdge` from `@/types`
 - Body types from `@/lib/map/client`

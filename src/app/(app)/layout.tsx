@@ -21,7 +21,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           active={{ id: active.id.toString(), name: active.name }}
           characters={characters.map((c) => ({ id: c.id, name: c.name, status: c.status }))}
         />
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">{children}</main>
+        <main className="w-full flex-1 px-4 py-6">{children}</main>
         <AppFooter />
         <Toaster />
       </div>

@@ -6,6 +6,8 @@
 ### Renders
 A `RealtimeProvider` wrapping the chrome: the `RealtimeStatusBanner` (degraded-mode), `AppHeader` (active character + roster) above a `<main>` content area, `AppFooter` below, and a `sonner` `Toaster`.
 
+The `<main>` is full-width (no `max-w-*` constraint) so wide pages like the map canvas can fill the viewport; pages that need a narrower box (e.g. `/maps`) wrap their own content in `mx-auto max-w-*`.
+
 ### Behaviour & Interactions
 - `requireSession()` redirects to `/` when logged out.
 - Resolves the active character (`getActiveCharacter`) and the account roster (`getAccountCharacters`) server-side; redirects to `/` if the active character row is missing.

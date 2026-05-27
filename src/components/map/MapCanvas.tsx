@@ -41,6 +41,7 @@ import {
   InspectorModule,
   type SelectionRef,
 } from '@/components/sidebar/InspectorModule';
+import { SignatureModule } from '@/components/sidebar/SignatureModule';
 import { ConnectionEdge, type ConnectionEdgeData } from './ConnectionEdge';
 import { MapPresenceProvider } from './MapPresenceContext';
 import { SystemNode, type SystemNodeData } from './SystemNode';
@@ -343,44 +344,51 @@ export function MapCanvas({
   return (
     <MapPresenceProvider initial={data.presence}>
       <div className="flex gap-4">
-        <div className="h-[72vh] flex-1 overflow-hidden rounded-lg ring-1 ring-foreground/10">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            onNodeClick={onNodeClick}
-            onEdgeClick={onEdgeClick}
-            onPaneClick={onPaneClick}
-            onNodesChange={onNodesChange}
-            onNodeDragStop={onNodeDragStop}
-            onConnect={onConnect}
-            nodesDraggable
-            nodesConnectable
-            connectionMode={ConnectionMode.Loose}
-            edgesFocusable
-            colorMode="dark"
-            fitView
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background />
-            <Controls showInteractive={false} />
-          </ReactFlow>
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
+          <div className="h-[78vh] overflow-hidden rounded-lg ring-1 ring-foreground/10">
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              onNodeClick={onNodeClick}
+              onEdgeClick={onEdgeClick}
+              onPaneClick={onPaneClick}
+              onNodesChange={onNodesChange}
+              onNodeDragStop={onNodeDragStop}
+              onConnect={onConnect}
+              nodesDraggable
+              nodesConnectable
+              connectionMode={ConnectionMode.Loose}
+              edgesFocusable
+              colorMode="dark"
+              fitView
+              proOptions={{ hideAttribution: true }}
+            >
+              <Background />
+              <Controls showInteractive={false} />
+            </ReactFlow>
+          </div>
+
+          <SignatureModule
+            mapId={mapId}
+            system={selectedSystem}
+            signatures={viewData.signatures}
+            onCreate={onSignatureCreate}
+            onPatch={onSignaturePatch}
+            onDelete={onSignatureDelete}
+            onBulkPaste={onBulkPaste}
+          />
         </div>
 
-        <aside className="flex w-72 flex-col gap-4">
+        <aside className="flex w-80 shrink-0 flex-col gap-4">
           <InspectorModule
-            mapId={mapId}
             selected={selected}
             viewData={viewData}
             onSystemPatch={onSystemPatch}
             onSystemRemove={onSystemRemove}
             onConnectionPatch={onConnectionPatch}
             onConnectionDelete={onConnectionDelete}
-            onSignatureCreate={onSignatureCreate}
-            onSignaturePatch={onSignaturePatch}
-            onSignatureDelete={onSignatureDelete}
-            onSignatureBulkPaste={onBulkPaste}
           />
           <RouteModule
             system={selectedSystem}

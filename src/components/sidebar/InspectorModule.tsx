@@ -14,18 +14,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { SignatureModule } from './SignatureModule';
 import type {
   MapConnectionEdge,
-  MapEventPayload,
-  MapSignature,
   MapSystemNode,
   MapViewData,
 } from '@/types';
 import type {
-  CreateSignatureBody,
   UpdateConnectionBody,
-  UpdateSignatureBody,
   UpdateSystemBody,
 } from '@/lib/map/client';
 import {
@@ -46,17 +41,12 @@ export type SelectionRef =
   | { kind: 'connection'; id: string };
 
 export function InspectorModule(props: {
-  mapId: string;
   selected: SelectionRef | null;
   viewData: MapViewData;
   onSystemPatch: (mapSystemId: string, patch: UpdateSystemBody) => void;
   onSystemRemove: (mapSystemId: string) => void;
   onConnectionPatch: (connectionId: string, patch: UpdateConnectionBody) => void;
   onConnectionDelete: (connectionId: string) => void;
-  onSignatureCreate: (body: CreateSignatureBody) => void;
-  onSignaturePatch: (signatureId: string, patch: UpdateSignatureBody) => void;
-  onSignatureDelete: (signatureId: string) => void;
-  onSignatureBulkPaste: (payloads: MapEventPayload[]) => void;
 }) {
   const { selected, viewData } = props;
 
@@ -68,15 +58,9 @@ export function InspectorModule(props: {
     return (
       <SystemInspector
         key={system.id}
-        mapId={props.mapId}
         system={system}
-        signatures={viewData.signatures}
         onPatch={(patch) => props.onSystemPatch(system.id, patch)}
         onRemove={() => props.onSystemRemove(system.id)}
-        onSignatureCreate={props.onSignatureCreate}
-        onSignaturePatch={props.onSignaturePatch}
-        onSignatureDelete={props.onSignatureDelete}
-        onSignatureBulkPaste={props.onSignatureBulkPaste}
       />
     );
   }
@@ -114,25 +98,13 @@ function EmptyInspector() {
 // ---------------------------------------------------------------------------
 
 function SystemInspector({
-  mapId,
   system,
-  signatures,
   onPatch,
   onRemove,
-  onSignatureCreate,
-  onSignaturePatch,
-  onSignatureDelete,
-  onSignatureBulkPaste,
 }: {
-  mapId: string;
   system: MapSystemNode;
-  signatures: MapSignature[];
   onPatch: (patch: UpdateSystemBody) => void;
   onRemove: () => void;
-  onSignatureCreate: (body: CreateSignatureBody) => void;
-  onSignaturePatch: (signatureId: string, patch: UpdateSignatureBody) => void;
-  onSignatureDelete: (signatureId: string) => void;
-  onSignatureBulkPaste: (payloads: MapEventPayload[]) => void;
 }) {
   // `intelNotes` isn't part of `MapViewData`; we keep a local draft that's
   // committed on blur so PATCHes don't fire per keystroke. The parent renders
@@ -226,16 +198,6 @@ function SystemInspector({
             Clear rally
           </Button>
         </div>
-
-        <SignatureModule
-          mapId={mapId}
-          system={system}
-          signatures={signatures}
-          onCreate={onSignatureCreate}
-          onPatch={onSignaturePatch}
-          onDelete={onSignatureDelete}
-          onBulkPaste={onSignatureBulkPaste}
-        />
 
         <div className="flex justify-end">
           <Button type="button" variant="destructive" size="sm" onClick={onRemove} className="gap-1.5">
