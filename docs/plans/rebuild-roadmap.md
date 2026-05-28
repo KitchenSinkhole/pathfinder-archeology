@@ -91,7 +91,7 @@ Infrastructure and the §11 Phase-0 deliverables that constrain every later phas
 **Goal:** Single Node job runner backed by `graphile-worker` and Postgres LISTEN/NOTIFY dispatch, embedded in the same Next.js deployment. Ports the legacy 13 jobs minus the dropped ones: signature reap, EOL connection expiry, expired-connection cleanup (48h cap), `deleteMapData` (30-day grace cascade), per-system stats refresh (ESI → `ap_system_stats`). New jobs that have no legacy analogue: hourly activity-log materialized-view refresh (`REFRESH MATERIALIZED VIEW CONCURRENTLY ap_activity_rollup`) and daily `pg_partman` partition maintenance. Job duration + failure metrics persist to `ap_job_run`. Row-level cleanups flow through `commitMapEvent` so client tabs see the disappearance.
 **Touches:** `src/lib/jobs/runner.ts`, `src/lib/jobs/registry.ts`, `src/lib/jobs/withInstrumentation.ts`, `src/lib/jobs/tasks/*.ts`, `src/db/migrations/0006_jobs.sql`, `src/db/migrations/0007_activity_rollup.sql`, `src/db/views/activity_rollup.sql`, `server.ts`, `src/lib/aperture.config.ts`.
 **Done when:** All cron jobs run on schedule for one full week with success metrics visible in `ap_job_run`.
-**Deferrals carried elsewhere:** `updateSovereigntyData` → Stage 13; `cleanUpCharacterData` → Stage 15; full `structure-resolve` handler body → Stage 17 (Stage 11 ships only a no-op stub so the cron entry and observability row exist).
+**Deferrals carried elsewhere:** `updateSovereigntyData` → Stage 13; `cleanUpCharacterData` → Stage 15; `structure-resolve` → **retired in Stage 17.1** (Stage 11 shipped a no-op stub; Stage 17 found the ESI premise unworkable — see Stage 17 — and removed the job rather than implementing it).
 
 ### Stage 12 — Server-side character location tracking (hot path)
 **Goal:** One `graphile-worker` job per tracked character, running independent of any tab. Adaptive polling intervals (`LOCATION_POLL_ONLINE_MS` / `LOCATION_POLL_OFFLINE_MS`) hard-coded. On a non-gate-adjacent location change (lookup against `universe_stargate_edge`), upsert both systems onto the map and create an assumed wormhole connection. Closing a tab does not stop tracking.
@@ -123,9 +123,19 @@ Infrastructure and the §11 Phase-0 deliverables that constrain every later phas
 **Done when:** Every admin action from feature matrix §8 works; setup wizard provisions a fresh deployment end-to-end.
 
 ### Stage 17 — UI modules & dialogs catch-up
-**Goal:** Sweep the remaining 13 dialogs and 13 modules from spec docs 06–08 — gallery, task manager, shortcuts panel, status pages, system info dialog, system effects, killboard popouts, etc. — to feature-matrix parity. Replace DataTables (TanStack Table), Summernote (Tiptap), PNotify (sonner) wholesale per SPEC §5.4. Also lands the structure intel module's data dependencies: introduces `ap_structure` (and any related rows), and fills in the body of the `structure-resolve` graphile-worker task that Stage 11.6 registered as a no-op stub — handler resolves stale `ap_structure` rows via ESI `getUniverseStructure` on the Stage 11 runtime.
-**Touches:** `src/components/modules/**`, `src/components/dialogs/**`, `src/db/schema/ap/structure.ts`, `src/db/migrations/<next>_structure.sql`, `src/lib/jobs/tasks/structureResolve.ts` (replace stub with real handler).
-**Done when:** SPEC §9 Phase 4 gate is green — every row in feature-matrix §§ 1–14 not dropped in §8.2 has a working implementation; SPEC §11 open-question list is closed except deferred items; `structure-resolve` is doing real work (no longer returning the `deferred: 'stage-17'` marker into `ap_job_run.notes`).
+**Goal:** Sweep the remaining 13 dialogs and 13 modules from spec docs 06–08 — gallery, task manager, shortcuts panel, status pages, system info dialog, system effects, killboard popouts, etc. — to feature-matrix parity. Replace DataTables (TanStack Table), Summernote (Tiptap), PNotify (sonner) wholesale per SPEC §5.4. Also lands the structure intel module's data dependencies: introduces `ap_structure`.
+
+> **Deviation (Stage 17.1).** The original plan to fill in the `structure-resolve` job so it
+> resolves rows via ESI `getUniverseStructure` is **dropped**. ESI only returns structures the
+> calling character is authorized to dock at (their own corp's), so it can never supply intel on
+> **other** corps' structures — the entire point of the feature. `ap_structure` is therefore a
+> **manual-entry intel table** (system + name + structure type + free-text owner/notes), and the
+> Stage 11.6 `structure-resolve` stub job/cron/test were **retired**, not implemented. The
+> structure *type* is a real FK to `universe_type` (static SDE); the structure identity/owner are
+> user-supplied. This stage is decomposed into sub-stages in `docs/plans/stage-17-ui-catchup.md`.
+
+**Touches:** `src/components/modules/**`, `src/components/dialogs/**`, `src/db/schema/ap/structure.ts`, `src/db/migrations/0016_structure.sql`, `src/lib/jobs/registry.ts` (remove the retired `structure-resolve` entry).
+**Done when:** SPEC §9 Phase 4 gate is green — every row in feature-matrix §§ 1–14 not dropped in §8.2 has a working implementation; SPEC §11 open-question list is closed except deferred items; structure intel is reachable as manual-entry data backed by `ap_structure`.
 
 ---
 
