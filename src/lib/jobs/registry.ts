@@ -8,7 +8,6 @@ import { mapPurge } from './tasks/mapPurge';
 import { partitionMaintenance } from './tasks/partitionMaintenance';
 import { sdeIngest } from './tasks/sdeIngest';
 import { signatureReap } from './tasks/signatureReap';
-import { structureResolve } from './tasks/structureResolve';
 import { sovFwRefresh } from './tasks/sovFwRefresh';
 import { systemStatsRefresh } from './tasks/systemStatsRefresh';
 import { webhookDispatch } from './tasks/webhookDispatch';
@@ -51,8 +50,10 @@ const modules: readonly JobModule[] = [
   activityRollupRefresh,
   // Stage 11.5 — pg_partman maintenance (premake + retention).
   partitionMaintenance,
-  // Stage 11.6 — structure-resolve STUB (Stage 17 replaces the handler body).
-  structureResolve,
+  // Stage 11.6 registered a `structure-resolve` ESI stub; Stage 17.1 retired it.
+  // ESI cannot return other corps' structures, so structure intel is manual
+  // entry (`ap_structure`) with no recurring resolve work. See
+  // docs/plans/stage-17-ui-catchup.md.
   // Stage 12.1 — per-character location poll (no cron; self-re-enqueueing).
   locationPoll,
   // Stage 14 — per-event Discord webhook dispatch (no cron; enqueued by commitMapEvent).

@@ -9,7 +9,6 @@ Loads `.env` via `@next/env`, walks `jobModules()` (Stage 11 registry), calls `s
 TASK                       CRON           LAST RUN  RUNS  OK  FAIL  ABNDND  AVG     FLAGS
 signature-reap             */30 * * * *   2m ago    336  336    0       0  47ms
 …
-structure-resolve          0 */6 * * *    5h ago     28   28    0       0   2ms    STUB(stage-17)
 ```
 
 Trailing diagnostic lines surface registry drift:
@@ -17,7 +16,6 @@ Trailing diagnostic lines surface registry drift:
 - **"Tasks registered but never run"** — registered task that's never produced an `ap_job_run` row. Either the cron hasn't fired yet or the worker isn't booted.
 
 Flags column:
-- `STUB(stage-17)` — `structure-resolve` is intentionally a no-op until Stage 17.
 - `ABANDONED:N` — `N` runs have `ended_at IS NULL` (worker died mid-handler).
 - `LAST:FAIL` — most recent run threw.
 

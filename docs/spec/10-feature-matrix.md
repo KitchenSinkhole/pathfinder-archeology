@@ -143,7 +143,7 @@ Each row is **one feature** at a granularity a product manager would recognise (
 | ESI: ship type | per-user | — | server | character_log | — | ESI | `esi-location.read_ship_type.v1` |
 | ESI: set waypoint | per-user | route module | server | — | — | ESI | `esi-ui.write_waypoint.v1` |
 | ESI: open in-game window | per-user | context menus | server | — | — | ESI | `esi-ui.open_window.v1` |
-| ESI: structure resolution | per-system | structure dialog | `/api/rest/Structure` | structure | — | ESI | `esi-universe.read_structures.v1`, `esi-search.search_structures.v1` |
+| ESI: structure resolution | per-system | structure dialog | `/api/rest/Structure` | structure | — | ESI | `esi-universe.read_structures.v1`, `esi-search.search_structures.v1`. **Rebuild (Stage 17.1): dropped ESI resolution** — ESI only returns own-corp structures, so intel on other corps' structures is **manual entry** into `ap_structure`. See `docs/plans/rebuild-roadmap.md` Stage 17. |
 | ESI: corp membership | per-user | — | server | character | — | ESI | `esi-corporations.read_corporation_membership.v1` |
 | ESI: clones | per-user | — | server | — | — | ESI | `esi-clones.read_clones.v1` |
 | ESI: corp roles | per-user | — | server | character | — | ESI | `esi-characters.read_corporation_roles.v1` |

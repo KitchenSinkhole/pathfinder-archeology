@@ -113,6 +113,13 @@
       "when": 1779606000000,
       "tag": "0015_signature_group_key",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1779607200000,
+      "tag": "0016_structure",
+      "breakpoints": true
     }
   ]
 }

@@ -165,6 +165,12 @@ Columns on the primary table: select-checkbox, signature ID, age (relative time)
 
 **Purpose.** Structures + stations sidebar. Lists citadels, refineries, and (in K-space) NPC stations of the current system, with status icon, owner, standings, services, notes/tags.
 
+> **Rebuild note (Stage 17.1).** Structure intel is **manual entry**, not ESI-resolved. ESI's
+> `getUniverseStructure` only returns structures the calling character can dock at (their own
+> corp's), so it cannot supply intel on other corps' structures. The rebuild stores user-entered
+> rows in `ap_structure` (system + name + structure type + free-text owner/notes); the
+> Stage 11.6 `structure-resolve` ESI job was retired. See `docs/plans/rebuild-roadmap.md` Stage 17.
+
 **Surface area.** Two DataTables — structure table + station table — both initialised in `init()`. The station table is only mounted for security classes `H`, `L`, `0.0`, `T`, `C12` (Pochven / Triglavian).
 
 **Inputs.** `update()` payload may include `{type: 'init'|'stations'|'structures', data}`. Triggered on system change and on the inline edit save callbacks.

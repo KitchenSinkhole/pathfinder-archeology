@@ -34,7 +34,7 @@ async function main() {
       String(s.failCount),
       String(s.abandonedCount),
       formatDuration(s.avgDurationMs),
-      formatFlags(m.name, s),
+      formatFlags(s),
     ]);
   }
   for (const line of renderTable(rows)) lines.push('  ' + line);
@@ -64,9 +64,8 @@ function formatDuration(ms: number | null): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-function formatFlags(name: string, s: { failCount: number; abandonedCount: number; lastSuccess: boolean | null }): string {
+function formatFlags(s: { failCount: number; abandonedCount: number; lastSuccess: boolean | null }): string {
   const flags: string[] = [];
-  if (name === 'structure-resolve') flags.push('STUB(stage-17)');
   if (s.abandonedCount > 0) flags.push(`ABANDONED:${s.abandonedCount}`);
   if (s.lastSuccess === false) flags.push('LAST:FAIL');
   return flags.join(' ');
