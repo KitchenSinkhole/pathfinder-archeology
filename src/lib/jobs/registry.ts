@@ -6,6 +6,7 @@ import { expiredConnections } from './tasks/expiredConnections';
 import { locationPoll } from './tasks/locationPoll';
 import { mapPurge } from './tasks/mapPurge';
 import { partitionMaintenance } from './tasks/partitionMaintenance';
+import { sdeIngest } from './tasks/sdeIngest';
 import { signatureReap } from './tasks/signatureReap';
 import { structureResolve } from './tasks/structureResolve';
 import { sovFwRefresh } from './tasks/sovFwRefresh';
@@ -58,6 +59,8 @@ const modules: readonly JobModule[] = [
   webhookDispatch,
   // Stage 15.6 — kick expiry + periodic authz resync (replaces legacy cleanUpCharacterData).
   characterCleanup,
+  // Stage 16.6 — on-demand SDE refresh, enqueued by the setup wizard.
+  sdeIngest,
 ];
 
 export function jobModules(): readonly JobModule[] {

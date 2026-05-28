@@ -23,11 +23,12 @@ const schema = z
     ESI_BASE_URL: z.string().url().default('https://esi.evetech.net'),
     EVE_USER_AGENT: z.string().default('Aperture/0.0.0 (contact@example.com)'),
     ESI_TOKEN_ENC_KEY: z.string().default(''),
+    SETUP_PASSWORD: z.string().default(''),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   })
   .superRefine((v, ctx) => {
     if (v.NODE_ENV !== 'production') return;
-    for (const key of ['AUTH_SECRET', 'AUTH_EVE_CLIENT_ID', 'AUTH_EVE_CLIENT_SECRET', 'ESI_TOKEN_ENC_KEY'] as const) {
+    for (const key of ['AUTH_SECRET', 'AUTH_EVE_CLIENT_ID', 'AUTH_EVE_CLIENT_SECRET', 'ESI_TOKEN_ENC_KEY', 'SETUP_PASSWORD'] as const) {
       if (!v[key]) ctx.addIssue({ code: 'custom', path: [key], message: `${key} is required in production` });
     }
   });

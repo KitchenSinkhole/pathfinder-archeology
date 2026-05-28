@@ -203,6 +203,8 @@ Risks if left enabled:
 
 `pathfinder.ini` `[PATHFINDER.SETUP] SHOW_SETUP_WARNING=1` renders a banner on the login page while the setup route is wired. The Stage J rebuild should put this behind an env-gated feature flag or an admin-only sub-route.
 
+**Stage 16.6 rebuild posture (deviates from Q2's "proxy HTTP Basic" answer):** the rebuilt `/setup` console at `src/app/(setup)/setup/page.tsx` is gated by an in-app shared password (`SETUP_PASSWORD` in `.env`) that mints a signed, 4-hour `ap_setup` cookie via `src/lib/auth/setup-cookie.ts`. A production deploy with an empty `SETUP_PASSWORD` fails fast at import. The console exposes only the safe subset of legacy power tools: run pending Drizzle migrations, enqueue the `sde-ingest` graphile-worker task, enqueue any one registered task by name. Destructive legacy actions (`bootstrapDB` truncate, `flushRedisDb`, `invalidateCookies`) are deliberately not in scope — operators run those via CLI. Proxy-level Basic auth is now **optional** defense-in-depth, not required.
+
 ## ESI scopes vs Pathfinder rights
 
 Two different things. Easily confused.
@@ -230,6 +232,7 @@ The two intersect at one point: entering `/admin*` requires both the `CORPORATIO
 1. Is there a server-side check for `map_share`, `map_import`, `map_export`, or are these UI-only? If UI-only, a hand-crafted request bypasses them.
 2. What is the deployment policy for `/setup` and `/api/Setup` in production? Is removing the route from `routes.ini` the recommended approach, or is there a documented web-layer block?
    **A:** Setup is protected by HTTP Basic Authentication by the proxy that serves the app. It is intended as a route that does not require SSO for initial setup and troubleshooting.
+   **A (Stage 16.6 update):** the rebuild ships an in-app `SETUP_PASSWORD` gate at `/setup` (signed, 4h `ap_setup` cookie) so the deploy story doesn't require container-level proxy config. Proxy HTTP Basic remains valid as **optional** defense-in-depth on top of the in-app gate. See the §11 Q2 deviation note above and `docs/plans/stage-16-admin-panel-setup-wizard.md` §16.6.
 3. `CCP_ESI_SCOPES_ADMIN` is empty in the default config — confirm that this is intentional (admin scope check becomes a no-op) and whether a hardened default is desired in the rebuild.
 4. What rights, if any, can be granted to a `MEMBER` role through `corporation_right`? Default seed seems to bind rights to `CORPORATION` and above only.
 5. Owner-of-private-map vs `map_delete` right semantics — see Rights section.
