@@ -9,7 +9,7 @@
 The current Auth.js session, or `null` when logged out.
 
 ### requireSession(): Promise<Session>
-The current session; `redirect('/')` to the public splash when there is none. Used by the `(app)` layout to gate the authenticated tree.
+The current session; `redirect('/')` to the public splash when (a) there is no session, or (b) the active character's `status !== 'active'` (kicked or banned characters lose every gated route on their next request, not just the next sign-in). Used by the `(app)` and `(admin)` layouts to gate the authenticated tree, and by every Server Action that mutates state.
 
 ### getActiveCharacter(): Promise<ApCharacter | null>
 The full `ap_character` row for `session.characterId`, or `null` when logged out / character missing.

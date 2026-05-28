@@ -22,10 +22,20 @@ export async function getSession(): Promise<Session | null> {
   return auth();
 }
 
-/** The current session, redirecting to the public splash when absent. */
+/**
+ * The current session; `redirect('/')` to the public splash when absent **or**
+ * when the active character's `status !== 'active'` (Stage 16.3 — kicked /
+ * banned characters lose every gated route on their next request, not just
+ * the next sign-in).
+ */
 export async function requireSession(): Promise<Session> {
   const session = await getSession();
   if (!session?.characterId) redirect('/');
+  const [row] = await db
+    .select({ status: apCharacter.status })
+    .from(apCharacter)
+    .where(eq(apCharacter.id, BigInt(session.characterId)));
+  if (row === undefined || row.status !== 'active') redirect('/');
   return session;
 }
 
