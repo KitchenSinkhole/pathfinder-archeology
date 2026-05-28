@@ -11,6 +11,7 @@ import {
   type Edge,
   type Node,
   type NodeChange,
+  type Viewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import type { MapEventPayload, MapSystemNode, MapViewData } from '@/types';
@@ -72,6 +73,17 @@ export function MapCanvas({
     })),
   );
   const appliedEventIds = useRef<Set<number>>(new Set());
+
+  const [initialViewport] = useState<Viewport | null>(() => {
+    try {
+      const raw = localStorage.getItem(`aperture:map:${data.map.id}:viewport`);
+      return raw ? (JSON.parse(raw) as Viewport) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [canvasHeight, setCanvasHeight] = useState(600);
 
   useMapSubscription(Number(data.map.id));
   const { lastEvent } = useRealtime();
@@ -273,6 +285,44 @@ export function MapCanvas({
     setViewData((prev) => payloads.reduce(applyEvent, prev));
   }, []);
 
+  const onMoveEnd = useCallback(
+    (_: MouseEvent | TouchEvent | null, vp: Viewport) => {
+      localStorage.setItem(`aperture:map:${mapId}:viewport`, JSON.stringify(vp));
+    },
+    [mapId],
+  );
+
+  // Restore canvas height after mount — localStorage unavailable during SSR.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('aperture:map:canvas-height');
+      setCanvasHeight(raw ? parseInt(raw, 10) : Math.round(window.innerHeight * 0.7));
+    } catch { /* ignore */ }
+  }, []);
+
+  const onResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      const startY = e.clientY;
+      const startHeight = canvasHeight;
+
+      const onMouseMove = (ev: MouseEvent) => {
+        setCanvasHeight(Math.max(200, startHeight + (ev.clientY - startY)));
+      };
+
+      const onMouseUp = (ev: MouseEvent) => {
+        const h = Math.max(200, startHeight + (ev.clientY - startY));
+        localStorage.setItem('aperture:map:canvas-height', String(h));
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      };
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    },
+    [canvasHeight],
+  );
+
   const onAliasOrTagCommit = useCallback(
     (mapSystemId: string, field: 'alias' | 'tag', next: string | null) => {
       onSystemPatch(mapSystemId, { [field]: next });
@@ -345,7 +395,10 @@ export function MapCanvas({
     <MapPresenceProvider initial={data.presence}>
       <div className="flex gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <div className="h-[78vh] overflow-hidden rounded-lg ring-1 ring-foreground/10">
+          <div
+            style={{ height: canvasHeight }}
+            className="overflow-hidden rounded-lg ring-1 ring-foreground/10"
+          >
             <ReactFlow
               nodes={nodes}
               edges={edges}
@@ -362,12 +415,26 @@ export function MapCanvas({
               connectionMode={ConnectionMode.Loose}
               edgesFocusable
               colorMode="dark"
-              fitView
+              fitView={initialViewport === null}
+              defaultViewport={initialViewport ?? undefined}
+              zoomOnScroll={false}
+              preventScrolling={false}
+              onMoveEnd={onMoveEnd}
               proOptions={{ hideAttribution: true }}
             >
               <Background />
               <Controls showInteractive={false} />
             </ReactFlow>
+          </div>
+
+          {/* Drag handle — resizes the map canvas; sigs panel stays at full height below */}
+          <div
+            role="separator"
+            aria-orientation="horizontal"
+            className="-my-2 flex h-4 cursor-ns-resize items-center justify-center"
+            onMouseDown={onResizeStart}
+          >
+            <div className="h-1 w-10 rounded-full bg-border transition-colors hover:bg-foreground/30" />
           </div>
 
           <SignatureModule
@@ -381,7 +448,7 @@ export function MapCanvas({
           />
         </div>
 
-        <aside className="flex w-80 shrink-0 flex-col gap-4">
+        <aside className="flex w-80 shrink-0 flex-col gap-4 self-start">
           <InspectorModule
             selected={selected}
             viewData={viewData}
