@@ -130,6 +130,7 @@ export type {
   MapPresenceEntry,
   MapViewData,
   MapListItem,
+  AdminMapListItem,
 } from '@/lib/map/loadMap';
 
 // Route module view-model (computed in src/lib/map/route.ts).

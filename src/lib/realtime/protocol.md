@@ -17,14 +17,14 @@ The WS is broadcast-only (SPEC §§5–6): server fans `pg_notify('map:'||map_id
 - `Envelope` — `{ task, load: unknown }`.
 - `ServerToClientMessage` / `ClientToServerMessage` — inferred from the discriminated unions; re-exported from `src/types/index.ts`.
 - `MapEventPayload` — inferred from `mapEventPayloadSchema`; the realtime `mapUpdate.load.data` body and the jsonb `ap_map_event.payload`.
-- `MapEventKind` — the 12 seeded `ap_event_kind` values (also `MAP_EVENT_KINDS` const tuple).
+- `MapEventKind` — the 14 seeded `ap_event_kind` values (also `MAP_EVENT_KINDS` const tuple). Stage 16.2 added `map.restore` and `map.purge` for the admin maps panel (migration 0014).
 - `MapEventPatch<K>` — the payload for kind `K` minus `kind`/`eventId`; the body a mutation's `mutate()` returns.
 
 ### Schemas
 
 - `envelopeSchema` — raw frame `{ task: <any task>, load: unknown }`. Use to peek at `task` before per-task validation.
 - Control-plane loads (firm): `subscribeLoadSchema` / `unsubscribeLoadSchema` (`{ mapIds: number[] }`), `healthCheckLoadSchema` (`{ ts, ok?, listeners? }`), `mapDeletedLoadSchema` (`{ mapId }`), `characterLogoutLoadSchema` (`{ characterIds }`), `mapAccessLoadSchema` (`{ mapId, characterIds }`).
-- `mapEventPayloadSchema` — `z.discriminatedUnion('kind', …)` over the 12 event kinds. Every variant is `{ kind, eventId, ...patch }`: `system.added`/`connection.create`/`signature.create`/`map.create` carry the full body (system/edge mirror `MapSystemNode`/`MapConnectionEdge`, including `eolAt`/`createdAt` on edges so the canvas can render expiry hints); `*.updated`/`*.update` carry `{ id, ...partial }`; `*.removed`/`*.delete` carry `{ id }`. Timestamps (`rallyAt`, `eolAt`, `createdAt`, `expiresAt`, `deletedAt`) are ISO strings.
+- `mapEventPayloadSchema` — `z.discriminatedUnion('kind', …)` over the 14 event kinds. Every variant is `{ kind, eventId, ...patch }`: `system.added`/`connection.create`/`signature.create`/`map.create` carry the full body (system/edge mirror `MapSystemNode`/`MapConnectionEdge`, including `eolAt`/`createdAt` on edges so the canvas can render expiry hints); `*.updated`/`*.update` carry `{ id, ...partial }`; `*.removed`/`*.delete`/`map.restore`/`map.purge` carry `{ id }`. Timestamps (`rallyAt`, `eolAt`, `createdAt`, `expiresAt`, `deletedAt`) are ISO strings. `map.purge` is emitted *inside* the purge transaction before the `ap_map` DELETE; pg_notify buffers the message until COMMIT, so subscribers receive it even though the source `ap_map_event` row is cascaded out.
 - `mapUpdateLoadSchema` (`{ mapId, kind?, data?: MapEventPayload }`) — `bus.ts` builds `{ mapId, kind, data }` from the notify payload.
 - Other data-bearing loads (forward-declared): `mapConnectionAccessLoadSchema` (`{ mapId, data? }`), `logDataLoadSchema` (`{ mapId, data? }`).
 - `characterUpdateLoadSchema` — `{ characterId, characterName, online, systemId, shipTypeId, shipTypeName, locationAt }`. `characterName` and `shipTypeName` are resolved server-side by the location-poll (Stage 12 / Stage 13 presence-badge) so the client renders the hover panel without a separate roster lookup; `shipTypeName` is null when `shipTypeId` is null. The schema is exposed publicly because the client presence-context re-uses it to parse incoming envelopes.

@@ -22,5 +22,5 @@ A header with the current scope label ("global" for admin; "corp <id>" for manag
   - `corp` for webhooks → `EXISTS (SELECT 1 FROM ap_map WHERE id = ap_map_webhook.map_id AND <map scope>)`.
 
 ### Depends On
-- `auth` from `@/lib/auth`; `adminVisibilityScope` from `@/lib/auth/rights`.
+- `auth` from `@/lib/auth`; `adminVisibilityScope`, `mapScopeFilterFor`, `characterScopeFilterFor` from `@/lib/auth/rights` (Stage 16.2 promoted the two scope helpers out of this file so the admin maps list can reuse them).
 - Drizzle: `apMap`, `apCharacter`, `apMapWebhook` from `@/db/schema`.

@@ -1,38 +1,21 @@
 import { redirect } from 'next/navigation';
-import { and, count, eq, exists, gt, inArray, isNotNull, isNull, or } from 'drizzle-orm';
-import type { SQL } from 'drizzle-orm';
+import { and, count, eq, exists, gt, isNotNull, isNull } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { apCharacter, apMap, apMapWebhook } from '@/db/schema';
-import { adminVisibilityScope, type AdminVisibilityScope } from '@/lib/auth/rights';
+import {
+  adminVisibilityScope,
+  characterScopeFilterFor,
+  mapScopeFilterFor,
+  type AdminVisibilityScope,
+} from '@/lib/auth/rights';
 import { auth } from '@/lib/auth';
-
-function mapScopeFilter(scope: AdminVisibilityScope): SQL | undefined {
-  if (scope.kind === 'global') return undefined;
-  const corpChars = db
-    .select({ id: apCharacter.id })
-    .from(apCharacter)
-    .where(eq(apCharacter.corporationId, scope.corporationId));
-  const clauses: SQL[] = [
-    eq(apMap.ownerCorporationId, scope.corporationId),
-    inArray(apMap.ownerCharacterId, corpChars),
-  ];
-  if (scope.allianceId !== null) {
-    clauses.push(eq(apMap.ownerAllianceId, scope.allianceId));
-  }
-  return or(...clauses);
-}
-
-function characterScopeFilter(scope: AdminVisibilityScope): SQL | undefined {
-  if (scope.kind === 'global') return undefined;
-  return eq(apCharacter.corporationId, scope.corporationId);
-}
 
 async function countMaps(scope: AdminVisibilityScope, deleted: boolean): Promise<number> {
   const deletedClause = deleted ? isNotNull(apMap.deletedAt) : isNull(apMap.deletedAt);
   const [row] = await db
     .select({ n: count() })
     .from(apMap)
-    .where(and(deletedClause, mapScopeFilter(scope)));
+    .where(and(deletedClause, mapScopeFilterFor(scope)));
   return row?.n ?? 0;
 }
 
@@ -43,12 +26,12 @@ async function countCharacters(
   const [row] = await db
     .select({ n: count() })
     .from(apCharacter)
-    .where(and(eq(apCharacter.status, status), characterScopeFilter(scope)));
+    .where(and(eq(apCharacter.status, status), characterScopeFilterFor(scope)));
   return row?.n ?? 0;
 }
 
 async function countFailingWebhooks(scope: AdminVisibilityScope): Promise<number> {
-  const mapFilter = mapScopeFilter(scope);
+  const mapFilter = mapScopeFilterFor(scope);
   const scopedMapExists = exists(
     db
       .select({ one: apMap.id })

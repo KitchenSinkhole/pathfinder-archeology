@@ -232,11 +232,22 @@ export const mapEventPayloadSchema = z.discriminatedUnion('kind', [
     id: z.string(),
     deletedAt: z.string().nullable().optional(),
   }),
+  // Stage 16.2: admin clears `ap_map.deleted_at` (un-soft-deletes).
+  z.object({ kind: z.literal('map.restore'), eventId, id: z.string() }),
+  // Stage 16.2: admin hard-deletes a soft-deleted map immediately (skips the
+  // 30-day map-purge cron grace). Emitted inside the same transaction as the
+  // row delete, BEFORE the DELETE; pg_notify buffers the notification until
+  // COMMIT, so subscribers receive it even though the source event row is
+  // cascaded out by the parent DELETE.
+  z.object({ kind: z.literal('map.purge'), eventId, id: z.string() }),
 ]);
 
 export type MapEventPayload = z.infer<typeof mapEventPayloadSchema>;
 
-/** The 12 seeded `ap_event_kind` values (migration 0004). The discriminator set. */
+/**
+ * Seeded `ap_event_kind` values (migrations 0004 + 0014). The discriminator set.
+ * Stage 16.2 added `map.restore` and `map.purge` for the admin maps panel.
+ */
 export const MAP_EVENT_KINDS = [
   'system.added',
   'system.removed',
@@ -250,6 +261,8 @@ export const MAP_EVENT_KINDS = [
   'map.create',
   'map.update',
   'map.delete',
+  'map.restore',
+  'map.purge',
 ] as const;
 
 export type MapEventKind = (typeof MAP_EVENT_KINDS)[number];

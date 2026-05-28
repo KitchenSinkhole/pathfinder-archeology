@@ -6,8 +6,11 @@ import type { MapEventPayload } from '@/lib/realtime/protocol';
  * Returns a new `MapViewData` (never mutates). Called on the client inside a
  * `useState` + `useEffect` pair in `MapCanvas.tsx`.
  *
- * `map.create` and `map.delete` have no canvas representation; `map.delete`
- * navigation is handled by the separate `mapDeleted` WS task.
+ * `map.create`, `map.delete`, `map.restore`, and `map.purge` have no canvas
+ * representation; `map.delete` navigation is handled by the separate
+ * `mapDeleted` WS task. `map.restore`/`map.purge` are admin-only events and
+ * never reach an open user canvas (soft-deleted maps are already filtered out
+ * for non-admin viewers), so the reducer treats them as no-ops.
  */
 export function applyEvent(state: MapViewData, payload: MapEventPayload): MapViewData {
   switch (payload.kind) {
@@ -111,6 +114,8 @@ export function applyEvent(state: MapViewData, payload: MapEventPayload): MapVie
 
     case 'map.create':
     case 'map.delete':
+    case 'map.restore':
+    case 'map.purge':
       return state;
 
     default:

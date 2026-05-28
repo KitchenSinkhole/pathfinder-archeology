@@ -13,7 +13,7 @@ Dispatches on `payload.kind` and returns a new `MapViewData` without mutating th
 - `state` — current canvas view data (map header, visible systems, connections).
 - `payload` — a validated `MapEventPayload` from a `mapUpdate` WS envelope.
 
-**Returns:** A new `MapViewData` with the event applied, or the original `state` reference when the event has no canvas representation (`map.create`, `map.delete`).
+**Returns:** A new `MapViewData` with the event applied, or the original `state` reference when the event has no canvas representation (`map.create`, `map.delete`, `map.restore`, `map.purge`).
 
 **Per-kind behaviour:**
 - `system.added` — upserts the full system node body into `state.systems` (handles both new placements and re-activations of previously-removed systems).
@@ -26,7 +26,7 @@ Dispatches on `payload.kind` and returns a new `MapViewData` without mutating th
 - `signature.create` — upserts the full signature body into `state.signatures`.
 - `signature.update` — merges the patch into the matching signature by id; only present keys overwrite.
 - `signature.delete` — removes the signature by id.
-- `map.create`, `map.delete` — return `state` unchanged.
+- `map.create`, `map.delete`, `map.restore`, `map.purge` — return `state` unchanged. The last two are Stage 16.2 admin-only events; non-admin viewers never see a soft-deleted map open, so there is no canvas state to reconcile.
 
 ### Depends On
 - `MapViewData`, `MapSystemNode`, `MapConnectionEdge`, `MapSignature` — types from `@/types`

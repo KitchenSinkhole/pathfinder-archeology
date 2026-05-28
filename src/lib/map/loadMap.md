@@ -20,15 +20,21 @@ Maps the viewer can see, ordered by name. Feeds the `/maps` list. Stage 15 filte
 
 ---
 
+### listAdminMaps(scope: AdminVisibilityScope): Promise<AdminMapListItem[]>
+Stage 16.2. Maps an admin / manager can act on, **including soft-deleted rows** (which `listViewableMaps` filters out). Distinct from the user-facing listing because the admin row shape carries the full owner FKs + `deleted_at` so the admin UI can render ownership and offer restore / purge-now actions. Scoping is delegated to `mapScopeFilterFor` — global for admin, corp-scoped (owner_corporation / owner_alliance / owner_character∈corp-members) for manager. Soft-deleted rows are ordered first, then by name. Feeds `/admin/maps`.
+
+---
+
 ### Types
 - `MapSystemNode` — a visible system flattened with its universe metadata + statics. `statics` prefers `universe_wormhole.target_class` labels (e.g. `["C3","C5"]`) and falls back to the wormhole catalog name when the target class is null.
 - `MapConnectionEdge` — a connection with scope/mass/EOL/flag fields; endpoints are `ap_map_system.id` strings. `eolAt` (ISO or null) and `createdAt` (ISO) flow through so the canvas can compute the EOL countdown.
 - `MapSignature` — a scan signature inside a placed system. `expiresAt` is an ISO string.
 - `MapPresenceEntry` — one online tracked pilot: `{ characterId, characterName, systemId, shipTypeId, shipTypeName, locationAt }`. `systemId` is the EVE solar-system id; `locationAt` is ISO.
 - `MapViewData` — `{ map, systems, connections, signatures, presence }`, the page's full payload.
-- `MapListItem` — a map row for the list.
+- `MapListItem` — a map row for the user-facing list.
+- `AdminMapListItem` — a map row for `/admin/maps`: includes owner FKs (`ownerCharacterId`/`ownerCorporationId`/`ownerAllianceId` as nullable strings), `createdAt`/`updatedAt`/`deletedAt` ISO strings, and the same identity fields as `MapListItem`.
 
 These are re-exported from `src/types/index.ts`.
 
 ### Depends on
-- `@/db/client` (`db`), `@/db/schema` (tables + enums), `@/lib/auth/rights` (`canViewMap`, `viewableMapPredicate`).
+- `@/db/client` (`db`), `@/db/schema` (tables + enums), `@/lib/auth/rights` (`canViewMap`, `viewableMapPredicate`, `mapScopeFilterFor`, `AdminVisibilityScope`).

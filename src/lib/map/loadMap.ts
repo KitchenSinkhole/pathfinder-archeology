@@ -1,5 +1,5 @@
 import 'server-only';
-import { and, asc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import {
   apCharacter,
@@ -21,7 +21,12 @@ import {
   whJumpMass,
   whMass,
 } from '@/db/schema';
-import { canViewMap, viewableMapPredicate } from '@/lib/auth/rights';
+import {
+  canViewMap,
+  mapScopeFilterFor,
+  viewableMapPredicate,
+  type AdminVisibilityScope,
+} from '@/lib/auth/rights';
 
 type SystemStatus = (typeof systemStatus.enumValues)[number];
 type ConnectionScope = (typeof connectionScope.enumValues)[number];
@@ -123,6 +128,29 @@ export type MapListItem = {
   scope: MapScope;
   type: MapType;
   icon: string | null;
+};
+
+/**
+ * A map row for the admin panel list. Carries the soft-delete state and the
+ * full owner FKs so the admin UI can render ownership and offer
+ * restore / purge-now actions. Separate from `MapListItem` because the regular
+ * maps list deliberately hides ownership detail.
+ */
+export type AdminMapListItem = {
+  id: string;
+  name: string;
+  scope: MapScope;
+  type: MapType;
+  icon: string | null;
+  ownerCharacterId: string | null;
+  ownerCorporationId: string | null;
+  ownerAllianceId: string | null;
+  /** ISO timestamp. */
+  createdAt: string;
+  /** ISO timestamp. */
+  updatedAt: string;
+  /** ISO timestamp when soft-deleted; null when the map is active. */
+  deletedAt: string | null;
 };
 
 /**
@@ -327,6 +355,56 @@ export async function listViewableMaps(
     .where(where)
     .orderBy(apMap.name);
   return rows.map((r) => ({ ...r, id: r.id.toString() }));
+}
+
+/**
+ * Stage 16.2. Maps an admin / manager can act on, including soft-deleted rows.
+ * Distinct from `listViewableMaps`, which applies the per-character view rule
+ * and filters out `deleted_at IS NOT NULL`.
+ *
+ * Scoping (via `mapScopeFilterFor`):
+ *   - `global` (admin): every `ap_map`, active or soft-deleted.
+ *   - `corp`  (manager): maps `owner_corporation_id = $corp` OR
+ *     `owner_alliance_id = $allianceId` (if the corp has an alliance) OR
+ *     `owner_character_id` belongs to a member of that corp.
+ *
+ * Ordering: soft-deleted rows first (so the admin sees in-grace maps near the
+ * top of the list), then by name.
+ */
+export async function listAdminMaps(
+  scope: AdminVisibilityScope,
+): Promise<AdminMapListItem[]> {
+  const rows = await db
+    .select({
+      id: apMap.id,
+      name: apMap.name,
+      scope: apMap.scope,
+      type: apMap.type,
+      icon: apMap.icon,
+      ownerCharacterId: apMap.ownerCharacterId,
+      ownerCorporationId: apMap.ownerCorporationId,
+      ownerAllianceId: apMap.ownerAllianceId,
+      createdAt: apMap.createdAt,
+      updatedAt: apMap.updatedAt,
+      deletedAt: apMap.deletedAt,
+    })
+    .from(apMap)
+    .where(mapScopeFilterFor(scope))
+    .orderBy(sql`${apMap.deletedAt} DESC NULLS LAST`, apMap.name);
+
+  return rows.map((r) => ({
+    id: r.id.toString(),
+    name: r.name,
+    scope: r.scope,
+    type: r.type,
+    icon: r.icon,
+    ownerCharacterId: r.ownerCharacterId === null ? null : r.ownerCharacterId.toString(),
+    ownerCorporationId: r.ownerCorporationId === null ? null : r.ownerCorporationId.toString(),
+    ownerAllianceId: r.ownerAllianceId === null ? null : r.ownerAllianceId.toString(),
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
+    deletedAt: r.deletedAt === null ? null : r.deletedAt.toISOString(),
+  }));
 }
 
 async function loadStatics(systemIds: number[]): Promise<Map<number, string[]>> {

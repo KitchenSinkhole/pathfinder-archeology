@@ -99,6 +99,13 @@
       "when": 1779603600000,
       "tag": "0013_stage15_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1779604800000,
+      "tag": "0014_admin_event_kinds",
+      "breakpoints": true
     }
   ]
 }

@@ -4,7 +4,8 @@
 // `server-only` default export throws on load. Every caller is server-side
 // (API routes, Server Actions, the WS upgrade handler); we rely on that
 // rather than the marker package.
-import { and, eq, exists, isNull, or, sql } from 'drizzle-orm';
+import { and, eq, exists, inArray, isNull, or, sql } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
 import type { Session } from 'next-auth';
 import { db } from '@/db/client';
 import {
@@ -403,6 +404,43 @@ export async function adminVisibilityScope(
     return { kind: 'corp', corporationId: actor.corporationId, allianceId: actor.allianceId };
   }
   return null;
+}
+
+/**
+ * SQL `where` clause that restricts `ap_map` rows to those visible to an
+ * `AdminVisibilityScope`. Stage 16: shared by the admin dashboard counts
+ * (`src/app/(admin)/admin/page.tsx`) and the admin maps list
+ * (`src/lib/map/loadMap.ts#listAdminMaps`).
+ *
+ * - `global` → `undefined` (no extra filter; the caller still applies
+ *   `isNull(apMap.deletedAt)` for active-only queries).
+ * - `corp`   → match `owner_corporation_id`, OR `owner_alliance_id` when the
+ *   manager's corp has an alliance, OR `owner_character_id IN (members of that corp)`
+ *   so private maps owned by corp members are scoped in too.
+ */
+export function mapScopeFilterFor(scope: AdminVisibilityScope): SQL | undefined {
+  if (scope.kind === 'global') return undefined;
+  const corpChars = db
+    .select({ id: apCharacter.id })
+    .from(apCharacter)
+    .where(eq(apCharacter.corporationId, scope.corporationId));
+  const clauses: SQL[] = [
+    eq(apMap.ownerCorporationId, scope.corporationId),
+    inArray(apMap.ownerCharacterId, corpChars),
+  ];
+  if (scope.allianceId !== null) {
+    clauses.push(eq(apMap.ownerAllianceId, scope.allianceId));
+  }
+  return or(...clauses);
+}
+
+/**
+ * SQL `where` clause that restricts `ap_character` rows to those visible to an
+ * `AdminVisibilityScope`. `global` → `undefined`; `corp` → `corporation_id = $corp`.
+ */
+export function characterScopeFilterFor(scope: AdminVisibilityScope): SQL | undefined {
+  if (scope.kind === 'global') return undefined;
+  return eq(apCharacter.corporationId, scope.corporationId);
 }
 
 /** Re-export for ergonomic imports at call sites. */
