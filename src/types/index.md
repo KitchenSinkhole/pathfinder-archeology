@@ -15,4 +15,4 @@ Stage 9 re-exports map-event payloads, mutation result/input types, signature pa
 
 Stage 13 adds `UniverseSovereigntyMap` / `UniverseFactionWarSystem`, ESI sov/FW decoded-response types, and read-side integration summaries (`SystemIntelSummary`, `SovereigntyIntel`, `FactionWarIntel`, `RecentKillSummary`, `EveScoutConnectionSummary`, `ChangelogRelease`).
 
-Stage 16.7 adds `SignatureGroupKey` (the `signature_group_key` pgEnum) and `SignatureGroupOption` for the scanner-level signature group catalog. The corresponding column on `ap_map_signature` is `groupKey: SignatureGroupKey | null` (replacing the prior `groupId` FK to `universe_group`).
+Stage 16.7 adds `SignatureGroupKey` (the `signature_group_key` pgEnum) and `SignatureGroupOption` for the scanner-level signature group catalog. The corresponding column on `ap_map_signature` is `groupKey: SignatureGroupKey | null` (replacing the prior `groupId` FK to `universe_group`). `CosmicSignatureGroupKey = Exclude<SignatureGroupKey, 'wormhole'>` is the union of the six non-wormhole groups whose site names live in the static catalog `src/lib/map/signatureSites.ts`.

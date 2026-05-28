@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { WormholeTypeSelect } from './WormholeTypeSelect';
 import { SignatureGroupSelect } from './SignatureGroupSelect';
 import { ConnectionSelect } from './ConnectionSelect';
+import { SiteTypeCombobox } from './SiteTypeCombobox';
 import { SignaturePasteDialog } from '@/components/dialogs/SignaturePasteDialog';
 import type {
   MapConnectionEdge,
@@ -20,7 +21,6 @@ import type {
   CreateSignatureBody,
   UpdateSignatureBody,
 } from '@/lib/map/client';
-import { labelForSignatureGroupKey } from '@/lib/map/signatureGroups';
 import { formatRelativeFromMs } from '@/lib/map/relativeTime';
 import { apertureConfig } from '../../../aperture.config';
 
@@ -323,13 +323,14 @@ function SignaturePanelBody({
               value={draftTypeId}
               onValueChange={setDraftTypeId}
             />
+          ) : draftGroupKey === null ? (
+            <Input className="h-8" placeholder="Pick a group first" disabled />
           ) : (
-            <Input
-              value={draftName}
-              onChange={(e) => setDraftName(e.target.value)}
-              className="h-8"
-              placeholder={draftGroupKey ? 'Site name' : 'Pick a group first'}
-              disabled={draftGroupKey === null}
+            <SiteTypeCombobox
+              security={system.security}
+              groupKey={draftGroupKey}
+              value={draftName || null}
+              onValueChange={(next) => setDraftName(next ?? '')}
             />
           )}
         </div>
@@ -390,17 +391,13 @@ function TypeCell({
       />
     );
   }
-  // Free-form cosmic site name. Controlled draft + commit-on-blur avoids
-  // per-keystroke PATCHes while sidestepping Base UI's "uncontrolled
-  // FieldControl default value changed" warning when the optimistic apply
-  // updates `sig.name` after blur.
-  const placeholder = labelForSignatureGroupKey(sig.groupKey) ?? 'Site name';
+  // Cosmic site name: class+group-filtered suggestions with free-text fallback.
   return (
-    <EditableTextCell
-      value={sig.name ?? ''}
-      onCommit={(next) => onPatch(sig.id, { name: next || null })}
-      className="h-7 text-sm"
-      placeholder={`${placeholder} site`}
+    <SiteTypeCombobox
+      security={system.security}
+      groupKey={sig.groupKey}
+      value={sig.name}
+      onValueChange={(next) => onPatch(sig.id, { name: next })}
     />
   );
 }

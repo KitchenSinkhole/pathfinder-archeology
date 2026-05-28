@@ -27,7 +27,7 @@ A `Card` with:
 - **Group cascade:** Changing a row's Group always nulls `typeId` and `name`; when the new group is no longer `wormhole` (or wasn't but now is), `mapConnectionId` is also nulled. The cascade is sent as one PATCH containing the combined keys (see `buildGroupChangePatch`).
 - **Type cell** cascades on Group:
   - `wormhole` → `WormholeTypeSelect`. Picks a `universe_wormhole` row; writes `typeId`.
-  - cosmic groups → free-form site name via `EditableTextCell` bound to `sig.name`; patches on blur (avoids per-keystroke PATCHes).
+  - cosmic groups → `SiteTypeCombobox` bound to `sig.name`: class+group-filtered site-name suggestions (from `signatureSites.ts`, keyed off `system.security`) with a free-text fallback; patches on blur.
   - `null` (unknown) → italic placeholder text.
 - **Leads-to cell** is `ConnectionSelect`, enabled only for `groupKey === 'wormhole'`.
 - **Description cell** uses `EditableTextCell` to patch `sig.description` on blur.
@@ -38,7 +38,7 @@ A `Card` with:
 - **Paste from scanner** opens `SignaturePasteDialog` with the active system pre-bound.
 
 ### Depends On
-- `WormholeTypeSelect`, `SignatureGroupSelect`, `ConnectionSelect`
+- `WormholeTypeSelect`, `SignatureGroupSelect`, `ConnectionSelect`, `SiteTypeCombobox`
 - `SignaturePasteDialog` (`@/components/dialogs/SignaturePasteDialog`)
 - `Card`, `Button`, `Input` from `@/components/ui/*`
 - `labelForSignatureGroupKey` from `@/lib/map/signatureGroups`

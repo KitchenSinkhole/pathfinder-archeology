@@ -128,6 +128,10 @@ export type MapRight = (typeof mapRight.enumValues)[number];
 export type MapType = (typeof mapType.enumValues)[number];
 export type RoleSource = (typeof roleSource.enumValues)[number];
 export type SignatureGroupKey = (typeof signatureGroupKey.enumValues)[number];
+/** The six cosmic-signature groups (every group except `wormhole`). Their site
+ * names are baked into the EVE client and have no SDE rows, so they're carried
+ * as free-text `name` strings rather than a `typeId` FK. */
+export type CosmicSignatureGroupKey = Exclude<SignatureGroupKey, 'wormhole'>;
 
 // Read-only map view-model types (shaped in src/lib/map/loadMap.ts).
 export type {
