@@ -11,7 +11,7 @@
 | initial | CorpRightCell[] | yes | The six rows from `loadCorpRightsMatrix(corp).rights`. |
 
 ### Renders
-Six-row, five-column table: one row per `map_right` enum value, one header column (right name + raw key) plus four radio columns (none, member, manager, admin).
+Six-row, five-column table: one row per `map_right` enum value, one header column (right name + raw key) plus four radio columns (none, admin, manager, member). Column headers and checked radio buttons are color-coded by permissivity: red (none) → orange (admin) → yellow (manager) → green (member).
 
 ### Behaviour & Interactions
 - Optimistic update on radio click — local state flips immediately, the Server Action runs in a `useTransition`, and on `{ ok: false }` the row reverts to its previous value and a toast surfaces the server error.

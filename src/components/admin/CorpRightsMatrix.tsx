@@ -19,13 +19,43 @@ const RIGHT_LABELS: Record<MapRight, string> = {
   map_share: 'Share maps (grant access)',
 };
 
-type Column = { value: AuthzLevel | null; label: string };
+type Column = {
+  value: AuthzLevel | null;
+  label: string;
+  checkedRing: string;
+  dot: string;
+  header: string;
+};
 
 const COLUMNS: Column[] = [
-  { value: null, label: 'None' },
-  { value: 'member', label: 'Member' },
-  { value: 'manager', label: 'Manager' },
-  { value: 'admin', label: 'Admin' },
+  {
+    value: null,
+    label: 'None',
+    checkedRing: 'border-red-500 bg-red-500/10 text-red-500',
+    dot: 'bg-red-500',
+    header: 'text-red-400',
+  },
+  {
+    value: 'admin',
+    label: 'Admin',
+    checkedRing: 'border-orange-500 bg-orange-500/10 text-orange-500',
+    dot: 'bg-orange-500',
+    header: 'text-orange-400',
+  },
+  {
+    value: 'manager',
+    label: 'Manager',
+    checkedRing: 'border-yellow-500 bg-yellow-500/10 text-yellow-500',
+    dot: 'bg-yellow-500',
+    header: 'text-yellow-400',
+  },
+  {
+    value: 'member',
+    label: 'Member',
+    checkedRing: 'border-green-500 bg-green-500/10 text-green-500',
+    dot: 'bg-green-500',
+    header: 'text-green-400',
+  },
 ];
 
 export type CorpRightsMatrixProps = {
@@ -49,7 +79,7 @@ export function CorpRightsMatrix({ corporationId, initial }: CorpRightsMatrixPro
           <tr>
             <th className="px-3 py-2 font-medium">Right</th>
             {COLUMNS.map((c) => (
-              <th key={c.label} className="px-3 py-2 text-center font-medium">
+              <th key={c.label} className={cn('px-3 py-2 text-center font-medium', c.header)}>
                 {c.label}
               </th>
             ))}
@@ -94,10 +124,10 @@ function Row({
         next === null
           ? await adminDeleteCorpRight({ corporationId, right: row.right })
           : await adminUpsertCorpRight({
-              corporationId,
-              right: row.right,
-              minAuthzLevel: next,
-            });
+            corporationId,
+            right: row.right,
+            minAuthzLevel: next,
+          });
       if (!result.ok) {
         onChange(previous);
         toast.error(result.error);
@@ -119,7 +149,7 @@ function Row({
               className={cn(
                 'mx-auto inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border transition-colors',
                 checked
-                  ? 'border-primary bg-primary/10 text-primary'
+                  ? column.checkedRing
                   : 'border-border text-muted-foreground hover:bg-muted',
                 pending && 'opacity-60',
               )}
@@ -137,7 +167,7 @@ function Row({
                 aria-hidden
                 className={cn(
                   'block size-2 rounded-full',
-                  checked ? 'bg-primary' : 'bg-transparent',
+                  checked ? column.dot : 'bg-transparent',
                 )}
               />
             </label>
