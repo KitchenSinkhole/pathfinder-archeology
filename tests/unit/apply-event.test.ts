@@ -245,8 +245,9 @@ const sig1: MapSignature = {
   mapSystemId: '10',
   mapConnectionId: null,
   sigId: 'ABC',
-  groupId: null,
+  groupKey: null,
   typeId: null,
+  wormholeCode: null,
   name: null,
   description: null,
   expiresAt: '2026-12-31T00:00:00.000Z',
@@ -276,10 +277,10 @@ describe('applyEvent — signature.update', () => {
       kind: 'signature.update',
       eventId: 22,
       id: '30',
-      name: 'Wormhole',
-      groupId: 5,
+      name: 'B274',
+      groupKey: 'wormhole',
     });
-    expect(next.signatures[0]).toMatchObject({ name: 'Wormhole', groupId: 5, sigId: 'ABC' });
+    expect(next.signatures[0]).toMatchObject({ name: 'B274', groupKey: 'wormhole', sigId: 'ABC' });
   });
 
   it('is a no-op for an unknown id', () => {

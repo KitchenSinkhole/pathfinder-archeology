@@ -99,19 +99,31 @@ export function SignaturePasteDialog({
     const existingBySigId = new Map(existingSigs.map((s) => [s.sigId, s]));
     return parsed.map<PreviewRow>((p) => {
       const r = resolvedBySigId.get(p.sigId);
-      const merged: ResolvedSigRow = r ?? { ...p, groupId: null, typeId: null };
+      const merged: ResolvedSigRow =
+        r ?? { ...p, groupKey: null, typeId: null };
       const existing = existingBySigId.get(p.sigId);
       let status: RowStatus;
       if (!existing) {
         status = 'new';
       } else {
         const groupDiffers =
-          merged.groupId !== null && merged.groupId !== existing.groupId;
+          merged.groupKey !== null && merged.groupKey !== existing.groupKey;
+        // For wormhole rows, the type id is the meaningful signal. For
+        // cosmic rows, type id is always null on both sides — name is what
+        // changes. Treat a non-null incoming name differing from the existing
+        // as an update.
         const typeDiffers =
-          merged.typeId !== null && merged.typeId !== existing.typeId;
+          merged.groupKey === 'wormhole'
+            ? merged.typeId !== null && merged.typeId !== existing.typeId
+            : merged.name !== null && merged.name !== existing.name;
         status = groupDiffers || typeDiffers ? 'update' : 'unchanged';
       }
-      if (status === 'new' && p.groupName && merged.groupId === null) status = 'unresolvable';
+      // Only flag as unresolvable when the paste carried a Group cell but
+      // we failed to classify it. Cosmic rows with a non-null name but
+      // null typeId are expected (no SDE backing) and are NOT unresolvable.
+      if (status === 'new' && p.groupName && merged.groupKey === null) {
+        status = 'unresolvable';
+      }
       return { ...merged, status };
     });
   }, [parsed, resolved, existingSigs]);

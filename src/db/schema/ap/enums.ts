@@ -69,6 +69,26 @@ export const mapRight = pgEnum('map_right', [
 ]);
 
 /**
+ * Scanner-level group of a cosmic signature. The seven keys EVE's in-game
+ * probe scanner emits in its "Group" column: six cosmic-site classes plus
+ * wormhole. Replaces the prior `ap_map_signature.group_id` FK to
+ * `universe_group`, which couldn't represent the cosmic six (only `Wormhole`
+ * and `Cosmic Signature` exist in the SDE at group granularity). The actual
+ * site name (e.g. "Forgotten Perimeter Habitation Coils") lives in
+ * `ap_map_signature.name`; for wormhole sigs `type_id` still resolves to a
+ * `universe_wormhole` row.
+ */
+export const signatureGroupKey = pgEnum('signature_group_key', [
+  'combat',
+  'relic',
+  'data',
+  'gas',
+  'wormhole',
+  'ore',
+  'ghost',
+]);
+
+/**
  * Stage 15. Where an `ap_role` row originates.
  * - `builtin` — created by the app itself (e.g. seed roles, admin-panel hand-grants).
  * - `corp_title` — mirrored from an EVE corporation title pulled via

@@ -130,7 +130,7 @@ describe.skipIf(!run)('map API routes — signature mutations + broadcast (real 
       mapSystemId: mapSystemIdA,
       characterId: null,
       sigId: 'ABC',
-      groupId: GROUP,
+      groupKey: 'wormhole',
       typeId: TYPE_ID,
       name: 'Test Sig',
       expiresAt: expires,
@@ -142,7 +142,7 @@ describe.skipIf(!run)('map API routes — signature mutations + broadcast (real 
     expect(result.data).toMatchObject({
       kind: 'signature.create',
       sigId: 'ABC',
-      groupId: GROUP,
+      groupKey: 'wormhole',
       typeId: TYPE_ID,
       name: 'Test Sig',
       mapSystemId: mapSystemIdA.toString(),

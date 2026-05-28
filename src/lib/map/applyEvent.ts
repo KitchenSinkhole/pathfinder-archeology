@@ -99,8 +99,9 @@ export function applyEvent(state: MapViewData, payload: MapEventPayload): MapVie
           const next = { ...s };
           if (payload.mapConnectionId !== undefined) next.mapConnectionId = payload.mapConnectionId;
           if (payload.sigId !== undefined) next.sigId = payload.sigId;
-          if (payload.groupId !== undefined) next.groupId = payload.groupId;
+          if (payload.groupKey !== undefined) next.groupKey = payload.groupKey;
           if (payload.typeId !== undefined) next.typeId = payload.typeId;
+          if (payload.wormholeCode !== undefined) next.wormholeCode = payload.wormholeCode;
           if (payload.name !== undefined) next.name = payload.name;
           if (payload.description !== undefined) next.description = payload.description;
           if (payload.expiresAt !== undefined) next.expiresAt = payload.expiresAt;

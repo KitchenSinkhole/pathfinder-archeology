@@ -37,6 +37,7 @@ An unbounded two-column layout (the page scrolls). The wide left column stacks t
 - `@/lib/map/client` — all eight mutation wrappers + `fetchWormholeTypes` (via the inspector).
 
 - Wraps the canvas subtree in `MapPresenceProvider` seeded from `data.presence` (`MapPresenceContext`) so each `SystemNode` can pull its system's online-pilot slice via `usePresenceForSystem` without prop-drilling. The provider also folds incoming `characterUpdate` envelopes onto that store.
+- Threads `viewData.connections` and `viewData.systems` into `SignatureModule` so its `ConnectionSelect` can list connections incident to the active system without an API call.
 
 ### Depends On
 - `@xyflow/react`, `./SystemNode`, `./ConnectionEdge`, `./MapPresenceContext`

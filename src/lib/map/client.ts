@@ -6,6 +6,7 @@ import type {
   MapEventPayload,
   ParsedSigRow,
   ResolvedSigRow,
+  SignatureGroupKey,
   WormholeTypeOption,
 } from '@/types';
 import type {
@@ -75,7 +76,7 @@ export type CreateSignatureBody = {
   mapSystemId: string;
   mapConnectionId?: string | null;
   sigId: string;
-  groupId?: number | null;
+  groupKey?: SignatureGroupKey | null;
   typeId?: number | null;
   name?: string | null;
   description?: string | null;
@@ -86,7 +87,7 @@ export type CreateSignatureBody = {
 export type UpdateSignatureBody = {
   mapConnectionId?: string | null;
   sigId?: string;
-  groupId?: number | null;
+  groupKey?: SignatureGroupKey | null;
   typeId?: number | null;
   name?: string | null;
   description?: string | null;

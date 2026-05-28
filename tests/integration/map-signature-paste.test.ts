@@ -15,12 +15,13 @@ import {
   universeRegion,
   universeSystem,
   universeType,
+  universeWormhole,
 } from '@/db/schema';
 import { addSystem } from '@/lib/map/mutations/systems';
 import { createConnection } from '@/lib/map/mutations/connections';
 import { createSignature } from '@/lib/map/mutations/signatures';
 import { pasteSignatures } from '@/lib/map/mutations/bulkSignatures';
-import type { ResolvedSigRow } from '@/lib/map/signatureReader';
+import { resolveSignatureRows, type ResolvedSigRow } from '@/lib/map/signatureReader';
 
 /**
  * Stage 10.2 gate: bulk signature-paste orchestrator.
@@ -67,6 +68,13 @@ describe.skipIf(!run)('bulk signature paste — diff / atomic commit (real Postg
       { id: TYPE_UNSTABLE, groupId: GROUP_WORMHOLE, name: 'Unstable Wormhole' },
       { id: TYPE_GAS_BARREN, groupId: GROUP_GAS, name: 'Barren Reservoir' },
     ]);
+    // `universe_wormhole.name` is the short WH code (B274 / K162); the seeded
+    // type's `universe_type.name` is irrelevant to the resolver. Use a synthetic
+    // code that won't collide with real SDE rows (the live `universe_wormhole`
+    // also has a `B274` row at a different `typeId`).
+    await db
+      .insert(universeWormhole)
+      .values({ typeId: TYPE_UNSTABLE, name: 'X901', sourceClass: 'HS', targetClass: 'HS' });
 
     const [m] = await db
       .insert(apMap)
@@ -94,7 +102,7 @@ describe.skipIf(!run)('bulk signature paste — diff / atomic commit (real Postg
       mapSystemId: mapSystemIdA,
       characterId: null,
       sigId: 'ABC-001',
-      groupId: null,
+      groupKey: null,
       typeId: null,
       name: 'preserve me',
       expiresAt: new Date(Date.now() + 86_400_000),
@@ -105,7 +113,7 @@ describe.skipIf(!run)('bulk signature paste — diff / atomic commit (real Postg
       mapSystemId: mapSystemIdA,
       characterId: null,
       sigId: 'DEF-002',
-      groupId: null,
+      groupKey: null,
       typeId: null,
       expiresAt: new Date(Date.now() + 86_400_000),
     });
@@ -120,23 +128,23 @@ describe.skipIf(!run)('bulk signature paste — diff / atomic commit (real Postg
         name: 'Unstable Wormhole',
         groupName: 'Wormhole',
         signal: '100.0%',
-        groupId: GROUP_WORMHOLE,
+        groupKey: 'wormhole',
         typeId: TYPE_UNSTABLE,
       },
       {
         sigId: 'GHI-003',
         name: 'Barren Reservoir',
-        groupName: 'Cosmic Signature',
+        groupName: 'Gas Site',
         signal: '100.0%',
-        groupId: GROUP_GAS,
-        typeId: TYPE_GAS_BARREN,
+        groupKey: 'gas',
+        typeId: null,
       },
       {
         sigId: 'JKL-004',
         name: null,
         groupName: null,
         signal: '4.2%',
-        groupId: null,
+        groupKey: null,
         typeId: null,
       },
     ];
@@ -167,12 +175,12 @@ describe.skipIf(!run)('bulk signature paste — diff / atomic commit (real Postg
     expect(await eventCount()).toBe(beforeEvents + 4);
     expect(result.data.payloads).toHaveLength(4);
 
-    // Existing classified row preserved its name, gained groupId/typeId.
+    // Existing classified row preserved its name, gained groupKey/typeId.
     const [abc] = await db
       .select({
         sigId: apMapSignature.sigId,
         name: apMapSignature.name,
-        groupId: apMapSignature.groupId,
+        groupKey: apMapSignature.groupKey,
         typeId: apMapSignature.typeId,
       })
       .from(apMapSignature)
@@ -183,7 +191,7 @@ describe.skipIf(!run)('bulk signature paste — diff / atomic commit (real Postg
       .select({
         sigId: apMapSignature.sigId,
         name: apMapSignature.name,
-        groupId: apMapSignature.groupId,
+        groupKey: apMapSignature.groupKey,
       })
       .from(apMapSignature)
       .where(eq(apMapSignature.mapSystemId, mapSystemIdA));
@@ -193,7 +201,7 @@ describe.skipIf(!run)('bulk signature paste — diff / atomic commit (real Postg
     const abcRow = finalSigs.find((s) => s.sigId === 'ABC-001');
     expect(abcRow).toMatchObject({
       name: 'preserve me', // unchanged — paste shouldn't clobber name
-      groupId: GROUP_WORMHOLE,
+      groupKey: 'wormhole',
     });
 
     // Clean for the next test.
@@ -259,64 +267,118 @@ describe.skipIf(!run)('bulk signature paste — diff / atomic commit (real Postg
     expect(conns).toHaveLength(0);
   });
 
-  it('rollback: a duplicate sigId in the same paste aborts the whole batch', async () => {
-    // Empty state, then a paste with two new sigs and one accidental duplicate.
+  it('resolveSignatureRows: classifies the seven scanner groups + WH name → typeId', async () => {
+    const rows = await resolveSignatureRows([
+      { sigId: 'WH1-001', name: 'X901', groupName: 'Wormhole', signal: '100.0%' },
+      // Low-strength wormhole: EVE emits "Wormhole" in both Name and Group.
+      { sigId: 'WH2-002', name: 'Wormhole', groupName: 'Wormhole', signal: '4.2%' },
+      // Cosmic-site row: name carried through, typeId null.
+      {
+        sigId: 'REL-003',
+        name: 'Forgotten Perimeter Habitation Coils',
+        groupName: 'Relic Site',
+        signal: '100.0%',
+      },
+      // Unknown group: low-strength row with no Group cell.
+      { sigId: 'UNK-004', name: null, groupName: null, signal: '4.2%' },
+      // Combat scanner group.
+      {
+        sigId: 'COM-005',
+        name: 'Fortification Frontier Stronghold',
+        groupName: 'Combat Site',
+        signal: '100.0%',
+      },
+    ]);
+
+    expect(rows).toHaveLength(5);
+    expect(rows[0]).toMatchObject({
+      sigId: 'WH1-001',
+      groupKey: 'wormhole',
+      typeId: TYPE_UNSTABLE,
+      name: 'X901',
+    });
+    // Low-strength: groupKey is set (group cell was meaningful) but name +
+    // typeId are null after the low-strength filter.
+    expect(rows[1]).toMatchObject({
+      sigId: 'WH2-002',
+      groupKey: 'wormhole',
+      typeId: null,
+      name: null,
+    });
+    expect(rows[2]).toMatchObject({
+      sigId: 'REL-003',
+      groupKey: 'relic',
+      typeId: null,
+      name: 'Forgotten Perimeter Habitation Coils',
+    });
+    expect(rows[3]).toMatchObject({
+      sigId: 'UNK-004',
+      groupKey: null,
+      typeId: null,
+      name: null,
+    });
+    expect(rows[4]).toMatchObject({
+      sigId: 'COM-005',
+      groupKey: 'combat',
+      typeId: null,
+      name: 'Fortification Frontier Stronghold',
+    });
+  });
+
+  it('rollback: a mid-batch failure aborts the whole transaction', async () => {
+    // Seed one sig on mapSystemIdA (owned by `mapId`).
     const beforeEvents = await eventCount();
     const beforeRows = await sigCount();
 
-    const rows: ResolvedSigRow[] = [
-      // The dedupe-by-sigId logic keeps the last occurrence, so a true duplicate
-      // collapses to one row. Force a unique-constraint violation by pre-seeding
-      // a sig with the same sigId, then attempting to add it again via paste.
-      {
-        sigId: 'DUP-001',
-        name: null,
-        groupName: null,
-        signal: '100.0%',
-        groupId: null,
-        typeId: null,
-      },
-    ];
-
-    // Seed the conflicting sig.
     const seed = await createSignature({
       mapId,
       mapSystemId: mapSystemIdA,
       characterId: null,
-      sigId: 'DUP-001',
+      sigId: 'RB1-001',
+      groupKey: null,
+      typeId: null,
       expiresAt: new Date(Date.now() + 86_400_000),
     });
     expect(seed.ok).toBe(true);
 
-    // Now ask pasteSignatures to ADD it again (updateExisting off so the
-    // create path runs) — should hit the (mapSystemId, sigId) unique constraint
-    // and roll back. Two other rows in the batch should not persist.
+    // Create a second map; call pasteSignatures with the WRONG mapId so the
+    // ownership check inside updateSignature throws mid-batch. The batch
+    // contains an OK1-001 row that would otherwise be created — verify it
+    // doesn't persist (whole tx rolled back).
+    const [otherMap] = await db
+      .insert(apMap)
+      .values({ name: 'Rollback Other Map', scope: 'wh', type: 'private' })
+      .returning({ id: apMap.id });
+
     const conflict = await pasteSignatures({
-      mapId,
+      mapId: otherMap!.id,
       mapSystemId: mapSystemIdA,
       characterId: null,
       rows: [
-        ...rows,
+        // RB1-001 exists → bulk attempts an update; `updateSignature` checks
+        // that the sig's mapSystem belongs to `input.mapId`. It doesn't here
+        // → throws → outer transaction rolls back.
+        {
+          sigId: 'RB1-001',
+          name: null,
+          groupName: 'Wormhole',
+          signal: '100.0%',
+          groupKey: 'wormhole',
+          typeId: null,
+        },
+        // Would be created if the tx succeeded; verifies the rollback.
         {
           sigId: 'OK1-001',
           name: null,
           groupName: null,
           signal: '100%',
-          groupId: null,
-          typeId: null,
-        },
-        {
-          sigId: 'OK2-001',
-          name: null,
-          groupName: null,
-          signal: '100%',
-          groupId: null,
+          groupKey: null,
           typeId: null,
         },
       ],
       options: {
         addMissing: true,
-        updateExisting: false, // skip the update path so DUP-001 hits create
+        updateExisting: true,
         removeMissing: false,
         removeOrphanedConnections: false,
       },
@@ -324,11 +386,12 @@ describe.skipIf(!run)('bulk signature paste — diff / atomic commit (real Postg
     });
 
     expect(conflict.ok).toBe(false);
-    // No new events (the seeded sig's create event is from before, but no events
-    // beyond that since the batch rolled back wholesale).
+    // Only the seed's `signature.create` event persists.
     expect(await eventCount()).toBe(beforeEvents + 1);
-    // Only the seeded sig persists; OK1 / OK2 rolled back.
+    // Only the seeded sig persists; OK1-001 rolled back.
     expect(await sigCount()).toBe(beforeRows + 1);
+
+    await db.delete(apMap).where(eq(apMap.id, otherMap!.id));
   });
 });
 
@@ -367,6 +430,9 @@ async function cleanup() {
     await db.delete(apMap).where(eq(apMap.id, mapId));
   }
   await db.delete(apMap).where(eq(apMap.name, 'Bulk Paste Test Map'));
+  await db
+    .delete(universeWormhole)
+    .where(inArray(universeWormhole.typeId, [TYPE_UNSTABLE, TYPE_GAS_BARREN]));
   await db
     .delete(universeType)
     .where(inArray(universeType.id, [TYPE_UNSTABLE, TYPE_GAS_BARREN]));

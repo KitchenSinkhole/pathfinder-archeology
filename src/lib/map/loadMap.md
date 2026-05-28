@@ -6,7 +6,7 @@
 ---
 
 ### loadMapForView(mapId: bigint, viewerCharacterId: bigint): Promise<MapViewData | null>
-Loads one map for rendering. Returns `null` if the map is missing, soft-deleted, or the viewer is not allowed to see it (Stage 15 `canViewMap`). The viewer-id is required — passing the wrong one is an access-control bug the type system catches. Joins visible `ap_map_system` rows to `universe_system` / constellation / region, attaches wormhole static codes, loads all `ap_map_connection` rows, and loads `ap_map_signature` rows for every visible system. Also calls `loadMapPresence(mapId)` so the returned `MapViewData` carries the initial roster of online tracked pilots. All `bigint` ids and `timestamptz`s are stringified (ISO for dates) so the result is serialisable across the Server→Client boundary.
+Loads one map for rendering. Returns `null` if the map is missing, soft-deleted, or the viewer is not allowed to see it (Stage 15 `canViewMap`). The viewer-id is required — passing the wrong one is an access-control bug the type system catches. Joins visible `ap_map_system` rows to `universe_system` / constellation / region, attaches wormhole static codes, loads all `ap_map_connection` rows, and loads `ap_map_signature` rows for every visible system (LEFT JOIN to `universe_wormhole` to surface the WH code as `wormholeCode`). Also calls `loadMapPresence(mapId)` so the returned `MapViewData` carries the initial roster of online tracked pilots. All `bigint` ids and `timestamptz`s are stringified (ISO for dates) so the result is serialisable across the Server→Client boundary.
 
 ---
 
@@ -28,7 +28,7 @@ Stage 16.2. Maps an admin / manager can act on, **including soft-deleted rows** 
 ### Types
 - `MapSystemNode` — a visible system flattened with its universe metadata + statics. `statics` prefers `universe_wormhole.target_class` labels (e.g. `["C3","C5"]`) and falls back to the wormhole catalog name when the target class is null.
 - `MapConnectionEdge` — a connection with scope/mass/EOL/flag fields; endpoints are `ap_map_system.id` strings. `eolAt` (ISO or null) and `createdAt` (ISO) flow through so the canvas can compute the EOL countdown.
-- `MapSignature` — a scan signature inside a placed system. `expiresAt` is an ISO string.
+- `MapSignature` — a scan signature inside a placed system. `groupKey` is one of the seven scanner-level keys (or null). `typeId` is non-null only when `groupKey === 'wormhole'` and points at a `universe_type` row also present in `universe_wormhole`; `wormholeCode` is the LEFT JOIN of `universe_wormhole.name` for display ("B274", "K162", …). `name` carries the user-typed site name for cosmic sigs, or a mirror of the wormhole code for wormhole sigs. `expiresAt` is an ISO string.
 - `MapPresenceEntry` — one online tracked pilot: `{ characterId, characterName, systemId, shipTypeId, shipTypeName, locationAt }`. `systemId` is the EVE solar-system id; `locationAt` is ISO.
 - `MapViewData` — `{ map, systems, connections, signatures, presence }`, the page's full payload.
 - `MapListItem` — a map row for the user-facing list.

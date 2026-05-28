@@ -11,6 +11,7 @@ import {
   connectionScope,
   mapScope,
   mapType,
+  signatureGroupKey,
   systemStatus,
   universeConstellation,
   universeRegion,
@@ -34,6 +35,7 @@ type WhMass = (typeof whMass.enumValues)[number];
 type WhJumpMass = (typeof whJumpMass.enumValues)[number];
 type MapScope = (typeof mapScope.enumValues)[number];
 type MapType = (typeof mapType.enumValues)[number];
+type SignatureGroupKey = (typeof signatureGroupKey.enumValues)[number];
 
 /** A visible system on a map, flattened with its `universe_system` metadata. */
 export type MapSystemNode = {
@@ -85,9 +87,15 @@ export type MapSignature = {
   mapConnectionId: string | null;
   /** In-game 3-char scan id, e.g. "ABC". */
   sigId: string;
-  groupId: number | null;
+  /** Scanner-level group; null for "unknown". */
+  groupKey: SignatureGroupKey | null;
+  /** `universe_type.id`. Only meaningful when `groupKey === 'wormhole'` (points to a `universe_wormhole` row); otherwise null. */
   typeId: number | null;
+  /** Display-only wormhole code (e.g. "B274"), resolved server-side from `universe_wormhole.name`. Null when `typeId` is null or not a wormhole. */
+  wormholeCode: string | null;
+  /** For wormhole sigs: redundant mirror of `wormholeCode`. For cosmic sigs: the user-typed EVE site name string (e.g. "Forgotten Perimeter Habitation Coils"). Null when unknown. */
   name: string | null;
+  /** Freeform user notes. */
   description: string | null;
   /** ISO timestamp; `Date` serialised over the Server→Client boundary. */
   expiresAt: string;
@@ -224,13 +232,15 @@ export async function loadMapForView(
           mapSystemId: apMapSignature.mapSystemId,
           mapConnectionId: apMapSignature.mapConnectionId,
           sigId: apMapSignature.sigId,
-          groupId: apMapSignature.groupId,
+          groupKey: apMapSignature.groupKey,
           typeId: apMapSignature.typeId,
+          wormholeCode: universeWormhole.name,
           name: apMapSignature.name,
           description: apMapSignature.description,
           expiresAt: apMapSignature.expiresAt,
         })
         .from(apMapSignature)
+        .leftJoin(universeWormhole, eq(apMapSignature.typeId, universeWormhole.typeId))
         .where(inArray(apMapSignature.mapSystemId, visibleSystemIds))
         .orderBy(apMapSignature.sigId)
     : [];
@@ -275,8 +285,9 @@ export async function loadMapForView(
       mapSystemId: r.mapSystemId.toString(),
       mapConnectionId: r.mapConnectionId ? r.mapConnectionId.toString() : null,
       sigId: r.sigId,
-      groupId: r.groupId,
+      groupKey: r.groupKey,
       typeId: r.typeId,
+      wormholeCode: r.wormholeCode,
       name: r.name,
       description: r.description,
       expiresAt: r.expiresAt.toISOString(),

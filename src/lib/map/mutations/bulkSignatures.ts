@@ -4,6 +4,7 @@ import { db } from '@/db/client';
 import { apMapSignature } from '@/db/schema';
 import type { MapEventPayload } from '@/lib/realtime/protocol';
 import type { ResolvedSigRow } from '@/lib/map/signatureReader';
+import type { SignatureGroupKey } from '@/types';
 import type { ActionResult } from './core';
 import { createSignature, updateSignature, deleteSignature } from './signatures';
 import { deleteConnection } from './connections';
@@ -61,8 +62,9 @@ export async function pasteSignatures(
         .select({
           id: apMapSignature.id,
           sigId: apMapSignature.sigId,
-          groupId: apMapSignature.groupId,
+          groupKey: apMapSignature.groupKey,
           typeId: apMapSignature.typeId,
+          name: apMapSignature.name,
           mapConnectionId: apMapSignature.mapConnectionId,
         })
         .from(apMapSignature)
@@ -86,14 +88,17 @@ export async function pasteSignatures(
 
         if (!existingRow) {
           if (!input.options.addMissing) continue;
+          // For cosmic sigs the EVE-emitted site name is meaningful and we
+          // persist it on create. For wormhole sigs `incoming.name` is the
+          // WH code (e.g. "B274") mirrored from the resolved `typeId`.
           const res = await createSignature({
             mapId: input.mapId,
             mapSystemId: input.mapSystemId,
             characterId: input.characterId,
             sigId,
-            groupId: incoming.groupId,
+            groupKey: incoming.groupKey,
             typeId: incoming.typeId,
-            name: null,
+            name: incoming.name,
             description: null,
             expiresAt: input.defaultExpiresAt,
             tx,
@@ -106,11 +111,18 @@ export async function pasteSignatures(
 
         if (!input.options.updateExisting) continue;
 
-        // Only overwrite when the paste resolved to a real id that differs.
+        // Only overwrite when the paste resolved to a real value that differs.
         // Treat incoming nulls as "unknown — don't clobber prior classification".
-        const patch: { groupId?: number | null; typeId?: number | null } = {};
-        if (incoming.groupId !== null && incoming.groupId !== existingRow.groupId) {
-          patch.groupId = incoming.groupId;
+        // For existing rows we never overwrite `name`: it's either user-typed
+        // (cosmic sigs) or the wormhole-code mirror set by the create path /
+        // the row-level type cell; preserving prior input matches the legacy
+        // "paste shouldn't clobber typed-in data" contract.
+        const patch: {
+          groupKey?: SignatureGroupKey | null;
+          typeId?: number | null;
+        } = {};
+        if (incoming.groupKey !== null && incoming.groupKey !== existingRow.groupKey) {
+          patch.groupKey = incoming.groupKey;
         }
         if (incoming.typeId !== null && incoming.typeId !== existingRow.typeId) {
           patch.typeId = incoming.typeId;

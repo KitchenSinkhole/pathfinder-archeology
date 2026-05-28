@@ -19,8 +19,8 @@ A shadcn `Dialog`: header, monospace textarea, preview table (one row per parsed
 
 ### Behaviour & Interactions
 - `parseSignaturePaste` runs synchronously on every keystroke; the resolve fetch (`resolveSignaturesOnServer`) is debounced 300 ms and races are dropped via a sequence counter — only the latest paste's resolution wins.
-- Preview status per row: ➕ new (when `addMissing` ✓) · ✎ update (when `updateExisting` ✓ AND scanned ids differ) · `?` unresolvable (group/type didn't match the universe tables) · `·` unchanged. To-be-removed rows render in destructive colour with a 🗑 icon; the link-broken icon appears beside removes whose sig was bound to a connection when `removeOrphanedConnections` ✓.
-- "Update existing" applies only when the incoming `groupId`/`typeId` is non-null AND differs from existing — incoming nulls never overwrite prior classification (partial re-scans don't blow away known data).
+- Preview status per row: ➕ new (when `addMissing` ✓) · ✎ update (when `updateExisting` ✓ AND classification or site name differs) · `?` unresolvable (the Group cell didn't classify into any scanner group) · `·` unchanged. To-be-removed rows render in destructive colour with a 🗑 icon; the link-broken icon appears beside removes whose sig was bound to a connection when `removeOrphanedConnections` ✓.
+- "Update existing" applies only when the incoming `groupKey` / `typeId` / `name` is non-null AND differs from existing — incoming nulls never overwrite prior classification (partial re-scans don't blow away known data). For wormhole rows `typeId` is the meaningful diff signal; for cosmic rows the EVE-emitted site name in the Type column is what differs.
 - Default option flags: add ✓ / update ✓ / remove ✗ / remove-orphans ✗.
 - Closing the dialog (any reason) resets all internal state.
 

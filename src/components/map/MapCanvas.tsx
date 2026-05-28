@@ -441,6 +441,8 @@ export function MapCanvas({
             mapId={mapId}
             system={selectedSystem}
             signatures={viewData.signatures}
+            connections={viewData.connections}
+            systems={viewData.systems}
             onCreate={onSignatureCreate}
             onPatch={onSignaturePatch}
             onDelete={onSignatureDelete}

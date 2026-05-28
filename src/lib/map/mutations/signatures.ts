@@ -1,8 +1,9 @@
 import 'server-only';
 import { and, eq, type InferInsertModel } from 'drizzle-orm';
-import { apMapSignature, apMapSystem } from '@/db/schema';
+import { apMapSignature, apMapSystem, universeWormhole } from '@/db/schema';
 import { commitMapEvent, type ActionResult, type Tx } from './core';
 import type { MapEventPatch, MapEventPayload } from '@/lib/realtime/protocol';
+import type { SignatureGroupKey } from '@/types';
 
 /**
  * Signature-level map mutations, each a single `commitMapEvent` call.
@@ -24,7 +25,7 @@ export type CreateSignatureInput = {
   mapConnectionId?: bigint | null;
   characterId: bigint | null;
   sigId: string;
-  groupId?: number | null;
+  groupKey?: SignatureGroupKey | null;
   typeId?: number | null;
   name?: string | null;
   description?: string | null;
@@ -35,7 +36,7 @@ export type CreateSignatureInput = {
 export type UpdateSignaturePatch = {
   mapConnectionId?: bigint | null;
   sigId?: string;
-  groupId?: number | null;
+  groupKey?: SignatureGroupKey | null;
   typeId?: number | null;
   name?: string | null;
   description?: string | null;
@@ -73,7 +74,7 @@ export function createSignature(
           mapSystemId: input.mapSystemId,
           mapConnectionId: input.mapConnectionId ?? null,
           sigId: input.sigId,
-          groupId: input.groupId ?? null,
+          groupKey: input.groupKey ?? null,
           typeId: input.typeId ?? null,
           name: input.name ?? null,
           description: input.description ?? null,
@@ -84,25 +85,36 @@ export function createSignature(
           mapSystemId: apMapSignature.mapSystemId,
           mapConnectionId: apMapSignature.mapConnectionId,
           sigId: apMapSignature.sigId,
-          groupId: apMapSignature.groupId,
+          groupKey: apMapSignature.groupKey,
           typeId: apMapSignature.typeId,
           name: apMapSignature.name,
           description: apMapSignature.description,
           expiresAt: apMapSignature.expiresAt,
         });
+      const wormholeCode = row!.typeId !== null ? await resolveWormholeCode(tx, row!.typeId) : null;
       return {
         id: row!.id.toString(),
         mapSystemId: row!.mapSystemId.toString(),
         mapConnectionId: row!.mapConnectionId?.toString() ?? null,
         sigId: row!.sigId,
-        groupId: row!.groupId,
+        groupKey: row!.groupKey,
         typeId: row!.typeId,
+        wormholeCode,
         name: row!.name,
         description: row!.description,
         expiresAt: row!.expiresAt.toISOString(),
       };
     },
   });
+}
+
+/** Resolve `universe_wormhole.name` for a given `type_id`, or null. */
+async function resolveWormholeCode(tx: Tx, typeId: number): Promise<string | null> {
+  const [row] = await tx
+    .select({ name: universeWormhole.name })
+    .from(universeWormhole)
+    .where(eq(universeWormhole.typeId, typeId));
+  return row?.name ?? null;
 }
 
 /**
@@ -136,7 +148,7 @@ export function updateSignature(
       const set: Partial<InferInsertModel<typeof apMapSignature>> = { updatedAt: new Date() };
       if ('mapConnectionId' in patch) set.mapConnectionId = patch.mapConnectionId;
       if ('sigId' in patch) set.sigId = patch.sigId;
-      if ('groupId' in patch) set.groupId = patch.groupId;
+      if ('groupKey' in patch) set.groupKey = patch.groupKey;
       if ('typeId' in patch) set.typeId = patch.typeId;
       if ('name' in patch) set.name = patch.name;
       if ('description' in patch) set.description = patch.description;
@@ -153,8 +165,14 @@ export function updateSignature(
       if ('mapConnectionId' in patch)
         out.mapConnectionId = patch.mapConnectionId?.toString() ?? null;
       if ('sigId' in patch) out.sigId = patch.sigId;
-      if ('groupId' in patch) out.groupId = patch.groupId;
-      if ('typeId' in patch) out.typeId = patch.typeId;
+      if ('groupKey' in patch) out.groupKey = patch.groupKey;
+      if ('typeId' in patch) {
+        out.typeId = patch.typeId;
+        out.wormholeCode =
+          patch.typeId !== null && patch.typeId !== undefined
+            ? await resolveWormholeCode(tx, patch.typeId)
+            : null;
+      }
       if ('name' in patch) out.name = patch.name;
       if ('description' in patch) out.description = patch.description;
       if ('expiresAt' in patch) out.expiresAt = patch.expiresAt!.toISOString();

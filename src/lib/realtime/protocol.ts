@@ -3,6 +3,7 @@ import {
   connectionScope,
   mapScope,
   mapType,
+  signatureGroupKey,
   systemStatus,
   whJumpMass,
   whMass,
@@ -110,6 +111,7 @@ const whMassEnum = z.enum(whMass.enumValues);
 const whJumpMassEnum = z.enum(whJumpMass.enumValues);
 const mapScopeEnum = z.enum(mapScope.enumValues);
 const mapTypeEnum = z.enum(mapType.enumValues);
+const signatureGroupKeyEnum = z.enum(signatureGroupKey.enumValues);
 
 const eventId = z.number().int().positive();
 
@@ -154,8 +156,9 @@ const signatureBody = {
   mapSystemId: z.string(),
   mapConnectionId: z.string().nullable(),
   sigId: z.string(),
-  groupId: z.number().int().nullable(),
+  groupKey: signatureGroupKeyEnum.nullable(),
   typeId: z.number().int().nullable(),
+  wormholeCode: z.string().nullable(),
   name: z.string().nullable(),
   description: z.string().nullable(),
   expiresAt: z.string(),
@@ -199,8 +202,9 @@ export const mapEventPayloadSchema = z.discriminatedUnion('kind', [
     id: z.string(),
     mapConnectionId: z.string().nullable().optional(),
     sigId: z.string().optional(),
-    groupId: z.number().int().nullable().optional(),
+    groupKey: signatureGroupKeyEnum.nullable().optional(),
     typeId: z.number().int().nullable().optional(),
+    wormholeCode: z.string().nullable().optional(),
     name: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
     expiresAt: z.string().optional(),

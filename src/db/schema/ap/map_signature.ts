@@ -7,14 +7,21 @@ import {
   timestamp,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import { universeGroup, universeType } from '../universe/items';
+import { universeType } from '../universe/items';
 import { apMapConnection } from './map_connection';
 import { apMapSystem } from './map_system';
+import { signatureGroupKey } from './enums';
 
 // SPEC §6.5. An in-game scan signature inside a system, optionally bound to the
 // connection it resolves to (the wormhole itself). Reaped by the signature-reap
 // cron on `expires_at`. Sigs bound to a connection cascade-delete when it
 // collapses; unattached sigs (gas/ore/data/relic) survive system invisibility.
+//
+// `group_key` is the scanner-level group (one of the seven cosmic groups).
+// `type_id` is only meaningful when `group_key = 'wormhole'`, where it points
+// to a `universe_wormhole` row (resolved via `universe_type.id`). For the six
+// cosmic groups the `name` column carries the EVE-emitted site name string
+// (e.g. "Forgotten Perimeter Habitation Coils"), which is not in the SDE.
 export const apMapSignature = pgTable(
   'ap_map_signature',
   {
@@ -28,7 +35,7 @@ export const apMapSignature = pgTable(
     ),
     // In-game 3-char id, e.g. "ABC".
     sigId: text('sig_id').notNull(),
-    groupId: integer('group_id').references(() => universeGroup.id, { onDelete: 'set null' }),
+    groupKey: signatureGroupKey('group_key'),
     typeId: integer('type_id').references(() => universeType.id, { onDelete: 'set null' }),
     name: text('name'),
     description: text('description'),

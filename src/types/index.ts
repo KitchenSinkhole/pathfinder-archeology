@@ -29,7 +29,13 @@ import type {
   universeTypeOverride,
   universeWormhole,
 } from '@/db/schema';
-import type { authzLevel, mapRight, mapType, roleSource } from '@/db/schema/ap/enums';
+import type {
+  authzLevel,
+  mapRight,
+  mapType,
+  roleSource,
+  signatureGroupKey,
+} from '@/db/schema/ap/enums';
 
 export type UniverseRegion = InferSelectModel<typeof universeRegion>;
 export type NewUniverseRegion = InferInsertModel<typeof universeRegion>;
@@ -121,6 +127,7 @@ export type AuthzLevel = (typeof authzLevel.enumValues)[number];
 export type MapRight = (typeof mapRight.enumValues)[number];
 export type MapType = (typeof mapType.enumValues)[number];
 export type RoleSource = (typeof roleSource.enumValues)[number];
+export type SignatureGroupKey = (typeof signatureGroupKey.enumValues)[number];
 
 // Read-only map view-model types (shaped in src/lib/map/loadMap.ts).
 export type {
@@ -205,6 +212,9 @@ export type { WormholeTypeOption, StaticMatch } from '@/lib/map/wormholeTypes';
 // Signature paste parser + resolver (src/lib/map/signatureParser.ts, signatureReader.ts).
 export type { ParsedSigRow } from '@/lib/map/signatureParser';
 export type { ResolvedSigRow } from '@/lib/map/signatureReader';
+
+// Scanner-level signature group catalog (src/lib/map/signatureGroups.ts).
+export type { SignatureGroupOption } from '@/lib/map/signatureGroups';
 
 // ESI opKey identifiers (map in src/lib/esi/opkeys.ts).
 export type { OpKey, OpDef } from '@/lib/esi/opkeys';
