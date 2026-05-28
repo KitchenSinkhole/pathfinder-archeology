@@ -43,6 +43,10 @@ export interface WebhookDispatchNotes {
   skipped: number;
   /** `true` when the event row could not be found at dispatch time (purged or never existed). */
   missingEvent?: true;
+  /** `true` for the synthetic test-fire path triggered by the Stage 16 admin UI. */
+  test?: true;
+  /** `true` when a test fire targeted a webhook id that no longer exists. */
+  missingWebhook?: true;
 }
 
 export async function runWebhookDispatch(
@@ -120,6 +124,58 @@ export async function runWebhookDispatch(
   }
 
   return { attempted, succeeded, failed, skipped };
+}
+
+/**
+ * Stage 16.4 admin test-fire. Sends a synthetic `[test]` Discord payload to one
+ * webhook and writes the outcome back to the same `ap_map_webhook` row a real
+ * dispatch would touch (`last_status`, `last_error`, `last_attempted_at`,
+ * `consecutive_failures`). Never throws.
+ *
+ * `sentAt` lets the admin UI prove the test it triggered is the one that
+ * landed (the rendered message echoes it back). The dispatcher path is the
+ * same `deliver()` helper used for real events — so a successful test fire
+ * is exactly as much evidence as a successful real dispatch.
+ */
+export async function runTestWebhookDispatch(
+  webhookId: bigint,
+  sentAt: Date,
+): Promise<WebhookDispatchNotes> {
+  const [wh] = await db
+    .select({
+      channel: apMapWebhook.channel,
+      url: apMapWebhook.url,
+      username: apMapWebhook.username,
+      mapId: apMapWebhook.mapId,
+    })
+    .from(apMapWebhook)
+    .where(eq(apMapWebhook.id, webhookId));
+  if (!wh) {
+    return { attempted: 0, succeeded: 0, failed: 0, skipped: 0, test: true, missingWebhook: true };
+  }
+  if (wh.channel !== 'discord') {
+    return { attempted: 0, succeeded: 0, failed: 0, skipped: 1, test: true };
+  }
+
+  const [mapRow] = await db
+    .select({ name: apMap.name })
+    .from(apMap)
+    .where(eq(apMap.id, wh.mapId));
+  const mapName = mapRow?.name ?? `map ${wh.mapId.toString()}`;
+
+  const payload: DiscordWebhookPayload = {
+    content: `**${mapName}** — [test] Aperture webhook test fired at ${sentAt.toISOString()}.`,
+  };
+  if (wh.username) payload.username = wh.username;
+
+  const outcome = await deliver(webhookId, wh.url, payload);
+  return {
+    attempted: 1,
+    succeeded: outcome.ok ? 1 : 0,
+    failed: outcome.ok ? 0 : 1,
+    skipped: 0,
+    test: true,
+  };
 }
 
 async function deliver(

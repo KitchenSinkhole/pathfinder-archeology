@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { Webhook } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { adminVisibilityScope, isAdmin } from '@/lib/auth/rights';
 import { listAdminMaps } from '@/lib/map/loadMap';
@@ -103,7 +104,19 @@ export default async function AdminMapsPage() {
                       )}
                     </td>
                     <td className="px-3 py-2 align-middle">
-                      <MapActionsMenu map={m} canPurge={canPurge} />
+                      <div className="flex items-center justify-end gap-1">
+                        {!softDeleted && (
+                          <Link
+                            href={{ pathname: `/admin/maps/${m.id}/webhooks` }}
+                            aria-label={`Webhooks for ${m.name}`}
+                            title="Webhooks"
+                            className="inline-flex size-7 items-center justify-center rounded-[12px] text-muted-foreground hover:bg-muted hover:text-foreground"
+                          >
+                            <Webhook className="size-3.5" />
+                          </Link>
+                        )}
+                        <MapActionsMenu map={m} canPurge={canPurge} />
+                      </div>
                     </td>
                   </tr>
                 );

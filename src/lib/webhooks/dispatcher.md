@@ -28,9 +28,20 @@ Single-event dispatch. Called by the `webhook-dispatch` graphile-worker task wit
 
 ---
 
+### runTestWebhookDispatch(webhookId: bigint, sentAt: Date): Promise<WebhookDispatchNotes>
+Stage 16.4 admin test-fire. Sends a synthetic `[test]` message to one `ap_map_webhook` row, writing back `last_status` / `last_error` / `last_attempted_at` / `consecutive_failures` exactly like a real dispatch — so a green test fire is identical evidence to a green real send.
+
+**Parameters:**
+- `webhookId` — `ap_map_webhook.id`.
+- `sentAt` — caller's wall-clock; echoed into the rendered Discord message so the operator can match the test they triggered to the one that landed.
+
+**Returns:** `WebhookDispatchNotes` with `test: true`. `missingWebhook: true` when the row no longer exists; `skipped: 1` for non-Discord channels (future-proofing). Never throws.
+
+---
+
 ### Types
 
-- `WebhookDispatchNotes` — return shape; mirrors what `ap_job_run.notes` stores.
+- `WebhookDispatchNotes` — return shape; mirrors what `ap_job_run.notes` stores. `test`/`missingWebhook` flags only set by `runTestWebhookDispatch`.
 
 ### Constants
 
