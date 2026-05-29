@@ -19,5 +19,56 @@ services:
       timeout: 5s
       retries: 10
 
+  # One-shot: applies Drizzle migrations, then exits. The app waits for this to
+  # complete successfully before serving (depends_on below). db:migrate is
+  # idempotent, so it runs on every `up` and keeps the schema in sync after a
+  # redeploy. SDE ingest is deliberately NOT run here — it stays a manual,
+  # operator-triggered step in /setup (mirrors legacy; keeps redeploys fast).
+  migrate:
+    build: .
+    image: aperture-app:dev
+    command: ["pnpm", "db:migrate"]
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+      # Reach Postgres over the compose network, not the host-mapped port.
+      DATABASE_URL: postgres://postgres:postgres@db:5432/aperture
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build: .
+    image: aperture-app:dev
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://postgres:postgres@db:5432/aperture
+      HOSTNAME: 0.0.0.0
+      PORT: "3003"
+    ports:
+      - "3003:3003"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3003/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
 volumes:
   pgdata:
