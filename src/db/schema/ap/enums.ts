@@ -97,3 +97,13 @@ export const signatureGroupKey = pgEnum('signature_group_key', [
  *   carries the upstream role id.
  */
 export const roleSource = pgEnum('role_source', ['builtin', 'corp_title', 'external']);
+
+/**
+ * Stage 17.2. The mutation recorded in `ap_structure_event` — the append-only
+ * accountability log for manual structure intel. Structures are deployment-global
+ * and editable by any authenticated user, so every create/update/delete is
+ * stamped with the acting character to identify griefers. (Structures have no
+ * `map_id` and therefore cannot live in `ap_map_event`; this is their dedicated,
+ * single-source history.)
+ */
+export const structureEventKind = pgEnum('structure_event_kind', ['create', 'update', 'delete']);

@@ -9,8 +9,8 @@ The map name/meta header above `<MapCanvas>`. Empty-state `Card` (with a back-to
 ### Behaviour & Interactions
 - Optional catch-all slug; the first segment is the map id (numeric → bigint, else empty state).
 - `loadMapForView(mapId, viewerCharacterId)` returns null for missing / soft-deleted / non-viewable maps → "Map not found" (Stage 15 — does not leak existence).
-- Precomputes hub routes (`routesForSystems`), 24h stats (`statsForSystems`), and read-side intel (`intelForSystems`) for all visible systems in parallel and passes them to the client canvas. Initial pilot-presence (`MapViewData.presence`) ships with the map payload from `loadMapForView`.
+- Precomputes hub routes (`routesForSystems`), 24h stats (`statsForSystems`), read-side intel (`intelForSystems`), and manual structure intel (`structuresForSystems`) for all visible systems in parallel and passes them to the client canvas. Initial pilot-presence (`MapViewData.presence`) ships with the map payload from `loadMapForView`.
 - Session gating is handled by the `(app)` layout. No edit affordances.
 
 ### Depends On
-- `@/lib/map/loadMap`, `@/lib/map/route`, `@/lib/map/stats`, `@/lib/map/intel`, `@/components/map/MapCanvas`, `@/components/ui/card`.
+- `@/lib/map/loadMap`, `@/lib/map/route`, `@/lib/map/stats`, `@/lib/map/intel`, `@/lib/structures/read`, `@/components/map/MapCanvas`, `@/components/ui/card`.

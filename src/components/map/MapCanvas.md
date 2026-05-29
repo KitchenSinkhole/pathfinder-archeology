@@ -10,9 +10,10 @@
 | routes | Record<number, HubRoute[]> | yes | Precomputed hub jumps keyed by EVE system id. |
 | stats | Record<number, SystemStatsSummary> | yes | Precomputed 24h kill stats keyed by EVE system id. |
 | intel | Record<number, SystemIntelSummary> | yes | Read-side integration intel keyed by EVE system id. |
+| structures | Record<number, StructureIntel[]> | yes | Manual structure intel keyed by EVE system id (page-loaded seed; not realtime-synced). |
 
 ### Renders
-An unbounded two-column layout (the page scrolls). The wide left column stacks the `ReactFlow` canvas (pixel height, user-resizable via a drag handle) above a horizontal drag handle and then `SignatureModule` at its full natural height. The narrow right column (`w-80`, `self-start`) contains `InspectorModule`, `RouteModule`, `IntelModule`, and `KillStatsModule` and does not stretch to match the left column's height.
+An unbounded two-column layout (the page scrolls). The wide left column stacks the `ReactFlow` canvas (pixel height, user-resizable via a drag handle) above a horizontal drag handle and then `SignatureModule` at its full natural height. The narrow right column (`w-80`, `self-start`) contains `InspectorModule`, `RouteModule`, `IntelModule`, `StructureModule`, and `KillStatsModule` and does not stretch to match the left column's height.
 
 ### Behaviour & Interactions
 - `viewData` is seeded from `data` and mutated by both realtime events and local optimistic patches; the canvas is the single source of canvas-render state.
@@ -28,6 +29,7 @@ An unbounded two-column layout (the page scrolls). The wide left column stacks t
 - Connect: `nodesConnectable` is on and `connectionMode={ConnectionMode.Loose}` so any of `SystemNode`'s four side handles can act as either source or target during drag. `onConnect` POSTs a new wormhole connection (default scope `wh`), then applies the server payload. (Rendering of the edge ignores which specific handle the user dragged from — `ConnectionEdge` snaps to whichever pair of sides face each other.)
 - Selection: `onNodeClick` / `onEdgeClick` / `onPaneClick` write a `SelectionRef = { kind: 'system' | 'connection', id } | null` into local state, which feeds `InspectorModule` and the route / kill-stats modules. The `selected` flag is reflected back into each xyflow node/edge object so rebuilding the arrays on `viewData` change (e.g. an optimistic inspector patch) does not wipe selection. (We can't rely on `onSelectionChange`: with controlled `nodes`/`edges` and no `onNodesChange`, xyflow mutates its internal `nodeLookup` directly without a zustand `set()`, so `onSelectionChange` only fires as a side effect of unrelated re-renders — which made a still click take two attempts to select.)
 - Alias and tag: the system tile's `InlineTextEdit` calls back into `MapCanvas`'s `onSystemPatch` via the per-node `onAliasOrTagCommit` injected through `data`.
+- Structure intel: `structures` is plain local state seeded from the page load. `onStructureCreate`/`onStructurePatch`/`onStructureDelete` await the `@/lib/structures/client` REST wrappers and fold the returned `StructureIntel` into local state on success. These are **not** map events and have no realtime echo (structures are deployment-global, not map-scoped), so there is no `applyEvent` / `appliedEventIds` involvement and another user's edits appear only on the next page load.
 - Toasts: client helpers in `@/lib/map/client` surface server errors as `toast.error` before returning the failure result; `MapCanvas` only handles rollback.
 
 ### Emits / Calls
@@ -42,7 +44,8 @@ An unbounded two-column layout (the page scrolls). The wide left column stacks t
 ### Depends On
 - `@xyflow/react`, `./SystemNode`, `./ConnectionEdge`, `./MapPresenceContext`
 - `RouteModule`, `KillStatsModule`, `InspectorModule`, `SignatureModule`
-- `IntelModule`
+- `IntelModule`, `StructureModule`
+- Structure REST wrappers in `@/lib/structures/client`
 - `applyEvent` (`@/lib/map/applyEvent`)
 - `mapUpdateLoadSchema` (`@/lib/realtime/protocol`)
 - `useMapSubscription`, `useRealtime` (`@/lib/realtime/useRealtime`)
@@ -55,3 +58,4 @@ An unbounded two-column layout (the page scrolls). The wide left column stacks t
 - `appliedEventIds: Set<number>` (ref) — dedup set for realtime event ids and committed optimistic eventIds.
 - `initialViewport: Viewport | null` — lazy-init from `localStorage`; null triggers `fitView`, non-null restores the saved pan/zoom position.
 - `canvasHeight: number` — pixel height of the map canvas; initialized to 600 (SSR-safe), then set from `aperture:map:canvas-height` in localStorage on mount.
+- `structures: Record<number, StructureIntel[]>` — manual structure intel keyed by EVE system id; seeded from the `structures` prop and updated on the user's own structure CRUD (no realtime).

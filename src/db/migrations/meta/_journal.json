@@ -120,6 +120,13 @@
       "when": 1779607200000,
       "tag": "0016_structure",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1779608400000,
+      "tag": "0017_structure_event",
+      "breakpoints": true
     }
   ]
 }

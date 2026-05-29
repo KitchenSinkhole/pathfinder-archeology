@@ -14,7 +14,7 @@ import {
   type Viewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import type { MapEventPayload, MapSystemNode, MapViewData } from '@/types';
+import type { MapEventPayload, MapSystemNode, MapViewData, StructureIntel } from '@/types';
 import type { HubRoute } from '@/lib/map/route';
 import type { SystemStatsSummary } from '@/lib/map/stats';
 import type { SystemIntelSummary } from '@/lib/map/intel';
@@ -33,11 +33,18 @@ import {
   type UpdateSignatureBody,
   type UpdateSystemBody,
 } from '@/lib/map/client';
+import {
+  createStructureOnServer,
+  deleteStructureOnServer,
+  updateStructureOnServer,
+} from '@/lib/structures/client';
 import { mapUpdateLoadSchema } from '@/lib/realtime/protocol';
 import { useMapSubscription, useRealtime } from '@/lib/realtime/useRealtime';
 import { RouteModule } from '@/components/sidebar/RouteModule';
 import { KillStatsModule } from '@/components/sidebar/KillStatsModule';
 import { IntelModule } from '@/components/sidebar/IntelModule';
+import { StructureModule } from '@/components/sidebar/StructureModule';
+import type { StructureFormValues } from '@/components/sidebar/StructureFormDialog';
 import {
   InspectorModule,
   type SelectionRef,
@@ -55,14 +62,19 @@ export function MapCanvas({
   routes,
   stats,
   intel,
+  structures: initialStructures,
 }: {
   data: MapViewData;
   routes: Record<number, HubRoute[]>;
   stats: Record<number, SystemStatsSummary>;
   intel: Record<number, SystemIntelSummary>;
+  structures: Record<number, StructureIntel[]>;
 }) {
   const [selected, setSelected] = useState<SelectionRef | null>(null);
   const [viewData, setViewData] = useState<MapViewData>(data);
+  // Structure intel is deployment-global and not realtime-synced; we manage it
+  // as plain local state seeded from the page load and updated on our own CRUD.
+  const [structures, setStructures] = useState(initialStructures);
   const [nodes, setNodes] = useState<Node<SystemNodeData>[]>(() =>
     data.systems.map((s) => ({
       id: s.id,
@@ -296,6 +308,7 @@ export function MapCanvas({
   useEffect(() => {
     try {
       const raw = localStorage.getItem('aperture:map:canvas-height');
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe one-time restore from localStorage, no external source to subscribe to
       setCanvasHeight(raw ? parseInt(raw, 10) : Math.round(window.innerHeight * 0.7));
     } catch { /* ignore */ }
   }, []);
@@ -391,6 +404,56 @@ export function MapCanvas({
     return viewData.systems.find((s) => s.id === selected.id) ?? null;
   }, [selected, viewData.systems]);
 
+  // ---- Structure-intel callbacks -----------------------------------------
+  //
+  // Plain REST (no map event, no realtime echo): await the server, then update
+  // local state with the returned row. Failures already toast via the client
+  // wrappers, so we just leave local state untouched.
+  const sortByName = (a: StructureIntel, b: StructureIntel) => a.name.localeCompare(b.name);
+
+  const onStructureCreate = useCallback(
+    async (values: StructureFormValues) => {
+      if (!selectedSystem) return;
+      const systemId = selectedSystem.systemId;
+      const result = await createStructureOnServer({ systemId, ...values });
+      if (!result.ok) return;
+      setStructures((prev) => ({
+        ...prev,
+        [systemId]: [...(prev[systemId] ?? []), result.data].sort(sortByName),
+      }));
+    },
+    [selectedSystem],
+  );
+
+  const onStructurePatch = useCallback(
+    async (structureId: string, values: StructureFormValues) => {
+      const result = await updateStructureOnServer({ structureId, patch: values });
+      if (!result.ok) return;
+      const updated = result.data;
+      setStructures((prev) => ({
+        ...prev,
+        [updated.systemId]: (prev[updated.systemId] ?? [])
+          .map((s) => (s.id === structureId ? updated : s))
+          .sort(sortByName),
+      }));
+    },
+    [],
+  );
+
+  const onStructureDelete = useCallback(
+    async (structureId: string) => {
+      if (!selectedSystem) return;
+      const systemId = selectedSystem.systemId;
+      const result = await deleteStructureOnServer({ structureId });
+      if (!result.ok) return;
+      setStructures((prev) => ({
+        ...prev,
+        [systemId]: (prev[systemId] ?? []).filter((s) => s.id !== structureId),
+      }));
+    },
+    [selectedSystem],
+  );
+
   return (
     <MapPresenceProvider initial={data.presence}>
       <div className="flex gap-4">
@@ -466,6 +529,13 @@ export function MapCanvas({
           <IntelModule
             system={selectedSystem}
             intel={selectedSystem ? intel[selectedSystem.systemId] : undefined}
+          />
+          <StructureModule
+            system={selectedSystem}
+            structures={selectedSystem ? (structures[selectedSystem.systemId] ?? []) : []}
+            onCreate={onStructureCreate}
+            onPatch={onStructurePatch}
+            onDelete={onStructureDelete}
           />
           <KillStatsModule
             system={selectedSystem}

@@ -12,6 +12,8 @@ import type {
   apMapSignature,
   apMapSystem,
   apRole,
+  apStructure,
+  apStructureEvent,
   apSystemStats,
   apUser,
   universeCategory,
@@ -35,6 +37,7 @@ import type {
   mapType,
   roleSource,
   signatureGroupKey,
+  structureEventKind,
 } from '@/db/schema/ap/enums';
 
 export type UniverseRegion = InferSelectModel<typeof universeRegion>;
@@ -121,6 +124,12 @@ export type NewApMapRoleAccess = InferInsertModel<typeof apMapRoleAccess>;
 export type ApCorporationRight = InferSelectModel<typeof apCorporationRight>;
 export type NewApCorporationRight = InferInsertModel<typeof apCorporationRight>;
 
+export type ApStructure = InferSelectModel<typeof apStructure>;
+export type NewApStructure = InferInsertModel<typeof apStructure>;
+
+export type ApStructureEvent = InferSelectModel<typeof apStructureEvent>;
+export type NewApStructureEvent = InferInsertModel<typeof apStructureEvent>;
+
 // Stage 15 enum unions. `pgEnum` exposes its values via `.enumValues`; the
 // `[number]` index extracts the union of string literals.
 export type AuthzLevel = (typeof authzLevel.enumValues)[number];
@@ -128,6 +137,7 @@ export type MapRight = (typeof mapRight.enumValues)[number];
 export type MapType = (typeof mapType.enumValues)[number];
 export type RoleSource = (typeof roleSource.enumValues)[number];
 export type SignatureGroupKey = (typeof signatureGroupKey.enumValues)[number];
+export type StructureEventKind = (typeof structureEventKind.enumValues)[number];
 /** The six cosmic-signature groups (every group except `wormhole`). Their site
  * names are baked into the EVE client and have no SDE rows, so they're carried
  * as free-text `name` strings rather than a `typeId` FK. */
@@ -212,6 +222,23 @@ export type {
 
 // Wormhole-catalog lookup result types (src/lib/map/wormholeTypes.ts).
 export type { WormholeTypeOption, StaticMatch } from '@/lib/map/wormholeTypes';
+
+// Read-side structure-intel view-models (computed in src/lib/structures/read.ts).
+export type { StructureIntel, UpwellStructureType } from '@/lib/structures/read';
+
+// Structure mutation input types (src/lib/structures/mutations.ts).
+export type {
+  CreateStructureInput,
+  UpdateStructureInput,
+  UpdateStructurePatch,
+  DeleteStructureInput,
+} from '@/lib/structures/mutations';
+
+// Shared JSON fetch result (src/lib/http/fetchJson.ts).
+export type { FetchResult } from '@/lib/http/fetchJson';
+
+// Structure client request-body shapes (src/lib/structures/client.ts).
+export type { CreateStructureBody, UpdateStructureBody } from '@/lib/structures/client';
 
 // Signature paste parser + resolver (src/lib/map/signatureParser.ts, signatureReader.ts).
 export type { ParsedSigRow } from '@/lib/map/signatureParser';

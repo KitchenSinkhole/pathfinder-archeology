@@ -1,4 +1,3 @@
-import { toast } from 'sonner';
 import type {
   ActionResult,
   BulkPasteOptions,
@@ -15,9 +14,10 @@ import type {
   WhJumpMass,
   WhMass,
 } from '@/lib/map/enumLabels';
+import { requestJson, type FetchResult } from '@/lib/http/fetchJson';
 
 /** GET responses don't carry an `eventId`; mutation routes do. */
-export type FetchResult<T> = { ok: true; data: T } | { ok: false; error: string };
+export type { FetchResult };
 
 /**
  * Client-side fetch wrappers for the Stage 9.4 JSON API routes.
@@ -99,49 +99,16 @@ export type UpdateSignatureBody = {
 // surfaces a toast so callers don't have to.
 // ---------------------------------------------------------------------------
 
-async function mutationFetch<T>(
+function mutationFetch<T>(
   method: 'POST' | 'PATCH' | 'DELETE',
   url: string,
   body?: unknown,
 ): Promise<ActionResult<T>> {
-  try {
-    const res = await fetch(url, {
-      method,
-      headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-      credentials: 'same-origin',
-    });
-    const json = (await res.json().catch(() => null)) as ActionResult<T> | null;
-    if (!json) {
-      const error = `Request failed (${res.status}).`;
-      toast.error(error);
-      return { ok: false, error };
-    }
-    if (!json.ok) toast.error(json.error);
-    return json;
-  } catch (err) {
-    const error = err instanceof Error ? err.message : 'Network error.';
-    toast.error(error);
-    return { ok: false, error };
-  }
+  return requestJson<ActionResult<T>>(method, url, body);
 }
 
-async function readFetch<T>(url: string): Promise<FetchResult<T>> {
-  try {
-    const res = await fetch(url, { credentials: 'same-origin' });
-    const json = (await res.json().catch(() => null)) as FetchResult<T> | null;
-    if (!json) {
-      const error = `Request failed (${res.status}).`;
-      toast.error(error);
-      return { ok: false, error };
-    }
-    if (!json.ok) toast.error(json.error);
-    return json;
-  } catch (err) {
-    const error = err instanceof Error ? err.message : 'Network error.';
-    toast.error(error);
-    return { ok: false, error };
-  }
+function readFetch<T>(url: string): Promise<FetchResult<T>> {
+  return requestJson<FetchResult<T>>('GET', url);
 }
 
 // ---------------------------------------------------------------------------
