@@ -4,7 +4,7 @@
 **File:** `src/components/map/ConnectionEdge.tsx`
 
 ### Props
-xyflow `EdgeProps` with `data: ConnectionEdgeData` (= `MapConnectionEdge`) and `selected`.
+xyflow `EdgeProps` with `data: ConnectionEdgeData` (`MapConnectionEdge & { parallelIndex: number; parallelCount: number }`) and `selected`.
 
 ### Renders
 A bezier `BaseEdge` styled via `connectionStyle` (scope→colour, wormhole recoloured by mass, EOL dashed, frigate thinned) plus a midpoint label of badges (`connectionBadges`: jump-mass, EOL, FRIG, ROLL, PRES) when any apply. When `isEol` is true the label also carries a live countdown ("23h", "2d", "expired") derived from `eolAt + apertureConfig.WORMHOLE_EOL_LIFETIME_MS`.
@@ -16,6 +16,7 @@ A bezier `BaseEdge` styled via `connectionStyle` (scope→colour, wormhole recol
 - The EOL countdown is driven by an internal `useEolCountdown` hook that ticks once every 30s while `isEol` is true and is otherwise inert (no timer, no label entry).
 - Edits all live in the sidebar inspector (`InspectorModule.ConnectionInspector`).
 - Endpoint sides snap dynamically: `pickAnchors` reads source/target node geometry from `useInternalNode`, compares the centre-to-centre delta, and picks the dominant axis. `|dx| >= |dy|` → right/left; otherwise → bottom/top, oriented so the source side faces the target. The `sourceX/Y/Position` and `targetX/Y/Position` props xyflow passes (which derive from whichever handles the connection was created on) are only used as a fallback while the nodes haven't been measured yet.
+- Parallel edges (multiple wormholes between the same two systems): `parallelIndex`/`parallelCount` from `ConnectionEdgeData` drive a perpendicular `offset` passed to `pickAnchors` — 12 px per step, centred around 0. For two parallel connections the offsets are −6/+6 px; for three: −12/0/+12 px. The offset shifts the anchor along the node face so each line exits from a visually distinct point.
 
 ### Depends On
 - `@xyflow/react` (`BaseEdge`, `EdgeLabelRenderer`, `Position`, `getBezierPath`, `useInternalNode`, `EdgeProps`).

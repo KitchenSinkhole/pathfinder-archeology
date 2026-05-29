@@ -437,18 +437,32 @@ export function MapCanvas({
     });
   }
 
-  const edges = useMemo<Edge<ConnectionEdgeData>[]>(
-    () =>
-      viewData.connections.map((c) => ({
+  const edges = useMemo<Edge<ConnectionEdgeData>[]>(() => {
+    // Group connections by canonical node pair (sorted) so parallel edges
+    // (multiple wormholes between the same two systems) can be fanned out.
+    const groups = new Map<string, string[]>();
+    for (const c of viewData.connections) {
+      const key = [c.source, c.target].sort().join('\0');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(c.id);
+    }
+    for (const ids of groups.values()) ids.sort();
+
+    return viewData.connections.map((c) => {
+      const key = [c.source, c.target].sort().join('\0');
+      const group = groups.get(key)!;
+      const parallelIndex = group.indexOf(c.id);
+      const parallelCount = group.length;
+      return {
         id: c.id,
         type: 'connection',
         source: c.source,
         target: c.target,
-        data: c,
+        data: { ...c, parallelIndex, parallelCount },
         selected: selected?.kind === 'connection' && selected.id === c.id,
-      })),
-    [viewData.connections, selected],
-  );
+      };
+    });
+  }, [viewData.connections, selected]);
 
   const selectedSystem: MapSystemNode | null = useMemo(() => {
     if (selected?.kind !== 'system') return null;

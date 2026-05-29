@@ -26,13 +26,23 @@ const EOL_COUNTDOWN_TICK_MS = 30_000;
 // enters from the sides closest to the other node rather than always running
 // bottom-to-top.
 
-export type ConnectionEdgeData = MapConnectionEdge;
+export type ConnectionEdgeData = MapConnectionEdge & {
+  /** 0-based index of this edge among all parallel edges between the same node pair. */
+  parallelIndex: number;
+  /** Total number of edges between this node pair (1 = only edge, no offset applied). */
+  parallelCount: number;
+};
+
+const PARALLEL_STEP_PX = 12;
 
 type Anchor = { x: number; y: number; position: Position };
 
+// `offset` shifts the anchor along the node face perpendicular to the
+// dominant axis, so parallel edges between the same pair fan out visibly.
 function pickAnchors(
   src: { x: number; y: number; w: number; h: number },
   tgt: { x: number; y: number; w: number; h: number },
+  offset = 0,
 ): { source: Anchor; target: Anchor } {
   const sCx = src.x + src.w / 2;
   const sCy = src.y + src.h / 2;
@@ -44,24 +54,24 @@ function pickAnchors(
   if (Math.abs(dx) >= Math.abs(dy)) {
     if (dx >= 0) {
       return {
-        source: { x: src.x + src.w, y: sCy, position: Position.Right },
-        target: { x: tgt.x, y: tCy, position: Position.Left },
+        source: { x: src.x + src.w, y: sCy + offset, position: Position.Right },
+        target: { x: tgt.x, y: tCy + offset, position: Position.Left },
       };
     }
     return {
-      source: { x: src.x, y: sCy, position: Position.Left },
-      target: { x: tgt.x + tgt.w, y: tCy, position: Position.Right },
+      source: { x: src.x, y: sCy + offset, position: Position.Left },
+      target: { x: tgt.x + tgt.w, y: tCy + offset, position: Position.Right },
     };
   }
   if (dy >= 0) {
     return {
-      source: { x: sCx, y: src.y + src.h, position: Position.Bottom },
-      target: { x: tCx, y: tgt.y, position: Position.Top },
+      source: { x: sCx + offset, y: src.y + src.h, position: Position.Bottom },
+      target: { x: tCx + offset, y: tgt.y, position: Position.Top },
     };
   }
   return {
-    source: { x: sCx, y: src.y, position: Position.Top },
-    target: { x: tCx, y: tgt.y + tgt.h, position: Position.Bottom },
+    source: { x: sCx + offset, y: src.y, position: Position.Top },
+    target: { x: tCx + offset, y: tgt.y + tgt.h, position: Position.Bottom },
   };
 }
 
@@ -79,6 +89,12 @@ export function ConnectionEdge(props: EdgeProps & { data: ConnectionEdgeData }) 
     selected,
   } = props;
 
+  const { parallelIndex, parallelCount } = data;
+  const offset =
+    parallelCount > 1
+      ? (parallelIndex - (parallelCount - 1) / 2) * PARALLEL_STEP_PX
+      : 0;
+
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
 
@@ -94,6 +110,7 @@ export function ConnectionEdge(props: EdgeProps & { data: ConnectionEdgeData }) 
       ? pickAnchors(
           { x: sPos.x, y: sPos.y, w: sW, h: sH },
           { x: tPos.x, y: tPos.y, w: tW, h: tH },
+          offset,
         )
       : null;
 
