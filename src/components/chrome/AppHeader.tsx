@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { CharacterSwitcher, type SwitcherCharacter } from './CharacterSwitcher';
+import { ReferenceMenu } from './ReferenceMenu';
 
 export function AppHeader({
   active,
@@ -14,7 +15,10 @@ export function AppHeader({
         <Link href="/maps" className="font-heading text-lg font-semibold tracking-tight">
           Aperture
         </Link>
-        <CharacterSwitcher active={active} characters={characters} />
+        <div className="flex items-center gap-1">
+          <ReferenceMenu />
+          <CharacterSwitcher active={active} characters={characters} />
+        </div>
       </div>
     </header>
   );

@@ -44,11 +44,11 @@ system_intel, `10-feature-matrix.md` row 9.)
 **Touches:** `src/app/api/map/[mapId]/.../structures/**` (or a system-scoped route), a new `StructureModule.tsx` (or extend `IntelModule`), a structure-type picker reading Upwell types from `universe_type`.
 **Done when:** A user can add/edit/delete a structure (system + name + type + owner/notes) and it persists and renders for that system.
 
-## Stage 17.3 — Static reference dialogs
+## Stage 17.3 — Static reference dialogs  ✅
 **Mode:** Accept edits
-**Goal:** System Effects, Jump Info, Shortcuts, Credits — no backend.
-**Touches:** `src/lib/eve/systemEffects.ts` (port `docs/spec/system_effect.js` → typed constant), dialogs under `src/components/dialogs/**`. Jump Info reads wormhole mass/statics/compat from `universe_wormhole` + `docs/spec/signature_type.js`.
-**Done when:** Each dialog opens and renders correct reference data.
+**Goal:** System Effects, Jump Info, Credits — no backend. (Shortcuts **deferred** — the rebuild has no keyboard-shortcut system yet, so there is nothing to enumerate; build it when a real shortcut layer lands.)
+**Touches:** `src/lib/eve/systemEffects.ts` (port `docs/spec/system_effect.js` → typed constant), `src/lib/eve/wormholeJumpInfo.ts` + `src/app/api/reference/wormholes/route.ts` + `src/lib/reference/client.ts`, dialogs under `src/components/dialogs/**`, `src/components/ui/menu.tsx`, `src/components/chrome/ReferenceMenu.tsx`, header/footer wiring. Jump Info is data-backed: wormhole mass + statics-by-source-class from `universe_wormhole` + dogma (`universe_type_attribute_effective`). The legacy hard-coded jump-compatibility matrix was dropped (source HTML absent; the per-WH jump-mass column conveys max ship size).
+**Done when:** System Effects, Jump Info, and Credits each open and render correct reference data.
 
 ## Stage 17.4 — Map Info + Manual dialogs
 **Mode:** Plan mode

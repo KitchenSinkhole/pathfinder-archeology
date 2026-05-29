@@ -250,6 +250,10 @@ export type { SignatureGroupOption } from '@/lib/map/signatureGroups';
 // ESI opKey identifiers (map in src/lib/esi/opkeys.ts).
 export type { OpKey, OpDef } from '@/lib/esi/opkeys';
 
+// Static reference data for the Stage 17.3 dialogs.
+export type { SystemEffect, SystemEffectBonus, SystemEffectKey } from '@/lib/eve/systemEffects';
+export type { WormholeJumpInfoRow } from '@/lib/eve/wormholeJumpInfo';
+
 // ESI client decoded-response types (Stage 4).
 export type {
   EsiStatus,

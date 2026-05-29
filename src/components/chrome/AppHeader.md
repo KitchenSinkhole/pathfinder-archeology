@@ -11,7 +11,8 @@
 | characters | `SwitcherCharacter[]` | yes | Account roster, forwarded to the switcher |
 
 ### Renders
-A bordered header bar: an "Aperture" link to `/maps` on the left, the `CharacterSwitcher` on the right.
+A bordered header bar: an "Aperture" link to `/maps` on the left; on the right, the `ReferenceMenu` info menu next to the `CharacterSwitcher`.
 
 ### Depends On
 - `CharacterSwitcher` (client) — the data props are resolved server-side in `(app)/layout.tsx`.
+- `ReferenceMenu` (client) — header entry point for the static reference dialogs.
