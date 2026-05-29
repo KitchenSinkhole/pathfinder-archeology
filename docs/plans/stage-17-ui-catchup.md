@@ -57,10 +57,25 @@ system_intel, `10-feature-matrix.md` row 9.)
 
 Built entirely client-side (no `loadMap.ts` / API / schema changes). New `ui/tabs.tsx` primitive (Base UI), `usePresenceForMap` accessor in `MapPresenceContext`, `MapInfoDialog` (triggered from a `MapCanvas` toolbar button, reads live `viewData` + presence), and `ManualDialog` (scrollspy over `src/lib/reference/manual.ts`, launched from `ReferenceMenu`). Summary "created/creator" dropped (not in client data); Users tab is the online presence roster (name/location/ship).
 
-## Stage 17.5 — Account Settings + Delete Account
+## Stage 17.5 — Account Settings + Delete Account  ✅
 **Mode:** Plan mode
 **Goal:** Server Actions over `ap_user`/`ap_character`; auto-pick-on-login pref; account deletion (cascade).
 **Done when:** Settings persist; delete account removes the user and cascades.
+
+The legacy "auto-pick-on-login" was reframed as a **main-character designation** — Aperture
+tracks every character automatically, so the meaningful account-level concept is *which
+character is the human's main* (the identity statistics / activity roll up to), not which is
+active. `ap_user.main_character_id` (migration `0018`, nullable bigint, FK → `ap_character`
+`ON DELETE set null` declared in SQL to avoid a circular schema import). Login **lands on
+main**: the jwt sign-in callback resolves `characterId` to the account's main
+(`resolveMainCharacter` in `auth.ts`), bootstrapping it to the authenticated character on
+first login — so the "add character" flow also returns you to your main. New
+`setMainCharacterAction` / `deleteAccountAction` Server Actions (`actions/account.ts`);
+delete hard-removes `ap_user` (characters cascade, audit rows `SET NULL`, owned maps
+orphaned) and signs out. UI: `AccountSettingsDialog` (roster + role display + set-main) and
+type-to-confirm `DeleteAccountDialog`, launched from `CharacterSwitcher`. The actual
+*rollup-to-main attribution* for stats/activity is deferred to 17.7 + the Stage 11 rollup job
+(they will read `main_character_id`).
 
 ## Stage 17.6 — Map Settings + import/export
 **Mode:** Plan mode

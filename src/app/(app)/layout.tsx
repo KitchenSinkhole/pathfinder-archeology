@@ -1,7 +1,12 @@
 import type { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
 import { Toaster } from 'sonner';
-import { getAccountCharacters, getActiveCharacter, requireSession } from '@/lib/session';
+import {
+  getAccountCharacters,
+  getActiveCharacter,
+  getMainCharacterId,
+  requireSession,
+} from '@/lib/session';
 import { AppHeader } from '@/components/chrome/AppHeader';
 import { AppFooter } from '@/components/chrome/AppFooter';
 import { RealtimeProvider } from '@/lib/realtime/useRealtime';
@@ -12,6 +17,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const active = await getActiveCharacter();
   if (!active) redirect('/');
   const characters = await getAccountCharacters(session.userId);
+  const mainCharacterId = await getMainCharacterId(session.userId);
 
   return (
     <RealtimeProvider>
@@ -19,7 +25,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         <RealtimeStatusBanner />
         <AppHeader
           active={{ id: active.id.toString(), name: active.name }}
-          characters={characters.map((c) => ({ id: c.id, name: c.name, status: c.status }))}
+          characters={characters}
+          mainCharacterId={mainCharacterId}
         />
         <main className="w-full flex-1 px-4 py-6">{children}</main>
         <AppFooter />

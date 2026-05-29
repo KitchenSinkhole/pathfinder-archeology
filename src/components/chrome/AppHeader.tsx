@@ -5,9 +5,11 @@ import { ReferenceMenu } from './ReferenceMenu';
 export function AppHeader({
   active,
   characters,
+  mainCharacterId,
 }: {
   active: { id: string; name: string };
   characters: SwitcherCharacter[];
+  mainCharacterId: string | null;
 }) {
   return (
     <header className="border-b border-border">
@@ -17,7 +19,11 @@ export function AppHeader({
         </Link>
         <div className="flex items-center gap-1">
           <ReferenceMenu />
-          <CharacterSwitcher active={active} characters={characters} />
+          <CharacterSwitcher
+            active={active}
+            characters={characters}
+            mainCharacterId={mainCharacterId}
+          />
         </div>
       </div>
     </header>

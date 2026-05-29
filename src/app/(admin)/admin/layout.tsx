@@ -3,7 +3,12 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Toaster } from 'sonner';
 import { isManagerOrAdmin } from '@/lib/auth/rights';
-import { getAccountCharacters, getActiveCharacter, requireSession } from '@/lib/session';
+import {
+  getAccountCharacters,
+  getActiveCharacter,
+  getMainCharacterId,
+  requireSession,
+} from '@/lib/session';
 import { CharacterSwitcher } from '@/components/chrome/CharacterSwitcher';
 import { AppFooter } from '@/components/chrome/AppFooter';
 import { AdminNav } from '@/components/admin/AdminNav';
@@ -14,6 +19,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const active = await getActiveCharacter();
   if (!active) redirect('/');
   const characters = await getAccountCharacters(session.userId);
+  const mainCharacterId = await getMainCharacterId(session.userId);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -35,7 +41,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           </div>
           <CharacterSwitcher
             active={{ id: active.id.toString(), name: active.name }}
-            characters={characters.map((c) => ({ id: c.id, name: c.name, status: c.status }))}
+            characters={characters}
+            mainCharacterId={mainCharacterId}
           />
         </div>
       </header>

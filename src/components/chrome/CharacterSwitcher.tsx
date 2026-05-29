@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Check, LogOut, Plus } from 'lucide-react';
+import { Check, LogOut, Plus, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Sheet,
@@ -19,11 +19,13 @@ import {
   signOutAction,
   switchCharacterAction,
 } from '@/app/(app)/actions/character';
+import { AccountSettingsDialog } from '@/components/account/AccountSettingsDialog';
 
 export type SwitcherCharacter = {
   id: string;
   name: string;
   status: 'active' | 'kicked' | 'banned';
+  authzLevel: 'member' | 'manager' | 'admin';
 };
 
 function portraitUrl(characterId: string, size = 64): string {
@@ -33,11 +35,14 @@ function portraitUrl(characterId: string, size = 64): string {
 export function CharacterSwitcher({
   active,
   characters,
+  mainCharacterId,
 }: {
   active: { id: string; name: string };
   characters: SwitcherCharacter[];
+  mainCharacterId: string | null;
 }) {
   const [open, setOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function onSwitch(id: string) {
@@ -108,6 +113,19 @@ export function CharacterSwitcher({
               Add character
             </Button>
           </form>
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full gap-2"
+            disabled={pending}
+            onClick={() => {
+              setOpen(false);
+              setSettingsOpen(true);
+            }}
+          >
+            <Settings />
+            Account settings
+          </Button>
           <form action={signOutAction}>
             <Button type="submit" variant="ghost" className="w-full gap-2" disabled={pending}>
               <LogOut />
@@ -116,6 +134,14 @@ export function CharacterSwitcher({
           </form>
         </div>
       </SheetContent>
+
+      <AccountSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        characters={characters}
+        mainCharacterId={mainCharacterId}
+        activeCharacter={active}
+      />
     </Sheet>
   );
 }

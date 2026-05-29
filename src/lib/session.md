@@ -17,6 +17,9 @@ The full `ap_character` row for `session.characterId`, or `null` when logged out
 ### getAccountCharacters(userId: number): Promise<AccountCharacter[]>
 All characters on the account, ordered by name. Returns only display-safe fields (`id` as string, `name`, `status`, `authzLevel`) — never ESI tokens.
 
+### getMainCharacterId(userId: number): Promise<string | null>
+The account's `ap_user.main_character_id` as a string (bigint isn't JSON-safe), or `null` when unset. Feeds the Account Settings "main" selector (Stage 17.5); login-time resolution / bootstrap lives in `auth.ts` (`resolveMainCharacter`).
+
 ### assertCharacterOwnership(characterId: bigint, userId: number): Promise<boolean>
 True iff the character belongs to `userId` **and** is `status='active'`. Single source of truth for the switch authorization check; reused by `switchCharacterAction` and the jwt `update` branch.
 

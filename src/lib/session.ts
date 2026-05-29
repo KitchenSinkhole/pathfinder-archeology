@@ -4,7 +4,7 @@ import { and, eq } from 'drizzle-orm';
 import type { Session } from 'next-auth';
 import { auth } from '@/lib/auth';
 import { db } from '@/db/client';
-import { apCharacter } from '@/db/schema';
+import { apCharacter, apUser } from '@/db/schema';
 
 // Server-only account/session helpers. Everything map- and chrome-level reads
 // the active character and the account's character roster through here so the
@@ -66,6 +66,18 @@ export async function getAccountCharacters(userId: number): Promise<AccountChara
     .where(eq(apCharacter.userId, userId))
     .orderBy(apCharacter.name);
   return rows.map((r) => ({ ...r, id: r.id.toString() }));
+}
+
+/**
+ * The account's main character id as a string (bigint isn't JSON-safe), or
+ * `null` when unset. Drives the Account Settings "main" selector (Stage 17.5).
+ */
+export async function getMainCharacterId(userId: number): Promise<string | null> {
+  const [row] = await db
+    .select({ mainCharacterId: apUser.mainCharacterId })
+    .from(apUser)
+    .where(eq(apUser.id, userId));
+  return row?.mainCharacterId != null ? row.mainCharacterId.toString() : null;
 }
 
 /**

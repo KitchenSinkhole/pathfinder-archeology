@@ -127,6 +127,13 @@
       "when": 1779608400000,
       "tag": "0017_structure_event",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1779609600000,
+      "tag": "0018_account_main_character",
+      "breakpoints": true
     }
   ]
 }

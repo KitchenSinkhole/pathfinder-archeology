@@ -1,6 +1,6 @@
 import NextAuth from 'next-auth';
 import type {} from 'next-auth/jwt';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { apertureConfig } from '../../aperture.config';
 import { db } from '@/db/client';
 import { apCharacter, apUser } from '@/db/schema';
@@ -79,6 +79,47 @@ async function persistLogin(
   return userId;
 }
 
+/**
+ * Resolve the character the session should land on — the account's "main"
+ * (Stage 17.5). Every login lands on the main regardless of which character
+ * actually SSO'd in; the human is one identity. On the first-ever login of an
+ * account (or a pre-0018 account with no main yet) the authenticated character
+ * is adopted as the main. A stored main that is no longer an active character
+ * on the account falls back to the authenticated character.
+ *
+ * Implemented inline (not via `@/lib/session`) to avoid an import cycle —
+ * `session.ts` already imports `auth` from here.
+ */
+async function resolveMainCharacter(
+  userId: number,
+  fallbackCharacterId: bigint,
+): Promise<bigint> {
+  const [user] = await db
+    .select({ mainCharacterId: apUser.mainCharacterId })
+    .from(apUser)
+    .where(eq(apUser.id, userId));
+  const stored = user?.mainCharacterId ?? null;
+  if (stored == null) {
+    // Bootstrap: guarded so concurrent first logins don't clobber each other.
+    await db
+      .update(apUser)
+      .set({ mainCharacterId: fallbackCharacterId, updatedAt: new Date() })
+      .where(and(eq(apUser.id, userId), isNull(apUser.mainCharacterId)));
+    return fallbackCharacterId;
+  }
+  const [row] = await db
+    .select({ id: apCharacter.id })
+    .from(apCharacter)
+    .where(
+      and(
+        eq(apCharacter.id, stored),
+        eq(apCharacter.userId, userId),
+        eq(apCharacter.status, 'active'),
+      ),
+    );
+  return row ? stored : fallbackCharacterId;
+}
+
 export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   providers: [eveProvider()],
   session: { strategy: 'jwt' },
@@ -110,9 +151,25 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
           linkUserId,
         );
         await clearLinkCookie();
-        token.characterId = eve.characterId.toString();
+        // Land on the account's main, not necessarily the character that SSO'd
+        // in (Stage 17.5). The "add character" flow therefore returns you to
+        // your main after registering the new alt — consistent with the model.
+        const mainCharacterId = await resolveMainCharacter(userId, eve.characterId);
+        token.characterId = mainCharacterId.toString();
         token.userId = userId;
-        token.accessTokenExpiresAt = expiresAt;
+        // The main may differ from the just-authenticated character, so read its
+        // own token expiry rather than reusing the freshly-exchanged one.
+        if (mainCharacterId === eve.characterId) {
+          token.accessTokenExpiresAt = expiresAt;
+        } else {
+          const [mainRow] = await db
+            .select({ exp: apCharacter.esiAccessTokenExpires })
+            .from(apCharacter)
+            .where(eq(apCharacter.id, mainCharacterId));
+          token.accessTokenExpiresAt = mainRow?.exp
+            ? Math.floor(mainRow.exp.getTime() / 1000)
+            : expiresAt;
+        }
         // Stage 15. Promote / demote authz, refresh affiliation, mirror corp
         // titles. Best-effort: ESI failure logs a warning but does not block
         // login — the user can still see the maps they already had access to.
