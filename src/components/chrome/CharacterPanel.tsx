@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Check, LogOut, Plus, Settings } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { LogOut, Plus, Settings } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Sheet,
@@ -16,42 +17,56 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   addCharacterAction,
+  setCharacterTrackingAction,
   signOutAction,
-  switchCharacterAction,
 } from '@/app/(app)/actions/character';
 import { AccountSettingsDialog } from '@/components/account/AccountSettingsDialog';
 
-export type SwitcherCharacter = {
+export type PanelCharacter = {
   id: string;
   name: string;
   status: 'active' | 'kicked' | 'banned';
   authzLevel: 'member' | 'manager' | 'admin';
+  trackingEnabled: boolean;
 };
 
 function portraitUrl(characterId: string, size = 64): string {
   return `https://images.evetech.net/characters/${characterId}/portrait?size=${size}`;
 }
 
-export function CharacterSwitcher({
+/** The open map's id from the `/map/[[...slug]]` route, or null when not on a map. */
+function currentMapIdFromParams(slug: unknown): string | null {
+  if (!Array.isArray(slug)) return null;
+  const first = slug[0];
+  return typeof first === 'string' && /^\d+$/.test(first) ? first : null;
+}
+
+export function CharacterPanel({
   active,
   characters,
   mainCharacterId,
 }: {
   active: { id: string; name: string };
-  characters: SwitcherCharacter[];
+  characters: PanelCharacter[];
   mainCharacterId: string | null;
 }) {
+  const params = useParams();
   const [open, setOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pending, startTransition] = useTransition();
+  // Optimistic per-character tracking state so a toggle flips immediately; the
+  // action's `revalidatePath('/', 'layout')` reconciles the server roster.
+  const [tracking, setTracking] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(characters.map((c) => [c.id, c.trackingEnabled])),
+  );
 
-  function onSwitch(id: string) {
-    if (id === active.id) return setOpen(false);
+  function onToggle(id: string, next: boolean) {
+    const mapId = currentMapIdFromParams(params?.slug);
+    setTracking((t) => ({ ...t, [id]: next }));
     startTransition(async () => {
-      const result = await switchCharacterAction(id);
-      if (result.ok) {
-        setOpen(false);
-      } else {
+      const result = await setCharacterTrackingAction(id, next, mapId);
+      if (!result.ok) {
+        setTracking((t) => ({ ...t, [id]: !next }));
         toast.error(result.error);
       }
     });
@@ -73,35 +88,43 @@ export function CharacterSwitcher({
       <SheetContent side="right">
         <SheetHeader>
           <SheetTitle>Characters</SheetTitle>
-          <SheetDescription>Switch the active character or add another to this account.</SheetDescription>
+          <SheetDescription>Choose which of your characters Aperture tracks on your map.</SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-1 px-4">
           {characters.map((c) => {
-            const isActive = c.id === active.id;
-            const disabled = c.status !== 'active' || pending;
+            const isMain = c.id === mainCharacterId;
+            const inactive = c.status !== 'active';
+            const checked = tracking[c.id] ?? c.trackingEnabled;
             return (
-              <button
+              <label
                 key={c.id}
-                type="button"
-                disabled={disabled}
-                onClick={() => onSwitch(c.id)}
                 className={cn(
-                  'flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors',
-                  isActive ? 'bg-muted' : 'hover:bg-muted',
-                  disabled && !isActive && 'opacity-50',
+                  'flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm',
+                  inactive ? 'opacity-50' : 'hover:bg-muted',
                 )}
               >
                 <Avatar size="sm">
                   <AvatarImage src={portraitUrl(c.id, 32)} alt={c.name} />
                   <AvatarFallback>{c.name.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
-                <span className="flex-1 truncate">{c.name}</span>
-                {c.status !== 'active' && (
+                <span className="flex-1 truncate">
+                  {c.name}
+                  {isMain && <span className="ml-1.5 text-xs text-muted-foreground">main</span>}
+                </span>
+                {inactive ? (
                   <span className="text-xs text-muted-foreground capitalize">{c.status}</span>
+                ) : (
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-primary"
+                    checked={checked}
+                    disabled={pending}
+                    onChange={(e) => onToggle(c.id, e.target.checked)}
+                    aria-label={`Track ${c.name}`}
+                  />
                 )}
-                {isActive && <Check className="text-primary" />}
-              </button>
+              </label>
             );
           })}
         </div>

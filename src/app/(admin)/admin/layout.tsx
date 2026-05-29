@@ -9,7 +9,7 @@ import {
   getMainCharacterId,
   requireSession,
 } from '@/lib/session';
-import { CharacterSwitcher } from '@/components/chrome/CharacterSwitcher';
+import { CharacterPanel } from '@/components/chrome/CharacterPanel';
 import { AppFooter } from '@/components/chrome/AppFooter';
 import { AdminNav } from '@/components/admin/AdminNav';
 
@@ -39,7 +39,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               Leave admin
             </Link>
           </div>
-          <CharacterSwitcher
+          <CharacterPanel
             active={{ id: active.id.toString(), name: active.name }}
             characters={characters}
             mainCharacterId={mainCharacterId}

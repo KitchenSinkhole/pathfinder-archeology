@@ -4,7 +4,7 @@
 **File:** `src/app/(admin)/admin/layout.tsx`
 
 ### Renders
-- A 14-row header with the "Aperture — Admin" title link, a "Leave admin" plain-text link back to `/maps`, and the existing `CharacterSwitcher`.
+- A 14-row header with the "Aperture — Admin" title link, a "Leave admin" plain-text link back to `/maps`, and the existing `CharacterPanel`.
 - A 6xl-wide main container with the `AdminNav` sidebar on the left and the routed child page on the right.
 - `AppFooter` and a `Toaster` mount at the bottom.
 
@@ -16,6 +16,6 @@
 ### Depends On
 - `requireSession`, `getActiveCharacter`, `getAccountCharacters`, `getMainCharacterId` from `@/lib/session`.
 - `isManagerOrAdmin` from `@/lib/auth/rights`.
-- `CharacterSwitcher`, `AppFooter` from `@/components/chrome/*`.
+- `CharacterPanel`, `AppFooter` from `@/components/chrome/*`.
 - `AdminNav` from `@/components/admin/AdminNav`.
 - `<Toaster />` from `sonner`.

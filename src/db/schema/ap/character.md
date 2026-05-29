@@ -22,6 +22,7 @@
 - `last_ship_name` — `text`, nullable. The pilot's custom ship name (ESI `getCharacterShip.ship_name`) — what the player named this hull, not its type. Cached by the poll alongside `last_ship_type_id`; shown in the presence hover panel.
 - `last_online` — `boolean`, nullable. Most recent `getCharacterOnline` result; `NULL` before the first poll tick.
 - `last_location_at` — `timestamptz`, nullable. When `last_system_id` was last refreshed; stale when the character is offline (offline ticks update only `last_online`).
+- `tracking_enabled` — `boolean`, `NOT NULL DEFAULT true` (Stage 17.5 follow-up). Per-character opt-out for server-side location tracking. Tracked by default so a character is followed the moment it is linked (first EVE SSO); users disable individual characters from the header Characters panel. When `false` the character is polled for nobody and folds onto no map — `setCharacterTrackingAction` deletes its `ap_map_character_tracking` rows and the `location-poll` handler exits early as defense in depth.
 - `created_at` / `updated_at` — `timestamptz`, default `now()`.
 
 The persisted refresh-token rotation invariant (SPEC §7, footgun #2) writes `esi_refresh_token` here **before** the rotated access token is returned to any caller — see `src/lib/auth/eve-provider.ts`.

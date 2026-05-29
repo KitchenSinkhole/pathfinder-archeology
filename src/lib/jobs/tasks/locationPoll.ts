@@ -60,7 +60,13 @@ interface FoldSummary {
 }
 
 interface PollNotes {
-  stopped?: 'no-payload' | 'no-tracking' | 'character-inactive' | 'character-missing' | 'token-loss';
+  stopped?:
+    | 'no-payload'
+    | 'no-tracking'
+    | 'character-inactive'
+    | 'character-missing'
+    | 'tracking-disabled'
+    | 'token-loss';
   online?: boolean;
   previousSystemId?: number | null;
   currentSystemId?: number | null;
@@ -99,6 +105,7 @@ async function poll(payload: LocationPollPayload, helpers: JobHelpers): Promise<
     .select({
       name: apCharacter.name,
       status: apCharacter.status,
+      trackingEnabled: apCharacter.trackingEnabled,
       lastSystemId: apCharacter.lastSystemId,
       lastShipTypeId: apCharacter.lastShipTypeId,
       lastShipName: apCharacter.lastShipName,
@@ -111,6 +118,12 @@ async function poll(payload: LocationPollPayload, helpers: JobHelpers): Promise<
   }
   if (character.status !== 'active') {
     return { stopped: 'character-inactive' };
+  }
+  // Defense in depth: disabling tracking deletes the join rows (the step-1
+  // probe already stops the loop), but a stale in-flight tick could still see
+  // a row mid-delete. The flag is the authoritative opt-out.
+  if (!character.trackingEnabled) {
+    return { stopped: 'tracking-disabled' };
   }
 
   try {

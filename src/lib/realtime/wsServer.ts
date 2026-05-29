@@ -2,10 +2,13 @@ import type { IncomingMessage, Server as HttpServer } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { decode } from 'next-auth/jwt';
+import { and, eq } from 'drizzle-orm';
 import { env } from '@/lib/env';
 import { apertureConfig } from '../../../aperture.config';
+import { db } from '@/db/client';
+import { apCharacter } from '@/db/schema';
 import { canViewMap } from '@/lib/auth/rights';
-import { startTrackingCharacter } from '@/lib/jobs/tracking';
+import { trackCharactersOnMap } from '@/lib/jobs/tracking';
 import { bus } from './bus';
 import { clientToServerMessageSchema, type ServerToClientMessage } from './protocol';
 
@@ -150,12 +153,32 @@ export function attachWsServer(httpServer: HttpServer): WebSocketServer {
         const off = bus.subscribe(id, (message) => send(ws, message));
         state.subscriptions.set(id, off);
       }
-      // Start server-side tracking for this character on this map. Idempotent —
-      // safe to call on every subscribe (re-subscribe after reconnect, multiple
-      // tabs). Tracking survives tab close by design; stop is an explicit user
-      // action (Stage 15 tracking toggle).
-      void startTrackingCharacter({ mapId: id, characterId });
     }
+    // Stage 17.5 follow-up: the viewed map becomes the tracking target for the
+    // whole account. Every *enabled* character folds onto it and is moved off
+    // any other map (single last-open map per character), so opening a map
+    // switches tracking to it. Tracking survives tab close by design — disable
+    // is an explicit user action in the Characters panel. With multiple tabs on
+    // different maps the last subscribe wins, consistent with "last-open map".
+    const enabledIds = await enabledAccountCharacterIds(state.session.userId);
+    for (const id of allowed) {
+      void trackCharactersOnMap(enabledIds, id);
+    }
+  }
+
+  /** Active, tracking-enabled character ids on the account (Stage 17.5 follow-up). */
+  async function enabledAccountCharacterIds(userId: number): Promise<bigint[]> {
+    const rows = await db
+      .select({ id: apCharacter.id })
+      .from(apCharacter)
+      .where(
+        and(
+          eq(apCharacter.userId, userId),
+          eq(apCharacter.status, 'active'),
+          eq(apCharacter.trackingEnabled, true),
+        ),
+      );
+    return rows.map((r) => r.id);
   }
 
   function unsubscribe(state: ClientState, mapIds: number[]): void {

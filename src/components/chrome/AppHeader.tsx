@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { CharacterSwitcher, type SwitcherCharacter } from './CharacterSwitcher';
+import { CharacterPanel, type PanelCharacter } from './CharacterPanel';
 import { ReferenceMenu } from './ReferenceMenu';
 
 export function AppHeader({
@@ -8,7 +8,7 @@ export function AppHeader({
   mainCharacterId,
 }: {
   active: { id: string; name: string };
-  characters: SwitcherCharacter[];
+  characters: PanelCharacter[];
   mainCharacterId: string | null;
 }) {
   return (
@@ -19,7 +19,7 @@ export function AppHeader({
         </Link>
         <div className="flex items-center gap-1">
           <ReferenceMenu />
-          <CharacterSwitcher
+          <CharacterPanel
             active={active}
             characters={characters}
             mainCharacterId={mainCharacterId}

@@ -120,7 +120,7 @@ async function resolveMainCharacter(
   return row ? stored : fallbackCharacterId;
 }
 
-export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
+export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [eveProvider()],
   session: { strategy: 'jwt' },
   // SPEC §11 Q9 — make the cookie contract explicit at the call site rather
@@ -132,7 +132,7 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
     csrfToken: { options: AUTH_COOKIE_OPTIONS },
   },
   callbacks: {
-    async jwt({ token, account, profile, trigger, session }) {
+    async jwt({ token, account, profile }) {
       // Initial sign-in: `account` carries the freshly-exchanged tokens and
       // `profile` is the verified JWT-claims object from the provider.
       if (account && profile) {
@@ -180,30 +180,6 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
             `[auth] syncCharacterAuthz failed for character ${eve.characterId}:`,
             err,
           );
-        }
-        return token;
-      }
-
-      // Character switch (Server Action → `unstable_update`): re-point the token
-      // at another character on the same account. Re-validate ownership here as
-      // defense in depth — the JWT is the trust boundary.
-      if (trigger === 'update' && session && typeof session === 'object' && 'characterId' in session) {
-        const target = (session as { characterId?: string }).characterId;
-        if (target && token.userId != null) {
-          const [row] = await db
-            .select({ exp: apCharacter.esiAccessTokenExpires })
-            .from(apCharacter)
-            .where(
-              and(
-                eq(apCharacter.id, BigInt(target)),
-                eq(apCharacter.userId, token.userId),
-                eq(apCharacter.status, 'active'),
-              ),
-            );
-          if (row) {
-            token.characterId = target;
-            token.accessTokenExpiresAt = row.exp ? Math.floor(row.exp.getTime() / 1000) : 0;
-          }
         }
         return token;
       }

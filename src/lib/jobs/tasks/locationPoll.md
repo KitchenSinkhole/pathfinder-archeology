@@ -17,7 +17,7 @@ Stable job key per character (`'location-poll:<id>'`). Used by both the handler'
 Algorithm:
 0. **Payload guard** — a missing/empty payload (`!payload?.characterId`) returns `{ stopped: 'no-payload' }` immediately. A graphile-worker payload is data crossing into the handler; without this a payload-less enqueue (e.g. an operator triggering `location-poll` from the `/setup` console) would crash on `BigInt(undefined)` and burn all 25 retries. The on-demand console also excludes payload-required tasks (`onDemandJobModules()`), so this is defense-in-depth.
 1. **Tracking probe** — `EXISTS (SELECT 1 FROM ap_map_character_tracking WHERE character_id = $1)`. No rows → `{ stopped: 'no-tracking' }`, exit (no re-enqueue).
-2. **Character probe** — load `status`, `last_system_id`, `last_ship_type_id`, `last_ship_name`, `last_location_at`. Missing → `{ stopped: 'character-missing' }`. Not `active` → `{ stopped: 'character-inactive' }`.
+2. **Character probe** — load `status`, `tracking_enabled`, `last_system_id`, `last_ship_type_id`, `last_ship_name`, `last_location_at`. Missing → `{ stopped: 'character-missing' }`. Not `active` → `{ stopped: 'character-inactive' }`. `tracking_enabled = false` → `{ stopped: 'tracking-disabled' }` (defense in depth — disabling already deletes the join rows, but the flag is the authoritative opt-out for a tick that races the delete).
 3. **`getCharacterOnline`** — inside a `try/catch` covering the whole ESI phase (steps 3–6). See "Failure handling" below.
 4. **Load active tracked map ids** — one query, used by both branches' broadcasts and the wormhole fold.
 5. **Offline tick** — stamp `last_online = false`, re-enqueue at `LOCATION_POLL_OFFLINE_MS`, broadcast `characterUpdate(online: false, …)` on every tracked map channel using the *last-known* `lastSystemId` / `lastShipTypeId` / `lastShipName` / `lastLocationAt` from step 2. Return.
@@ -25,7 +25,7 @@ Algorithm:
 7. **Classify + fan-out** (Stage 12.2) — if the previous and current system ids differ and both are non-null, call `classifyJump`. On `'wormhole'`, call `foldWormholeJumpOntoMap` for each tracked map. Per-map outcomes land in `notes.folds[]`.
 8. **Broadcast** — emit `characterUpdate(online: true, systemId, shipTypeId, shipName, locationAt)` on every tracked map channel. Goes out *after* the fold so the client receives `system.added` / `connection.create` first and the breadcrumb lands on a canvas that already knows the new system.
 
-Returns `PollNotes` with whichever subset of `{ stopped, online, previousSystemId, currentSystemId, reenqueuedInMs, jumpClass, folds }` applied. `stopped` is one of `'no-payload' | 'no-tracking' | 'character-inactive' | 'character-missing' | 'token-loss'`.
+Returns `PollNotes` with whichever subset of `{ stopped, online, previousSystemId, currentSystemId, reenqueuedInMs, jumpClass, folds }` applied. `stopped` is one of `'no-payload' | 'no-tracking' | 'character-inactive' | 'character-missing' | 'tracking-disabled' | 'token-loss'`.
 
 ### Failure handling (Stage 12.3)
 A single `try/catch` wraps steps 3–8:

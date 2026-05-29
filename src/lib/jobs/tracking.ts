@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, ne, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { apMap, apMapCharacterTracking } from '@/db/schema';
 import { locationPollJobKey } from './tasks/locationPoll';
@@ -97,4 +97,61 @@ export async function stopTrackingCharacter(args: StopTrackingArgs): Promise<{ r
     )
     .returning({ mapId: apMapCharacterTracking.mapId });
   return { removed: deleted.length > 0 };
+}
+
+/**
+ * Remove the character from tracking on **every** map. Used when a user
+ * disables tracking for a character from the Characters panel (Stage 17.5
+ * follow-up). Like `stopTrackingCharacter`, this doesn't cancel the in-flight
+ * poll — the next handler tick sees no tracking rows (and the disabled flag)
+ * and exits cleanly.
+ */
+export async function stopAllTrackingForCharacter(characterId: bigint): Promise<void> {
+  await db
+    .delete(apMapCharacterTracking)
+    .where(eq(apMapCharacterTracking.characterId, characterId));
+}
+
+/**
+ * Point each character's tracking at exactly `mapId` — the account's last-open
+ * map (Stage 17.5 follow-up). Called when a tab subscribes to a map: every
+ * enabled character on the account starts (or keeps) folding onto the viewed
+ * map, and is removed from any *other* map it was tracking, so a character
+ * tracks a single map at a time and switching maps moves tracking with it.
+ *
+ * Each character's upsert + other-map purge runs in one transaction; the poll
+ * is then (re-)enqueued with `preserve_run_at` so an already-running loop keeps
+ * its cadence. The caller is responsible for the map being viewable/live — this
+ * is the realtime-subscribe seam, downstream of `canViewMap`.
+ */
+export async function trackCharactersOnMap(
+  characterIds: bigint[],
+  mapId: bigint,
+): Promise<void> {
+  if (characterIds.length === 0) return;
+  await db.transaction(async (tx) => {
+    for (const characterId of characterIds) {
+      await tx
+        .insert(apMapCharacterTracking)
+        .values({ mapId, characterId })
+        .onConflictDoNothing();
+      await tx
+        .delete(apMapCharacterTracking)
+        .where(
+          and(
+            eq(apMapCharacterTracking.characterId, characterId),
+            ne(apMapCharacterTracking.mapId, mapId),
+          ),
+        );
+      await tx.execute(
+        sql`SELECT graphile_worker.add_job(
+              'location-poll',
+              json_build_object('characterId', ${characterId.toString()}::text)::json,
+              job_key => ${locationPollJobKey(characterId)},
+              job_key_mode => 'preserve_run_at',
+              run_at => now()
+            )`,
+      );
+    }
+  });
 }

@@ -51,6 +51,12 @@ export const apCharacter = pgTable('ap_character', {
   lastShipName: text('last_ship_name'),
   lastOnline: boolean('last_online'),
   lastLocationAt: timestamp('last_location_at', { withTimezone: true }),
+  // Stage 17.5 follow-up. Per-character opt-out for server-side location
+  // tracking. Default true — a character is tracked the moment it is linked
+  // (first EVE SSO); users disable individual characters from the header
+  // Characters panel. A disabled character is polled for nobody and folds onto
+  // no map. The location-poll handler gates on this as defense in depth.
+  trackingEnabled: boolean('tracking_enabled').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

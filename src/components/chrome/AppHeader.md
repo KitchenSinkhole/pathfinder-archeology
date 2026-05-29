@@ -1,19 +1,19 @@
 ## AppHeader
 
-**Purpose:** Top page chrome for the authenticated app — branding link plus the character switcher.
+**Purpose:** Top page chrome for the authenticated app — branding link plus the Characters panel.
 **File:** `src/components/chrome/AppHeader.tsx`
 
 ### Props
 
 | Prop | Type | Required | Description |
 |---|---|---|---|
-| active | `{ id: string; name: string }` | yes | Active character, forwarded to the switcher chip |
-| characters | `SwitcherCharacter[]` | yes | Account roster (incl. `authzLevel`), forwarded to the switcher |
-| mainCharacterId | `string \| null` | yes | The account's main, forwarded to the switcher |
+| active | `{ id: string; name: string }` | yes | Identity character (account main), forwarded to the panel chip |
+| characters | `PanelCharacter[]` | yes | Account roster (incl. `authzLevel`, `trackingEnabled`), forwarded to the panel |
+| mainCharacterId | `string \| null` | yes | The account's main, forwarded to the panel |
 
 ### Renders
-A bordered header bar: an "Aperture" link to `/maps` on the left; on the right, the `ReferenceMenu` info menu next to the `CharacterSwitcher`.
+A bordered header bar: an "Aperture" link to `/maps` on the left; on the right, the `ReferenceMenu` info menu next to the `CharacterPanel`.
 
 ### Depends On
-- `CharacterSwitcher` (client) — the data props are resolved server-side in `(app)/layout.tsx`.
+- `CharacterPanel` (client) — the data props are resolved server-side in `(app)/layout.tsx`.
 - `ReferenceMenu` (client) — header entry point for the static reference dialogs.

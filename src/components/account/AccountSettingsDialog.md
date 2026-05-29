@@ -8,7 +8,7 @@
 | Prop | Type | Required | Description |
 |---|---|---|---|
 | open | boolean | yes | Controlled open state |
-| onOpenChange | (open: boolean) => void | yes | Open-state setter (owned by `CharacterSwitcher`) |
+| onOpenChange | (open: boolean) => void | yes | Open-state setter (owned by `CharacterPanel`) |
 | characters | AccountCharacter[] | yes | The account roster (`id`, `name`, `status`, `authzLevel`) |
 | mainCharacterId | string \| null | yes | Current main; `null` until bootstrapped on first login |
 | activeCharacter | { id: string; name: string } | yes | The signed-in character; its name is the delete confirmation phrase |

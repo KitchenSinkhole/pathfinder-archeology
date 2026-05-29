@@ -141,6 +141,13 @@
       "when": 1779610800000,
       "tag": "0020_character_ship_name",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1779612000000,
+      "tag": "0021_character_tracking_enabled",
+      "breakpoints": true
     }
   ]
 }

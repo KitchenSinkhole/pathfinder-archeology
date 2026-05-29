@@ -15,6 +15,12 @@ Returns `{ ok: true, alreadyTracked }`.
 ### stopTrackingCharacter({ mapId, characterId }): { removed }
 `DELETE` the tracking row. Does NOT cancel the in-flight poll job — the handler checks tracking-row count on entry and exits with `{ stopped: 'no-tracking' }` on the tick after the last row goes away. Avoiding an external cancel keeps the lifecycle race-free.
 
+### stopAllTrackingForCharacter(characterId: bigint): Promise<void>
+`DELETE` every tracking row for the character, across all maps. Used by `setCharacterTrackingAction` when a user disables a character from the Characters panel (Stage 17.5 follow-up). Same race-free stop semantics as `stopTrackingCharacter` — the next poll tick exits cleanly.
+
+### trackCharactersOnMap(characterIds: bigint[], mapId: bigint): Promise<void>
+Point each character's tracking at exactly `mapId` (the account's last-open map, Stage 17.5 follow-up). Per character, in one transaction: upsert the `(mapId, characterId)` row, delete its rows on **other** maps (one map at a time per character → switching maps moves tracking), and (re-)enqueue the poll with `preserve_run_at`. Called from the realtime `subscribe` handler with the account's **enabled** characters, downstream of `canViewMap` — the caller guarantees the map is viewable/live.
+
 ### Notes
 - **`graphile_worker.add_job` via raw SQL.** No `WorkerUtils` instance held by this module; tracking enable/disable is rare enough that the per-call overhead is irrelevant. Keeps the module dependency-light so it can be imported from Server Actions, API routes, admin tools, etc.
 - **`preserve_run_at` semantics in graphile-worker:** if a row with the given `job_key` exists, all attributes EXCEPT `run_at` are updated; if no row exists, this acts as a normal insert. Exactly the semantic we want for "start tracking shouldn't ever bump the clock of an already-running poll".

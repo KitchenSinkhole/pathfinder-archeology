@@ -5,15 +5,14 @@
 
 ---
 
-### handlers / auth / signIn / signOut / unstable_update
-The standard Auth.js v5 exports. `handlers` is mounted by the `[...nextauth]` route; `auth` reads the session in server components/actions; `unstable_update` re-issues the JWT for the character-switch flow.
+### handlers / auth / signIn / signOut
+The standard Auth.js v5 exports. `handlers` is mounted by the `[...nextauth]` route; `auth` reads the session in server components/actions. (`unstable_update` was removed in the Stage 17.5 follow-up — active-character switching is gone, so nothing re-issues the JWT out of band.)
 
 ### Config
 - `providers: [eveProvider()]`, `session.strategy: 'jwt'` (no DB session store — SPEC §7).
 - **`cookies` block** (SPEC §11 Q9 closure): the `sessionToken`, `callbackUrl`, and `csrfToken` cookies all carry `AUTH_COOKIE_OPTIONS` from `@/lib/cookies` (`httpOnly`, `sameSite: 'lax'`, `secure` in production, `path: '/'`). Cookie names stay at the Auth.js defaults (`authjs.session-token`, etc.).
 - **`jwt` callback:**
   - On initial sign-in (`account` + `profile` present): reads the signed `ap_link` cookie (`link-cookie.ts`) to resolve an "Add character" link target, calls `persistLogin(..., linkUserId)`, clears the cookie. **Stage 17.5 — land on main:** the token's `characterId` is then set to `resolveMainCharacter(userId, authenticatedCharacterId)`, **not** the character that SSO'd in. `accessTokenExpiresAt` is taken from the main character's own DB expiry (or the freshly-exchanged expiry when the main *is* the authenticated character). `userId` is also carried. Because the "Add character" flow goes through this same branch, adding an alt returns the session to the existing main. **Stage 15:** also fires `syncCharacterAuthz(authenticatedCharacterId)` to reconcile `authz_level`, affiliations, and corp-title role memberships against ESI for the character that just authenticated — best-effort, ESI failure is logged but does not block login.
-  - On `trigger === 'update'` (character switch): re-validates that the requested `characterId` belongs to `token.userId` and is `active`, then re-points `characterId` and resets `accessTokenExpiresAt` from that character's DB expiry. An invalid target leaves the token unchanged.
   - On later calls: if within `SSO_TOKEN_REFRESH_BUFFER_S` of expiry, calls `refreshAccessToken` (which persists the rotated refresh token before returning) and refreshes the expiry hint from the DB. Refresh failures are swallowed so a revoked token degrades to logged-out rather than throwing.
 - **`session` callback:** exposes `characterId` and `userId` only — never raw ESI tokens.
 
