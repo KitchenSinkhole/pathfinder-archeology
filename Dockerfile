@@ -48,5 +48,8 @@ COPY --from=build /app/.next ./.next
 # runtime, plus the migration SQL that `pnpm db:migrate` applies.
 COPY package.json pnpm-lock.yaml tsconfig.json next.config.ts aperture.config.ts drizzle.config.ts server.ts ./
 COPY src ./src
+# ESI route resolver reads this at runtime (src/lib/esi/routes.ts); it lives under
+# docs/ which is otherwise excluded from the image.
+COPY docs/ESI/swagger.json ./docs/ESI/swagger.json
 EXPOSE 3003
 CMD ["pnpm", "start"]
