@@ -50,10 +50,12 @@ system_intel, `10-feature-matrix.md` row 9.)
 **Touches:** `src/lib/eve/systemEffects.ts` (port `docs/spec/system_effect.js` → typed constant), `src/lib/eve/wormholeJumpInfo.ts` + `src/app/api/reference/wormholes/route.ts` + `src/lib/reference/client.ts`, dialogs under `src/components/dialogs/**`, `src/components/ui/menu.tsx`, `src/components/chrome/ReferenceMenu.tsx`, header/footer wiring. Jump Info is data-backed: wormhole mass + statics-by-source-class from `universe_wormhole` + dogma (`universe_type_attribute_effective`). The legacy hard-coded jump-compatibility matrix was dropped (source HTML absent; the per-WH jump-mass column conveys max ship size).
 **Done when:** System Effects, Jump Info, and Credits each open and render correct reference data.
 
-## Stage 17.4 — Map Info + Manual dialogs
+## Stage 17.4 — Map Info + Manual dialogs  ✅
 **Mode:** Plan mode
 **Goal:** Map Info 4-tab snapshot (Summary / Systems / Connections / Users) over existing map data; Manual scrollspy dialog.
 **Done when:** Map Info reflects live map counts/systems/connections/pilots; Manual renders with section navigation.
+
+Built entirely client-side (no `loadMap.ts` / API / schema changes). New `ui/tabs.tsx` primitive (Base UI), `usePresenceForMap` accessor in `MapPresenceContext`, `MapInfoDialog` (triggered from a `MapCanvas` toolbar button, reads live `viewData` + presence), and `ManualDialog` (scrollspy over `src/lib/reference/manual.ts`, launched from `ReferenceMenu`). Summary "created/creator" dropped (not in client data); Users tab is the online presence roster (name/location/ship).
 
 ## Stage 17.5 — Account Settings + Delete Account
 **Mode:** Plan mode

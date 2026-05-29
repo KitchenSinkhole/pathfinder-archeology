@@ -34,6 +34,11 @@ class PresenceStore {
   private bySystem = new Map<number, MapPresenceEntry[]>();
   private byCharacterSystem = new Map<number, number>();
   private subs = new Map<number, Set<Subscriber>>();
+  private allSubs = new Set<Subscriber>();
+  // Cached flattened snapshot for `usePresenceForMap`. `useSyncExternalStore`
+  // requires the same reference between reads that don't mutate the store, so
+  // we only rebuild this on `notify()`.
+  private allCache: readonly MapPresenceEntry[] | null = null;
 
   seed(initial: MapPresenceEntry[]): void {
     const before = new Set<number>(this.bySystem.keys());
@@ -111,12 +116,33 @@ class PresenceStore {
     return this.bySystem.get(systemId) ?? EMPTY;
   }
 
+  subscribeAll(sub: Subscriber): () => void {
+    this.allSubs.add(sub);
+    return () => {
+      this.allSubs.delete(sub);
+    };
+  }
+
+  /** Every online + located pilot across the whole map, sorted by name. */
+  getAll(): readonly MapPresenceEntry[] {
+    if (this.allCache) return this.allCache;
+    const flat: MapPresenceEntry[] = [];
+    for (const list of this.bySystem.values()) flat.push(...list);
+    flat.sort(byName);
+    this.allCache = Object.freeze(flat);
+    return this.allCache;
+  }
+
   private notify(systemIds: Set<number>): void {
+    if (systemIds.size === 0) return;
+    // Any mutation invalidates the flattened snapshot and wakes map-wide subs.
+    this.allCache = null;
     for (const id of systemIds) {
       const set = this.subs.get(id);
       if (!set) continue;
       for (const sub of set) sub();
     }
+    for (const sub of this.allSubs) sub();
   }
 }
 
@@ -177,5 +203,20 @@ export function usePresenceForSystem(systemId: number): readonly MapPresenceEntr
     () => store?.getForSystem(systemId) ?? EMPTY,
     [store, systemId],
   );
+  return useSyncExternalStore(subscribe, getSnapshot, () => EMPTY);
+}
+
+/**
+ * Returns every online + located pilot across the whole map, sorted by name.
+ * Re-renders the caller whenever any system's slice changes. Used by the
+ * Map Info dialog (pilot count + Users roster).
+ */
+export function usePresenceForMap(): readonly MapPresenceEntry[] {
+  const store = useContext(PresenceContext);
+  const subscribe = useCallback(
+    (cb: () => void) => store?.subscribeAll(cb) ?? (() => {}),
+    [store],
+  );
+  const getSnapshot = useCallback(() => store?.getAll() ?? EMPTY, [store]);
   return useSyncExternalStore(subscribe, getSnapshot, () => EMPTY);
 }

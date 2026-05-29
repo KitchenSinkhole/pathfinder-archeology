@@ -50,6 +50,9 @@ import {
   type SelectionRef,
 } from '@/components/sidebar/InspectorModule';
 import { SignatureModule } from '@/components/sidebar/SignatureModule';
+import { Info } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { MapInfoDialog } from '@/components/dialogs/MapInfoDialog';
 import { ConnectionEdge, type ConnectionEdgeData } from './ConnectionEdge';
 import { MapPresenceProvider } from './MapPresenceContext';
 import { SystemNode, type SystemNodeData } from './SystemNode';
@@ -71,6 +74,7 @@ export function MapCanvas({
   structures: Record<number, StructureIntel[]>;
 }) {
   const [selected, setSelected] = useState<SelectionRef | null>(null);
+  const [mapInfoOpen, setMapInfoOpen] = useState(false);
   const [viewData, setViewData] = useState<MapViewData>(data);
   // Structure intel is deployment-global and not realtime-synced; we manage it
   // as plain local state seeded from the page load and updated on our own CRUD.
@@ -458,6 +462,12 @@ export function MapCanvas({
     <MapPresenceProvider initial={data.presence}>
       <div className="flex gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
+          <div className="flex items-center justify-end">
+            <Button variant="ghost" size="sm" onClick={() => setMapInfoOpen(true)}>
+              <Info />
+              Map info
+            </Button>
+          </div>
           <div
             style={{ height: canvasHeight }}
             className="overflow-hidden rounded-lg ring-1 ring-foreground/10"
@@ -543,6 +553,8 @@ export function MapCanvas({
           />
         </aside>
       </div>
+
+      <MapInfoDialog open={mapInfoOpen} onOpenChange={setMapInfoOpen} viewData={viewData} />
     </MapPresenceProvider>
   );
 }

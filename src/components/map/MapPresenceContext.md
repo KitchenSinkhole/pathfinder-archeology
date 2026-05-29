@@ -21,6 +21,10 @@ The provider seeds the store synchronously inside `useState`'s init so the first
 
 Hook returning the pilot list for one EVE solar-system. Returns a stable array reference until that system's slice changes (`useSyncExternalStore` semantics). Returns the module-level `EMPTY` array when the system has no pilots or the hook is used outside a provider (cheap no-op on read-only routes).
 
+### usePresenceForMap(): readonly MapPresenceEntry[]
+
+Hook returning every online + located pilot across the whole map, sorted by name. Subscribes to the store's map-wide subscriber set, so it re-renders whenever any system's slice changes. The flattened snapshot is cached on the store (rebuilt only on mutation) to satisfy `useSyncExternalStore`'s stable-reference requirement. Used by `MapInfoDialog` for the online-pilot count and the Users roster.
+
 ### Behaviour
 - **Offline pilots are hidden.** The store only inserts an entry when `online === true && systemId !== null && locationAt !== null`. An envelope with any of those falsy removes the character from their prior system (if any) and inserts nothing.
 - **Sorted by character name** within each system, so the hover list renders deterministically.
