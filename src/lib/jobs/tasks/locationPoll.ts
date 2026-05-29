@@ -101,6 +101,7 @@ async function poll(payload: LocationPollPayload, helpers: JobHelpers): Promise<
       status: apCharacter.status,
       lastSystemId: apCharacter.lastSystemId,
       lastShipTypeId: apCharacter.lastShipTypeId,
+      lastShipName: apCharacter.lastShipName,
       lastLocationAt: apCharacter.lastLocationAt,
     })
     .from(apCharacter)
@@ -139,6 +140,7 @@ async function poll(payload: LocationPollPayload, helpers: JobHelpers): Promise<
         online: false,
         systemId: character.lastSystemId,
         shipTypeId: character.lastShipTypeId,
+        shipName: character.lastShipName,
         locationAt: character.lastLocationAt,
       });
       return { online: false, previousSystemId: character.lastSystemId, reenqueuedInMs };
@@ -156,6 +158,7 @@ async function poll(payload: LocationPollPayload, helpers: JobHelpers): Promise<
       .set({
         lastSystemId: location.solar_system_id,
         lastShipTypeId: ship.ship_type_id,
+        lastShipName: ship.ship_name,
         lastOnline: true,
         lastLocationAt: locationAt,
         updatedAt: locationAt,
@@ -207,6 +210,7 @@ async function poll(payload: LocationPollPayload, helpers: JobHelpers): Promise<
       online: true,
       systemId: location.solar_system_id,
       shipTypeId: ship.ship_type_id,
+      shipName: ship.ship_name,
       locationAt,
     });
 
@@ -257,6 +261,7 @@ interface BroadcastArgs {
   online: boolean;
   systemId: number | null;
   shipTypeId: number | null;
+  shipName: string | null;
   locationAt: Date | null;
 }
 
@@ -283,6 +288,7 @@ async function broadcastCharacterUpdate(args: BroadcastArgs): Promise<void> {
       systemId: args.systemId,
       shipTypeId: args.shipTypeId,
       shipTypeName,
+      shipName: args.shipName,
       locationAt: args.locationAt ? args.locationAt.toISOString() : null,
     },
   });

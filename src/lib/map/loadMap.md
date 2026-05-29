@@ -11,7 +11,7 @@ Loads one map for rendering. Returns `null` if the map is missing, soft-deleted,
 ---
 
 ### loadMapPresence(mapId: bigint): Promise<MapPresenceEntry[]>
-Online tracked pilots currently in a known system on this map. Joins `ap_map_character_tracking` × `ap_character`, left-joins `universe_type` for the ship name. Filters to `last_online = true AND last_system_id IS NOT NULL` — offline pilots are hidden from the badge per UX choice. Ordered by character name for stable hover-list rendering. The companion to the realtime `characterUpdate` envelope: same per-pilot shape (minus the always-true `online` flag), so the client merges live updates on top without converting between forms.
+Online tracked pilots currently in a known system on this map. Joins `ap_map_character_tracking` × `ap_character`, left-joins `universe_type` for the ship type name; also carries `shipName` (the pilot's custom hull name from `ap_character.last_ship_name`). Filters to `last_online = true AND last_system_id IS NOT NULL` — offline pilots are hidden from the badge per UX choice. Ordered by character name for stable hover-list rendering. The companion to the realtime `characterUpdate` envelope: same per-pilot shape (minus the always-true `online` flag), so the client merges live updates on top without converting between forms.
 
 ---
 

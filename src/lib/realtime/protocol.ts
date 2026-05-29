@@ -308,6 +308,8 @@ export const mapConnectionAccessLoadSchema = z.object({
  * `characterName` rides every envelope so the client never needs a roster
  * lookup to render the breadcrumb. `shipTypeName` is the resolved `universe_type.name`
  * for `shipTypeId` — null when `shipTypeId` is null or the row is missing.
+ * `shipName` is the pilot's custom hull name (ESI `getCharacterShip.ship_name`,
+ * cached on `ap_character.last_ship_name`) — null before the first online tick.
  * The envelope stays self-contained per the payload philosophy (see the
  * mapEventPayloadSchema preamble above) at the cost of one tiny universe_type
  * lookup per poll tick.
@@ -322,6 +324,7 @@ export const characterUpdateLoadSchema = z.object({
   systemId: z.number().int().nullable(),
   shipTypeId: z.number().int().nullable(),
   shipTypeName: z.string().nullable(),
+  shipName: z.string().nullable(),
   locationAt: z.string().nullable(),
 });
 

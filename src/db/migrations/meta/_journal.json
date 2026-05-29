@@ -134,6 +134,13 @@
       "when": 1779609600000,
       "tag": "0018_account_main_character",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1779610800000,
+      "tag": "0020_character_ship_name",
+      "breakpoints": true
     }
   ]
 }

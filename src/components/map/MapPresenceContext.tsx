@@ -84,6 +84,7 @@ class PresenceStore {
         systemId: load.systemId,
         shipTypeId: load.shipTypeId,
         shipTypeName: load.shipTypeName,
+        shipName: load.shipName,
         locationAt: load.locationAt,
       };
       const existing = this.bySystem.get(entry.systemId);

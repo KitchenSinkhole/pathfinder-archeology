@@ -114,6 +114,8 @@ export type MapPresenceEntry = {
   systemId: number;
   shipTypeId: number | null;
   shipTypeName: string | null;
+  /** Pilot's custom hull name (`ap_character.last_ship_name`); null before the first online tick. */
+  shipName: string | null;
   /** ISO timestamp; non-null because the loader filters to characters that have completed at least one online tick. */
   locationAt: string;
 };
@@ -350,6 +352,7 @@ export async function loadMapPresence(mapId: bigint): Promise<MapPresenceEntry[]
       systemId: apCharacter.lastSystemId,
       shipTypeId: apCharacter.lastShipTypeId,
       shipTypeName: universeType.name,
+      shipName: apCharacter.lastShipName,
       locationAt: apCharacter.lastLocationAt,
     })
     .from(apMapCharacterTracking)
@@ -375,6 +378,7 @@ export async function loadMapPresence(mapId: bigint): Promise<MapPresenceEntry[]
       systemId: r.systemId,
       shipTypeId: r.shipTypeId,
       shipTypeName: r.shipTypeName,
+      shipName: r.shipName,
       locationAt: r.locationAt.toISOString(),
     }];
   });

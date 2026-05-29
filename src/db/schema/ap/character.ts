@@ -45,6 +45,10 @@ export const apCharacter = pgTable('ap_character', {
   // every stale pointer, and the next poll tick overwrites the value anyway.
   lastSystemId: integer('last_system_id'),
   lastShipTypeId: integer('last_ship_type_id'),
+  // The pilot's custom ship name (ESI `getCharacterShip.ship_name`) — what the
+  // player named this particular hull, distinct from its type. Surfaced in the
+  // presence hover panel alongside the resolved type name.
+  lastShipName: text('last_ship_name'),
   lastOnline: boolean('last_online'),
   lastLocationAt: timestamp('last_location_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

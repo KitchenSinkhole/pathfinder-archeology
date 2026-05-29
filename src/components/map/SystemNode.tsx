@@ -123,9 +123,17 @@ function PresenceBadge({
           <PreviewCard.Popup className="nodrag nopan z-50 min-w-40 rounded-md border bg-popover px-2 py-1.5 text-xs text-popover-foreground shadow-md">
             <ul className="space-y-0.5">
               {pilots.map((p) => (
-                <li key={p.characterId} className="flex items-baseline justify-between gap-3">
+                <li key={p.characterId} className="flex items-start justify-between gap-3">
                   <span className="font-medium">{p.characterName}</span>
-                  <span className="text-muted-foreground">{p.shipTypeName ?? '—'}</span>
+                  <span className="flex flex-col items-end text-right text-muted-foreground">
+                    <span>{p.shipName ?? p.shipTypeName ?? '—'}</span>
+                    {/* Custom ship name and type both shown; the type line is
+                        omitted when the pilot never renamed the hull (ESI
+                        defaults ship_name to the type name). */}
+                    {p.shipName && p.shipTypeName && p.shipName !== p.shipTypeName && (
+                      <span className="text-[10px] text-muted-foreground/70">{p.shipTypeName}</span>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>
