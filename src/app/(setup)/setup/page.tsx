@@ -4,6 +4,7 @@ import { apJobRun } from '@/db/schema';
 import { readSetupCookie } from '@/lib/auth/setup-cookie';
 import { onDemandJobModules } from '@/lib/jobs/registry';
 import { RunCronCard } from '@/components/setup/RunCronCard';
+import { RunCsvIngestCard } from '@/components/setup/RunCsvIngestCard';
 import { RunMigrationsCard } from '@/components/setup/RunMigrationsCard';
 import { RunSdeIngestCard } from '@/components/setup/RunSdeIngestCard';
 import { SetupUnlockForm } from '@/components/setup/SetupUnlockForm';
@@ -123,6 +124,7 @@ export default async function SetupPage() {
       <div className="grid gap-4 sm:grid-cols-2">
         <RunMigrationsCard />
         <RunSdeIngestCard />
+        <RunCsvIngestCard />
       </div>
 
       <CronOnDemand taskNames={knownTaskNames} />

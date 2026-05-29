@@ -1,6 +1,7 @@
 import type { CronItem, Task, TaskList } from 'graphile-worker';
 import { activityRollupRefresh } from './tasks/activityRollupRefresh';
 import { characterCleanup } from './tasks/characterCleanup';
+import { csvIngest } from './tasks/csvIngest';
 import { eolExpiry } from './tasks/eolExpiry';
 import { expiredConnections } from './tasks/expiredConnections';
 import { locationPoll } from './tasks/locationPoll';
@@ -62,6 +63,8 @@ const modules: readonly JobModule[] = [
   characterCleanup,
   // Stage 16.6 — on-demand SDE refresh, enqueued by the setup wizard.
   sdeIngest,
+  // On-demand vendored-CSV refresh, enqueued by the setup wizard's dedicated card.
+  csvIngest,
 ];
 
 export function jobModules(): readonly JobModule[] {
@@ -74,8 +77,8 @@ export function jobModules(): readonly JobModule[] {
  * schedule and therefore take no required payload, so an empty `'{}'` enqueue
  * is always valid. Payload-driven `addJob`-only tasks (`location-poll`,
  * `webhook-dispatch`) are excluded — enqueuing them payload-less crashes the
- * handler. `sde-ingest` is also payload-less but has its own dedicated console
- * card, so it isn't surfaced in the generic list either.
+ * handler. `sde-ingest` and `csv-ingest` are also payload-less but have their
+ * own dedicated console cards, so they aren't surfaced in the generic list.
  */
 export function onDemandJobModules(): readonly JobModule[] {
   return modules.filter((m) => m.cron !== undefined);

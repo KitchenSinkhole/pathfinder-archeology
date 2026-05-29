@@ -188,6 +188,23 @@ export async function setupRunSdeIngest(): Promise<ActionResult<EnqueueResult>> 
   }
 }
 
+/**
+ * Enqueue the `csv-ingest` graphile-worker job — re-ingests the vendored
+ * wormhole CSVs only. Requires `universe_system`/`universe_type` to be
+ * populated (run the SDE ingest first on a fresh database).
+ */
+export async function setupRunCsvIngest(): Promise<ActionResult<EnqueueResult>> {
+  const gated = await gate();
+  if (!gated.ok) return gated;
+  await logAction('run-csv-ingest');
+
+  try {
+    return { ok: true, data: await enqueueJob('csv-ingest') };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Enqueue failed.' };
+  }
+}
+
 const cronOnDemandSchema = z.object({ name: z.string().min(1).max(120) });
 
 /**
