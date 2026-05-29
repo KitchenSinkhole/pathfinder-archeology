@@ -11,6 +11,7 @@ import {
   type Edge,
   type Node,
   type NodeChange,
+  type ReactFlowInstance,
   type Viewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -20,6 +21,7 @@ import type { SystemStatsSummary } from '@/lib/map/stats';
 import type { SystemIntelSummary } from '@/lib/map/intel';
 import { applyEvent } from '@/lib/map/applyEvent';
 import {
+  addSystemOnServer,
   createConnectionOnServer,
   createSignatureOnServer,
   deleteConnectionOnServer,
@@ -50,9 +52,10 @@ import {
   type SelectionRef,
 } from '@/components/sidebar/InspectorModule';
 import { SignatureModule } from '@/components/sidebar/SignatureModule';
-import { Info } from 'lucide-react';
+import { Info, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MapInfoDialog } from '@/components/dialogs/MapInfoDialog';
+import { AddSystemDialog } from './AddSystemDialog';
 import { ConnectionEdge, type ConnectionEdgeData } from './ConnectionEdge';
 import { MapPresenceProvider } from './MapPresenceContext';
 import { SystemNode, type SystemNodeData } from './SystemNode';
@@ -75,7 +78,12 @@ export function MapCanvas({
 }) {
   const [selected, setSelected] = useState<SelectionRef | null>(null);
   const [mapInfoOpen, setMapInfoOpen] = useState(false);
+  const [addSystemOpen, setAddSystemOpen] = useState(false);
   const [viewData, setViewData] = useState<MapViewData>(data);
+  // Captured via ReactFlow's onInit so the manual-add flow can place new nodes
+  // at the current viewport centre rather than (0,0).
+  const flowInstance = useRef<ReactFlowInstance<Node<SystemNodeData>, Edge<ConnectionEdgeData>> | null>(null);
+  const flowWrapperRef = useRef<HTMLDivElement>(null);
   // Structure intel is deployment-global and not realtime-synced; we manage it
   // as plain local state seeded from the page load and updated on our own CRUD.
   const [structures, setStructures] = useState(initialStructures);
@@ -195,6 +203,35 @@ export function MapCanvas({
             targetMapSystemId: params.target!,
             scope: 'wh',
           },
+        }),
+      );
+    },
+    [mapId, awaitServer],
+  );
+
+  // Manually place a system on the map (no wormhole jump). Drop it at the
+  // current viewport centre with a little jitter so successive adds don't stack
+  // exactly on top of each other; fall back to (0,0) before the instance is
+  // ready. POST → await the server payload → apply (same path as onConnect).
+  const onAddSystem = useCallback(
+    (systemId: number) => {
+      let base = { x: 0, y: 0 };
+      const inst = flowInstance.current;
+      const wrap = flowWrapperRef.current;
+      if (inst && wrap) {
+        const rect = wrap.getBoundingClientRect();
+        base = inst.screenToFlowPosition({
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+        });
+      }
+      const jitter = () => Math.round((Math.random() - 0.5) * 80);
+      awaitServer(() =>
+        addSystemOnServer({
+          mapId,
+          systemId,
+          positionX: Math.round(base.x) + jitter(),
+          positionY: Math.round(base.y) + jitter(),
         }),
       );
     },
@@ -408,6 +445,12 @@ export function MapCanvas({
     return viewData.systems.find((s) => s.id === selected.id) ?? null;
   }, [selected, viewData.systems]);
 
+  // EVE solar-system ids already placed — lets the add dialog flag duplicates.
+  const existingSystemIds = useMemo(
+    () => new Set(viewData.systems.map((s) => s.systemId)),
+    [viewData.systems],
+  );
+
   // ---- Structure-intel callbacks -----------------------------------------
   //
   // Plain REST (no map event, no realtime echo): await the server, then update
@@ -462,13 +505,18 @@ export function MapCanvas({
     <MapPresenceProvider initial={data.presence}>
       <div className="flex gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-end gap-1">
+            <Button variant="ghost" size="sm" onClick={() => setAddSystemOpen(true)}>
+              <Plus />
+              Add system
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => setMapInfoOpen(true)}>
               <Info />
               Map info
             </Button>
           </div>
           <div
+            ref={flowWrapperRef}
             style={{ height: canvasHeight }}
             className="overflow-hidden rounded-lg ring-1 ring-foreground/10"
           >
@@ -480,6 +528,9 @@ export function MapCanvas({
               onNodeClick={onNodeClick}
               onEdgeClick={onEdgeClick}
               onPaneClick={onPaneClick}
+              onInit={(inst) => {
+                flowInstance.current = inst;
+              }}
               onNodesChange={onNodesChange}
               onNodeDragStop={onNodeDragStop}
               onConnect={onConnect}
@@ -555,6 +606,13 @@ export function MapCanvas({
       </div>
 
       <MapInfoDialog open={mapInfoOpen} onOpenChange={setMapInfoOpen} viewData={viewData} />
+      <AddSystemDialog
+        open={addSystemOpen}
+        onOpenChange={setAddSystemOpen}
+        mapId={mapId}
+        existingSystemIds={existingSystemIds}
+        onAdd={onAddSystem}
+      />
     </MapPresenceProvider>
   );
 }

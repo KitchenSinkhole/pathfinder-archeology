@@ -20,3 +20,5 @@ Stage 16.7 adds `SignatureGroupKey` (the `signature_group_key` pgEnum) and `Sign
 Stage 17.3 adds the static-reference dialog types: `SystemEffect` / `SystemEffectBonus` / `SystemEffectKey` (`src/lib/eve/systemEffects.ts`) and `WormholeJumpInfoRow` (`src/lib/eve/wormholeJumpInfo.ts`).
 
 Stage 17.2 adds `ApStructure` / `ApStructureEvent` row types, `StructureEventKind` (the `structure_event_kind` pgEnum), the read-side view-models `StructureIntel` / `UpwellStructureType` (`src/lib/structures/read.ts`), the structure mutation input types, the structure client body shapes (`CreateStructureBody` / `UpdateStructureBody`), and `FetchResult` (the shared no-`eventId` JSON result from `src/lib/http/fetchJson.ts`).
+
+The "add system manually" flow re-exports `SystemSearchResult` (`src/lib/map/systemSearch.ts`) — a solar-system search row used by `AddSystemDialog`.

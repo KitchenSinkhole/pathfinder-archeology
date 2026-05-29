@@ -30,6 +30,7 @@ Every route in this tree obeys these invariants:
 | PATCH | `/api/map/[mapId]/signatures/[sigId]` | `updateSignature` | `signature.update` |
 | DELETE | `/api/map/[mapId]/signatures/[sigId]` | `deleteSignature` | `signature.delete` |
 | GET | `/api/map/[mapId]/wormhole-types?systemId=` | `wormholeTypesForSystem` | (read-only) |
+| GET | `/api/map/[mapId]/system-search?q=` | `searchSystems` | (read-only) |
 
 `[systemId]` = `ap_map_system.id` (the xyflow node id, not the EVE solar-system id).  
 `[sigId]` = `ap_map_signature.id` (the DB row id, not the in-game 3-char sig code).

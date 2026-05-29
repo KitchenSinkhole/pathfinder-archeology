@@ -6,6 +6,7 @@ import type {
   ParsedSigRow,
   ResolvedSigRow,
   SignatureGroupKey,
+  SystemSearchResult,
   WormholeTypeOption,
 } from '@/types';
 import type {
@@ -123,6 +124,20 @@ export function addSystemOnServer(args: {
 }): Promise<ActionResult<MapEventPayload>> {
   const { mapId, ...body } = args;
   return mutationFetch<MapEventPayload>('POST', `/api/map/${mapId}/systems`, body);
+}
+
+/**
+ * Solar-system name search for the "add system manually" dialog. Read-only
+ * (view rights), so it returns a plain `FetchResult` with no `eventId`. The
+ * caller debounces; a query under 2 chars returns `[]` from the server.
+ */
+export function searchSystemsOnServer(args: {
+  mapId: string;
+  query: string;
+}): Promise<FetchResult<SystemSearchResult[]>> {
+  return readFetch<SystemSearchResult[]>(
+    `/api/map/${args.mapId}/system-search?q=${encodeURIComponent(args.query)}`,
+  );
 }
 
 export function updateSystemOnServer(args: {

@@ -223,6 +223,9 @@ export type {
 // Wormhole-catalog lookup result types (src/lib/map/wormholeTypes.ts).
 export type { WormholeTypeOption, StaticMatch } from '@/lib/map/wormholeTypes';
 
+// Solar-system name search result (src/lib/map/systemSearch.ts).
+export type { SystemSearchResult } from '@/lib/map/systemSearch';
+
 // Read-side structure-intel view-models (computed in src/lib/structures/read.ts).
 export type { StructureIntel, UpwellStructureType } from '@/lib/structures/read';
 
