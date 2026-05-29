@@ -15,10 +15,10 @@ Maps a `universe_system.security` or `universe_wormhole.target_class` label to a
 Maps a `system_status` enum value to a hex colour (unknown→grey, friendly→blue, occupied→amber, hostile→red, empty→green, unscanned→purple).
 
 ### connectionStyle(edge: MapConnectionEdge): EdgeStyle
-Returns `{ stroke, strokeWidth, strokeDasharray? }`. Scope sets the base colour; wormholes are recoloured by `massStatus` (fresh/reduced/critical). `isEol` dashes the line; `isFrigate` thins it.
+Returns `{ stroke, strokeWidth, strokeDasharray? }`. Scope sets the base colour; wormholes are recoloured by `massStatus` (fresh/reduced/critical). `isEol` dashes the line; `jumpMassClass === 's'` thins the stroke (frigate/small holes).
 
 ### connectionBadges(edge: MapConnectionEdge): string[]
-Short uppercase labels for a connection: jump-mass class, `EOL`, `FRIG`, `ROLL`, `PRES`.
+Short uppercase labels for a connection: jump-mass class (`S`/`M`/`L`/`XL`), `EOL`, `ROLL`, `PRES`.
 
 ### Notes
 - Colours mirror legacy semantics, not exact legacy hex. Kept out of Tailwind tokens because they're consumed inside SVG/inline styles.

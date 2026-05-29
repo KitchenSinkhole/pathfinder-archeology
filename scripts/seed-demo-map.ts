@@ -92,7 +92,6 @@ async function main() {
     wormholes[3]
       ? conn(wormholes[2]!.id, wormholes[3].id, {
           massStatus: 'critical',
-          isFrigate: true,
           jumpMassClass: 's',
         })
       : null,

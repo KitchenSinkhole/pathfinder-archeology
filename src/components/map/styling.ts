@@ -67,7 +67,7 @@ export function connectionStyle(edge: MapConnectionEdge): EdgeStyle {
   const stroke = edge.scope === 'wh' ? MASS_COLORS[edge.massStatus] : SCOPE_COLORS[edge.scope];
   return {
     stroke,
-    strokeWidth: edge.isFrigate ? 1.5 : 3,
+    strokeWidth: edge.jumpMassClass === 's' ? 1.5 : 3,
     strokeDasharray: edge.isEol ? '6 4' : undefined,
   };
 }
@@ -77,7 +77,6 @@ export function connectionBadges(edge: MapConnectionEdge): string[] {
   const badges: string[] = [];
   if (edge.jumpMassClass) badges.push(edge.jumpMassClass.toUpperCase());
   if (edge.isEol) badges.push('EOL');
-  if (edge.isFrigate) badges.push('FRIG');
   if (edge.isRolling) badges.push('ROLL');
   if (edge.preserveMass) badges.push('PRES');
   return badges;

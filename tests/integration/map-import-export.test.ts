@@ -265,7 +265,6 @@ describe.skipIf(!run)('map import/export — round-trip + remap (real Postgres)'
           massStatus: 'fresh',
           jumpMassClass: null,
           isEol: false,
-          isFrigate: false,
           preserveMass: false,
           isRolling: false,
         },

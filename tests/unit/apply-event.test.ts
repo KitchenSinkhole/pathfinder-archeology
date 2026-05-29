@@ -43,7 +43,6 @@ const conn1: MapConnectionEdge = {
   massStatus: 'fresh',
   jumpMassClass: null,
   isEol: false,
-  isFrigate: false,
   preserveMass: false,
   isRolling: false,
   eolAt: null,

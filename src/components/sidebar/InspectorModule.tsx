@@ -297,11 +297,6 @@ function ConnectionInspector({
         <div className="grid grid-cols-2 gap-2">
           <ConnFlag label="EOL" checked={connection.isEol} onChange={(v) => onPatch({ isEol: v })} />
           <ConnFlag
-            label="Frigate"
-            checked={connection.isFrigate}
-            onChange={(v) => onPatch({ isFrigate: v })}
-          />
-          <ConnFlag
             label="Preserve mass"
             checked={connection.preserveMass}
             onChange={(v) => onPatch({ preserveMass: v })}

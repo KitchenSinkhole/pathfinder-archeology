@@ -21,7 +21,6 @@ const createConnectionBodySchema = z.object({
   massStatus: z.enum(whMass.enumValues).optional(),
   jumpMassClass: z.enum(whJumpMass.enumValues).nullable().optional(),
   isEol: z.boolean().optional(),
-  isFrigate: z.boolean().optional(),
   preserveMass: z.boolean().optional(),
   isRolling: z.boolean().optional(),
 });
@@ -69,7 +68,6 @@ export async function POST(
     massStatus: parsed.data.massStatus,
     jumpMassClass: parsed.data.jumpMassClass,
     isEol: parsed.data.isEol,
-    isFrigate: parsed.data.isFrigate,
     preserveMass: parsed.data.preserveMass,
     isRolling: parsed.data.isRolling,
   });

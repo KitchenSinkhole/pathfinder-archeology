@@ -13,7 +13,7 @@
 - `scope` — `connection_scope` enum, required.
 - `mass_status` — `wh_mass` enum, default `fresh`.
 - `jump_mass_class` — `wh_jump_mass` enum, nullable (only WH links set it).
-- `is_eol`, `is_frigate`, `preserve_mass`, `is_rolling` — `boolean`, default `false`.
+- `is_eol`, `preserve_mass`, `is_rolling` — `boolean`, default `false`.
 - `eol_at` — `timestamptz`, nullable. Stamped when `is_eol` first goes true; read by the EOL-expiry cron.
 - `created_at` / `updated_at` — `timestamptz`, default `now()`.
 

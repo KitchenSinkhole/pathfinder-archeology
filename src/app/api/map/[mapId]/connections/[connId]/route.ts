@@ -18,7 +18,6 @@ const updateConnectionBodySchema = z.object({
   massStatus: z.enum(whMass.enumValues).optional(),
   jumpMassClass: z.enum(whJumpMass.enumValues).nullable().optional(),
   isEol: z.boolean().optional(),
-  isFrigate: z.boolean().optional(),
   preserveMass: z.boolean().optional(),
   isRolling: z.boolean().optional(),
 });

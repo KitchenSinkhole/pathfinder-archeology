@@ -23,7 +23,6 @@ export type CreateConnectionInput = {
   massStatus?: WhMass;
   jumpMassClass?: WhJumpMass | null;
   isEol?: boolean;
-  isFrigate?: boolean;
   preserveMass?: boolean;
   isRolling?: boolean;
 };
@@ -42,7 +41,6 @@ export type UpdateConnectionPatch = {
   massStatus?: WhMass;
   jumpMassClass?: WhJumpMass | null;
   isEol?: boolean;
-  isFrigate?: boolean;
   preserveMass?: boolean;
   isRolling?: boolean;
 };
@@ -74,7 +72,6 @@ export function createConnection(
           massStatus: input.massStatus ?? 'fresh',
           jumpMassClass: input.jumpMassClass ?? null,
           isEol,
-          isFrigate: input.isFrigate ?? false,
           preserveMass: input.preserveMass ?? false,
           isRolling: input.isRolling ?? false,
           eolAt: isEol ? new Date() : null,
@@ -87,7 +84,6 @@ export function createConnection(
           massStatus: apMapConnection.massStatus,
           jumpMassClass: apMapConnection.jumpMassClass,
           isEol: apMapConnection.isEol,
-          isFrigate: apMapConnection.isFrigate,
           preserveMass: apMapConnection.preserveMass,
           isRolling: apMapConnection.isRolling,
           eolAt: apMapConnection.eolAt,
@@ -101,7 +97,6 @@ export function createConnection(
         massStatus: row!.massStatus,
         jumpMassClass: row!.jumpMassClass,
         isEol: row!.isEol,
-        isFrigate: row!.isFrigate,
         preserveMass: row!.preserveMass,
         isRolling: row!.isRolling,
         eolAt: row!.eolAt ? row!.eolAt.toISOString() : null,
@@ -152,7 +147,6 @@ export function updateConnection(
       if ('scope' in patch) set.scope = patch.scope;
       if ('massStatus' in patch) set.massStatus = patch.massStatus;
       if ('jumpMassClass' in patch) set.jumpMassClass = patch.jumpMassClass;
-      if ('isFrigate' in patch) set.isFrigate = patch.isFrigate;
       if ('preserveMass' in patch) set.preserveMass = patch.preserveMass;
       if ('isRolling' in patch) set.isRolling = patch.isRolling;
 
@@ -189,7 +183,6 @@ export function updateConnection(
       if ('scope' in patch) out.scope = patch.scope;
       if ('massStatus' in patch) out.massStatus = patch.massStatus;
       if ('jumpMassClass' in patch) out.jumpMassClass = patch.jumpMassClass;
-      if ('isFrigate' in patch) out.isFrigate = patch.isFrigate;
       if ('preserveMass' in patch) out.preserveMass = patch.preserveMass;
       if ('isRolling' in patch) out.isRolling = patch.isRolling;
       if ('isEol' in patch) {

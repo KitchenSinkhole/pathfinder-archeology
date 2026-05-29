@@ -25,7 +25,6 @@ export const apMapConnection = pgTable(
     // Nullable: only wormhole links carry a jump-mass class.
     jumpMassClass: whJumpMass('jump_mass_class'),
     isEol: boolean('is_eol').notNull().default(false),
-    isFrigate: boolean('is_frigate').notNull().default(false),
     preserveMass: boolean('preserve_mass').notNull().default(false),
     isRolling: boolean('is_rolling').notNull().default(false),
     // When `is_eol` was first set true — used by the EOL-expiry cron.

@@ -133,7 +133,6 @@ describe('formatHistoryMessage', () => {
       massStatus: 'fresh',
       jumpMassClass: 'l',
       isEol: false,
-      isFrigate: false,
       preserveMass: false,
       isRolling: false,
       eolAt: null,

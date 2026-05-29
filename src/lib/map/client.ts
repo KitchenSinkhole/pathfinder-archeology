@@ -60,7 +60,6 @@ export type CreateConnectionBody = {
   massStatus?: WhMass;
   jumpMassClass?: WhJumpMass | null;
   isEol?: boolean;
-  isFrigate?: boolean;
   preserveMass?: boolean;
   isRolling?: boolean;
 };
@@ -70,7 +69,6 @@ export type UpdateConnectionBody = {
   massStatus?: WhMass;
   jumpMassClass?: WhJumpMass | null;
   isEol?: boolean;
-  isFrigate?: boolean;
   preserveMass?: boolean;
   isRolling?: boolean;
 };

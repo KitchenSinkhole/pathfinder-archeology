@@ -68,7 +68,6 @@ export type MapConnectionEdge = {
   massStatus: WhMass;
   jumpMassClass: WhJumpMass | null;
   isEol: boolean;
-  isFrigate: boolean;
   preserveMass: boolean;
   isRolling: boolean;
   /** When `is_eol` was first stamped (ISO). Null when the connection is not EOL. */
@@ -228,7 +227,6 @@ export async function loadMapForView(
       massStatus: apMapConnection.massStatus,
       jumpMassClass: apMapConnection.jumpMassClass,
       isEol: apMapConnection.isEol,
-      isFrigate: apMapConnection.isFrigate,
       preserveMass: apMapConnection.preserveMass,
       isRolling: apMapConnection.isRolling,
       eolAt: apMapConnection.eolAt,
@@ -288,7 +286,6 @@ export async function loadMapForView(
       massStatus: c.massStatus,
       jumpMassClass: c.jumpMassClass,
       isEol: c.isEol,
-      isFrigate: c.isFrigate,
       preserveMass: c.preserveMass,
       isRolling: c.isRolling,
       eolAt: c.eolAt ? c.eolAt.toISOString() : null,
