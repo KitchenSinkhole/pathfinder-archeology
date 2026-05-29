@@ -48,5 +48,6 @@ COPY --from=build /app/.next ./.next
 # runtime, plus the migration SQL that `pnpm db:migrate` applies.
 COPY package.json pnpm-lock.yaml tsconfig.json next.config.ts aperture.config.ts drizzle.config.ts server.ts ./
 COPY src ./src
+COPY scripts/data ./scripts/data
 EXPOSE 3003
 CMD ["pnpm", "start"]
