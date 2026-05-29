@@ -9,7 +9,7 @@ import { z } from 'zod';
  * ship_kills, pod_kills, npc_kills }` for the same hourly window.
  *
  * Both feed the Stage 11.3 stats-refresh job, which upserts into
- * `ap_system_stats`. Schemas per `docs/ESI/swagger.json`.
+ * `ap_system_stats`. Schemas per `src/lib/esi/swagger.json`.
  */
 
 export const universeSystemJumpsSchema = z.array(

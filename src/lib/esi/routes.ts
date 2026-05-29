@@ -1,5 +1,4 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import swaggerJson from './swagger.json';
 
 /**
  * Swagger-backed route resolver for the ESI client.
@@ -7,11 +6,14 @@ import { resolve } from 'node:path';
  * `opkeys.ts` maps an opKey to a swagger `operationId`; this module resolves
  * that `operationId` to the concrete HTTP method, version-prefixed path
  * template (e.g. `/v1/characters/{character_id}/location/`), and the names of
- * its path/query parameters. `docs/ESI/swagger.json` is the single source of
- * truth — the client parses it at runtime rather than duplicating method/path
- * data, so ESI route drift surfaces here rather than as a hand-maintained typo.
+ * its path/query parameters. `src/lib/esi/swagger.json` is the single source of
+ * truth — the resolver reads it rather than duplicating method/path data, so
+ * ESI route drift surfaces here rather than as a hand-maintained typo.
  *
- * Server-only: reads the swagger file from disk and is never bundled to the
+ * The swagger file is a static import (not an `fs` read) so it is bundled with
+ * the code: it ships in every runtime — the Next-compiled server chunks AND the
+ * tsx-run job process — with no dependency on the working directory or on a
+ * docs/ asset being copied into the image. Server-only; never bundled to the
  * browser (ESI calls run in jobs / server actions / route handlers).
  */
 
@@ -40,8 +42,7 @@ type SwaggerPaths = Record<string, Record<string, SwaggerOperation>>;
 let index: Map<string, ResolvedRoute> | null = null;
 
 function buildIndex(): Map<string, ResolvedRoute> {
-  const swaggerPath = resolve(process.cwd(), 'docs/ESI/swagger.json');
-  const swagger = JSON.parse(readFileSync(swaggerPath, 'utf8')) as { paths: SwaggerPaths };
+  const swagger = swaggerJson as unknown as { paths: SwaggerPaths };
 
   const built = new Map<string, ResolvedRoute>();
   for (const [path, methods] of Object.entries(swagger.paths)) {

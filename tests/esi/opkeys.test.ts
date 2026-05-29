@@ -6,10 +6,10 @@ import { OP_KEYS } from '@/lib/esi/opkeys';
 /**
  * The opKey→operationId pairings are inferred from legacy call sites (the vendor
  * package that dispatched them is not in this tree). This test makes the swagger
- * authoritative: every operationId we name must exist in docs/ESI/swagger.json,
+ * authoritative: every operationId we name must exist in src/lib/esi/swagger.json,
  * so a typo or ESI schema drift fails loudly here rather than at runtime.
  */
-const swaggerPath = resolve(process.cwd(), 'docs/ESI/swagger.json');
+const swaggerPath = resolve(process.cwd(), 'src/lib/esi/swagger.json');
 const swagger = readFileSync(swaggerPath, 'utf8');
 
 const operationIds = new Set(

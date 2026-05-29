@@ -3,7 +3,7 @@
  *
  * "opKey" is Pathfinder's internal name for an ESI operation (e.g.
  * `getCharacterLocation`). Each opKey resolves to a swagger `operationId`
- * (e.g. `get_characters_character_id_location`), and `docs/ESI/swagger.json`
+ * (e.g. `get_characters_character_id_location`), and `src/lib/esi/swagger.json`
  * is authoritative for the HTTP method + path + params that operationId names.
  *
  * The opKey inventory is grepped from legacy call sites (docs/spec/05 §3.1).

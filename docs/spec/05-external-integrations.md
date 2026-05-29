@@ -17,7 +17,7 @@ The four HTTP integrations:
 
 All four are concrete subclasses of [`Lib/Api/AbstractClient`](../../app/Lib/Api/AbstractClient.php) and are registered against the F3 service container as `$f3->ccpClient()`, `$f3->ssoClient()`, `$f3->eveScoutClient()`, `$f3->gitHubClient()` (see [01-config-and-deployment.md](01-config-and-deployment.md) for the boot wiring).
 
-The full ESI swagger is checked into [`docs/ESI/swagger.json`](../ESI/swagger.json); endpoint identifiers in this document refer to that file's `operationId` values.
+The full ESI swagger is checked into [`src/lib/esi/swagger.json`](../../src/lib/esi/swagger.json); endpoint identifiers in this document refer to that file's `operationId` values.
 
 ---
 
@@ -197,7 +197,7 @@ Pathfinder uses ESI through one Prefab — `$f3->ccpClient()` — and routes eve
 
 **Notes on the inventory:**
 
-- The vendor `monoliyoda/pathfinder_esi` package is not present in the working tree (no `vendor/` directory). The opKey → operationId mapping above was derived from call-site signatures and from `docs/ESI/swagger.json` cross-checking. Any opKey that turns out to dispatch to a different swagger op should be corrected here — but the call-site code itself is authoritative for *what arguments* are sent.
+- The vendor `monoliyoda/pathfinder_esi` package is not present in the working tree (no `vendor/` directory). The opKey → operationId mapping above was derived from call-site signatures and from `src/lib/esi/swagger.json` cross-checking. Any opKey that turns out to dispatch to a different swagger op should be corrected here — but the call-site code itself is authoritative for *what arguments* are sent.
 - "Cache window" descriptors are qualitative — Guzzle cache middleware honours CCP's `Cache-Control: max-age` headers; values of "very long" correspond to CCP's day+ static-universe TTLs.
 - Every authenticated call passes `$accessToken` as a positional argument; the underlying client appends it as the `Authorization: Bearer …` header. Tokens never appear in URL strings.
 
@@ -372,7 +372,7 @@ Two seed paths in [`export/`](../../export/):
 - [x] [`app/Controller/Api/GitHub.php`](../../app/Controller/Api/GitHub.php) — §5.
 - [x] [`app/Lib/Api/AbstractClient.php`](../../app/Lib/Api/AbstractClient.php) — §1.
 - [x] [`app/Lib/Api/CcpClient.php`](../../app/Lib/Api/CcpClient.php), [`SsoClient.php`](../../app/Lib/Api/SsoClient.php), [`EveScoutClient.php`](../../app/Lib/Api/EveScoutClient.php), [`GitHubClient.php`](../../app/Lib/Api/GitHubClient.php) — §1.
-- [x] `vendor/monoliyoda/pathfinder_esi` — **not present in working tree.** opKey → swagger mapping inferred from call sites and `docs/ESI/swagger.json`. See open question below.
+- [x] `vendor/monoliyoda/pathfinder_esi` — **not present in working tree.** opKey → swagger mapping inferred from call sites and `src/lib/esi/swagger.json`. See open question below.
 - [x] [`public/templates/mail/`](../../public/templates/mail/) (`basic.html`, `basic_inline.html`) — §6.
 - [x] `app/Lib/Esi*` — not present (no such files); ESI access is exclusively through `app/Lib/Api/CcpClient.php`.
 

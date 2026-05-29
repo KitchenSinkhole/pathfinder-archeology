@@ -52,7 +52,7 @@ Every frame is `{ task, load }` (NDJSON/JSON). `envelopeSchema` keeps `load` as 
 
 ## ESI opKey → operationId map
 
-`OP_KEYS` in [`opkeys.ts`](../../src/lib/esi/opkeys.ts) is the canonical map. An **opKey** is Pathfinder's internal operation name; it resolves to a swagger `operationId`, and [`docs/ESI/swagger.json`](../ESI/swagger.json) is authoritative for the resulting HTTP method/path/params. The full inventory (≈40 opKeys, grouped: status, character, corporation/alliance, UI mutations, routing/search, universe geography, universe items/dogma, structures, stats/sovereignty) is enumerated in code; the per-call argument/response detail remains in [05-external-integrations.md §3.1](05-external-integrations.md).
+`OP_KEYS` in [`opkeys.ts`](../../src/lib/esi/opkeys.ts) is the canonical map. An **opKey** is Pathfinder's internal operation name; it resolves to a swagger `operationId`, and [`src/lib/esi/swagger.json`](../../src/lib/esi/swagger.json) is authoritative for the resulting HTTP method/path/params. The full inventory (≈40 opKeys, grouped: status, character, corporation/alliance, UI mutations, routing/search, universe geography, universe items/dogma, structures, stats/sovereignty) is enumerated in code; the per-call argument/response detail remains in [05-external-integrations.md §3.1](05-external-integrations.md).
 
 Each `OpDef` carries `operationId`, `auth` (`'none' | 'character'`), and an optional `inferred: true`.
 

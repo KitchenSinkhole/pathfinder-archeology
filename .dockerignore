@@ -21,13 +21,7 @@ dist
 .github
 .vscode
 .idea
-# docs/ is excluded EXCEPT the ESI swagger file, which the route resolver reads
-# at runtime (src/lib/esi/routes.ts). The contents-glob form is required so the
-# re-include survives the excluded parent directory.
-docs/*
-!docs/ESI
-docs/ESI/*
-!docs/ESI/swagger.json
+docs
 tests
 coverage
 

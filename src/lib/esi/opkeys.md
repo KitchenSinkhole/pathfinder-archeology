@@ -3,7 +3,7 @@
 **Purpose:** Canonical opKey → swagger `operationId` map the Stage 4 ESI client dispatches against. Data only, no request logic.
 **File:** `src/lib/esi/opkeys.ts`
 
-opKey = Pathfinder's internal operation name (e.g. `getCharacterLocation`). It resolves to a swagger `operationId`, and `docs/ESI/swagger.json` is authoritative for the resulting HTTP method/path/params. Inventory grepped from legacy call sites (docs/spec/05 §3.1).
+opKey = Pathfinder's internal operation name (e.g. `getCharacterLocation`). It resolves to a swagger `operationId`, and `src/lib/esi/swagger.json` is authoritative for the resulting HTTP method/path/params. Inventory grepped from legacy call sites (docs/spec/05 §3.1).
 
 ---
 
