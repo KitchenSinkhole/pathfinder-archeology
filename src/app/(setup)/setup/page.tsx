@@ -2,7 +2,7 @@ import { desc, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { apJobRun } from '@/db/schema';
 import { readSetupCookie } from '@/lib/auth/setup-cookie';
-import { jobModules } from '@/lib/jobs/registry';
+import { onDemandJobModules } from '@/lib/jobs/registry';
 import { RunCronCard } from '@/components/setup/RunCronCard';
 import { RunMigrationsCard } from '@/components/setup/RunMigrationsCard';
 import { RunSdeIngestCard } from '@/components/setup/RunSdeIngestCard';
@@ -93,7 +93,7 @@ export default async function SetupPage() {
   }
 
   const status = await loadStatus();
-  const knownTaskNames = jobModules()
+  const knownTaskNames = onDemandJobModules()
     .map((m) => m.name)
     .sort();
 

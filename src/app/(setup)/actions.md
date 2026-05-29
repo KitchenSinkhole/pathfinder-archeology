@@ -18,7 +18,7 @@ Gated. Diffs `src/db/migrations/meta/_journal.json` against `drizzle.__drizzle_m
 Gated. Enqueues the `sde-ingest` graphile-worker task via `graphile_worker.add_job`. Returns the queued job id as a base-10 string.
 
 ### setupRunCronOnDemand(name: string): Promise<ActionResult<{ jobId: string }>>
-Gated. Validates `name` against `jobModules()` from `src/lib/jobs/registry.ts` so the wizard can't enqueue arbitrary strings, then enqueues via `graphile_worker.add_job(name, '{}')`. Returns the queued job id.
+Gated. Validates `name` against `onDemandJobModules()` from `src/lib/jobs/registry.ts` — the cron-driven, payload-less subset — so the wizard can't enqueue arbitrary strings or payload-required tasks (`location-poll` / `webhook-dispatch`), then enqueues via `graphile_worker.add_job(name, '{}')`. Returns the queued job id. Enqueuing a payload-required task here with an empty payload would crash its handler, so they're kept out of the allowlist.
 
 ---
 

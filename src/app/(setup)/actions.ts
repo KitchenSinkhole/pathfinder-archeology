@@ -15,7 +15,7 @@ import {
   setSetupCookie,
 } from '@/lib/auth/setup-cookie';
 import { env } from '@/lib/env';
-import { jobModules } from '@/lib/jobs/registry';
+import { onDemandJobModules } from '@/lib/jobs/registry';
 
 /**
  * Stage 16.6 setup-wizard Server Actions. All gated except `setupUnlockAction`
@@ -205,7 +205,7 @@ export async function setupRunCronOnDemand(
   const parsed = cronOnDemandSchema.safeParse({ name });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]!.message };
 
-  const known = new Set(jobModules().map((m) => m.name));
+  const known = new Set(onDemandJobModules().map((m) => m.name));
   if (!known.has(parsed.data.name)) {
     return { ok: false, error: `Unknown task: ${parsed.data.name}` };
   }

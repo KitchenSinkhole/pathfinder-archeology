@@ -68,6 +68,19 @@ export function jobModules(): readonly JobModule[] {
   return modules;
 }
 
+/**
+ * The subset of jobs the `/setup` ops console may enqueue on-demand with an
+ * empty payload. Restricted to cron-driven tasks: those run unattended on a
+ * schedule and therefore take no required payload, so an empty `'{}'` enqueue
+ * is always valid. Payload-driven `addJob`-only tasks (`location-poll`,
+ * `webhook-dispatch`) are excluded — enqueuing them payload-less crashes the
+ * handler. `sde-ingest` is also payload-less but has its own dedicated console
+ * card, so it isn't surfaced in the generic list either.
+ */
+export function onDemandJobModules(): readonly JobModule[] {
+  return modules.filter((m) => m.cron !== undefined);
+}
+
 export function buildTaskList(extra: readonly JobModule[] = []): TaskList {
   const out: TaskList = {};
   for (const m of [...modules, ...extra]) {

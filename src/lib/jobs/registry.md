@@ -15,6 +15,9 @@ What each task file under `src/lib/jobs/tasks/` exports.
 ### jobModules(): readonly JobModule[]
 The full registered set. Exposed primarily for operability pages and CLI scripts.
 
+### onDemandJobModules(): readonly JobModule[]
+The subset the `/setup` ops console may enqueue with an empty payload — `modules.filter((m) => m.cron !== undefined)`. Cron-driven tasks take no required payload, so a payload-less enqueue is always valid. Payload-driven `addJob`-only tasks (`location-poll`, `webhook-dispatch`) are excluded because enqueuing them empty crashes the handler; `sde-ingest` is payload-less but has its own dedicated console card.
+
 ### buildTaskList(extra?): TaskList
 Builds the graphile-worker `TaskList` map (`{ [name]: run }`) from the registry. Throws on duplicate task names.
 

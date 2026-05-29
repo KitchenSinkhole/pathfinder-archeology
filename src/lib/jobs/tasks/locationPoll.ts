@@ -60,7 +60,7 @@ interface FoldSummary {
 }
 
 interface PollNotes {
-  stopped?: 'no-tracking' | 'character-inactive' | 'character-missing' | 'token-loss';
+  stopped?: 'no-payload' | 'no-tracking' | 'character-inactive' | 'character-missing' | 'token-loss';
   online?: boolean;
   previousSystemId?: number | null;
   currentSystemId?: number | null;
@@ -71,6 +71,13 @@ interface PollNotes {
 }
 
 async function poll(payload: LocationPollPayload, helpers: JobHelpers): Promise<PollNotes> {
+  // A graphile-worker payload is data crossing into the handler — guard it.
+  // A payload-less enqueue (e.g. an operator triggering this from the `/setup`
+  // console) would otherwise crash on `BigInt(undefined)` and burn all 25
+  // retries. Stop cleanly instead; nothing re-enqueues.
+  if (!payload?.characterId) {
+    return { stopped: 'no-payload' };
+  }
   const characterId = BigInt(payload.characterId);
 
   // Step 1 — bail early if the character isn't tracked anywhere. The
