@@ -77,10 +77,25 @@ type-to-confirm `DeleteAccountDialog`, launched from `CharacterSwitcher`. The ac
 *rollup-to-main attribution* for stats/activity is deferred to 17.7 + the Stage 11 rollup job
 (they will read `main_character_id`).
 
-## Stage 17.6 — Map Settings + import/export
+## Stage 17.6 — Map Settings + import/export  ✅
 **Mode:** Plan mode
 **Goal:** Consolidated new/edit/settings dialog; reuse admin webhook components; map JSON import/export (`map_import`/`map_export` rights).
 **Done when:** Edit/settings persist; export downloads JSON; import recreates systems/connections/signatures.
+
+New `MapSettingsDialog` (`src/components/dialogs/`) launched from the **map canvas toolbar**
+(next to "Map info"), tabbed General / Settings / Export / Import. General + Settings persist via
+the existing `updateMapSettingsAction` (`map_update`); a name change reflects live on the canvas via
+the realtime `map.update` echo. Export = `GET /api/map/[mapId]/export` (`map_export`) → client builds
+the `aperture-map-<id>-<date>.json` download; Import = `POST /api/map/[mapId]/import` (`map_import`)
+**merges into the open map** — systems upsert by EVE system id, connections + signatures recreated with
+endpoint ids remapped, all under one transaction reusing the `bulkSignatures` commit pattern; returned
+payloads fold onto the canvas via the existing `onBulkPaste` handler. Core is `src/lib/map/transfer.ts`
+(`buildMapExport` / `importMapData` / `mapExportSchema`); settings pre-fill via new
+`loadMapSettings` (loadMap.ts) threaded through the map page. **Decisions:** webhooks stay
+admin-only (not in the dialog); `New` map creation stays on the maps list (`CreateMapDialog`) since the
+dialog acts on an already-open map; re-import is idempotent for systems but appends connections (no
+natural unique key). Covered by `tests/integration/map-import-export.test.ts` (round-trip + remap +
+unresolved-endpoint skip).
 
 ## Stage 17.7 — Statistics dialog
 **Mode:** Plan mode

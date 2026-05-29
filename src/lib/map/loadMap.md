@@ -15,6 +15,11 @@ Online tracked pilots currently in a known system on this map. Joins `ap_map_cha
 
 ---
 
+### loadMapSettings(viewerCharacterId: bigint, mapId: bigint): Promise<MapSettings | null>
+Stage 17.6. Loads a map's editable metadata + behaviour toggles for the settings dialog. Gated by `canViewMap` (mirrors `loadMapForView`); returns null when the map is missing, soft-deleted, or not viewable. Pre-fill only — the dialog's Save re-checks `map_update` server-side.
+
+---
+
 ### listViewableMaps(viewerCharacterId: bigint): Promise<MapListItem[]>
 Maps the viewer can see, ordered by name. Feeds the `/maps` list. Stage 15 filters server-side via `viewableMapPredicate` — admins see every non-soft-deleted map; members see maps where they are the owner (by scope) or where one of their roles appears in `ap_map_role_access`.
 
@@ -32,6 +37,7 @@ Stage 16.2. Maps an admin / manager can act on, **including soft-deleted rows** 
 - `MapPresenceEntry` — one online tracked pilot: `{ characterId, characterName, systemId, shipTypeId, shipTypeName, locationAt }`. `systemId` is the EVE solar-system id; `locationAt` is ISO.
 - `MapViewData` — `{ map, systems, connections, signatures, presence }`, the page's full payload.
 - `MapListItem` — a map row for the user-facing list.
+- `MapSettings` — editable map metadata + four behaviour toggles for the Stage 17.6 settings dialog; `scope`/`type` are immutable post-create (shown read-only).
 - `AdminMapListItem` — a map row for `/admin/maps`: includes owner FKs (`ownerCharacterId`/`ownerCorporationId`/`ownerAllianceId` as nullable strings), `createdAt`/`updatedAt`/`deletedAt` ISO strings, and the same identity fields as `MapListItem`.
 
 These are re-exported from `src/types/index.ts`.

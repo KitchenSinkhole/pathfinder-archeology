@@ -138,6 +138,20 @@ export type MapListItem = {
   icon: string | null;
 };
 
+/** Editable map metadata + behaviour toggles, for the Stage 17.6 settings dialog. */
+export type MapSettings = {
+  name: string;
+  icon: string | null;
+  /** Immutable post-create; shown read-only in the dialog. */
+  scope: MapScope;
+  /** Immutable post-create; shown read-only in the dialog. */
+  type: MapType;
+  deleteExpiredConnections: boolean;
+  deleteEolConnections: boolean;
+  trackAbyssalJumps: boolean;
+  logActivity: boolean;
+};
+
 /**
  * A map row for the admin panel list. Carries the soft-delete state and the
  * full owner FKs so the admin UI can render ownership and offer
@@ -294,6 +308,35 @@ export async function loadMapForView(
     })),
     presence,
   };
+}
+
+/**
+ * Load a map's editable settings (name / icon / scope / type + behaviour
+ * toggles) for the Stage 17.6 settings dialog. Gated by `canViewMap` to mirror
+ * `loadMapForView`; returns null when the map is missing, soft-deleted, or the
+ * viewer can't see it. The dialog's Save still re-checks `map_update`
+ * server-side — this read only pre-fills the form.
+ */
+export async function loadMapSettings(
+  viewerCharacterId: bigint,
+  mapId: bigint,
+): Promise<MapSettings | null> {
+  if (!(await canViewMap(viewerCharacterId, mapId))) return null;
+
+  const [row] = await db
+    .select({
+      name: apMap.name,
+      icon: apMap.icon,
+      scope: apMap.scope,
+      type: apMap.type,
+      deleteExpiredConnections: apMap.deleteExpiredConnections,
+      deleteEolConnections: apMap.deleteEolConnections,
+      trackAbyssalJumps: apMap.trackAbyssalJumps,
+      logActivity: apMap.logActivity,
+    })
+    .from(apMap)
+    .where(and(eq(apMap.id, mapId), isNull(apMap.deletedAt)));
+  return row ?? null;
 }
 
 /**

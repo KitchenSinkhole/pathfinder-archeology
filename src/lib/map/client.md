@@ -49,9 +49,15 @@ POST `/api/map/{mapId}/signatures/resolve`. Preview-only resolver for the paste 
 ### fetchWormholeTypes({ mapId, universeSystemId }): Promise<ActionResult<WormholeTypeOption[]>>
 GET `/api/map/{mapId}/wormhole-types?systemId=<universeSystemId>`. Results are cached per `(mapId, universeSystemId)` in a module-scoped `Map` for the session — WH catalog filtering is immutable per class, so this avoids re-fetching as the user opens the inspector for different systems.
 
+### exportMapOnServer({ mapId }): Promise<FetchResult<MapExportFile>>
+GET `/api/map/{mapId}/export` (`map_export` right). Returns the map's current state document; the caller serialises it and triggers the browser download.
+
+### importMapOnServer({ mapId, data }): Promise<ActionResult<ImportResult>>
+POST `/api/map/{mapId}/import` (`map_import` right). Merges a `MapExportFile` into the open map and returns the N committed event payloads (wrapper-level `eventId` is `0`); the caller folds each via `applyEvent` and registers its `eventId`.
+
 ---
 
 ### Depends On
 - `sonner` (`toast.error`)
-- Types from `@/types`: `ActionResult`, `MapEventPayload`, `WormholeTypeOption`, `BulkPasteOptions`, `BulkPasteResult`, `ParsedSigRow`, `ResolvedSigRow`
+- Types from `@/types`: `ActionResult`, `MapEventPayload`, `WormholeTypeOption`, `BulkPasteOptions`, `BulkPasteResult`, `ParsedSigRow`, `ResolvedSigRow`, `MapExportFile`, `ImportResult`
 - Enum value types from `@/lib/map/enumLabels`

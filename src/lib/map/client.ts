@@ -2,7 +2,9 @@ import type {
   ActionResult,
   BulkPasteOptions,
   BulkPasteResult,
+  ImportResult,
   MapEventPayload,
+  MapExportFile,
   ParsedSigRow,
   ResolvedSigRow,
   SignatureGroupKey,
@@ -272,6 +274,32 @@ export function resolveSignaturesOnServer(args: {
   ).then((result) =>
     result.ok ? { ok: true, data: result.data } : { ok: false, error: result.error },
   );
+}
+
+// ---------------------------------------------------------------------------
+// Map import / export (Stage 17.6)
+// ---------------------------------------------------------------------------
+
+/**
+ * Download the map's current state as a `MapExportFile` (read; `map_export`
+ * right). Returns a plain `FetchResult` — no `eventId`. The caller serialises
+ * the result and triggers the browser download (so it can name the file).
+ */
+export function exportMapOnServer(args: { mapId: string }): Promise<FetchResult<MapExportFile>> {
+  return readFetch<MapExportFile>(`/api/map/${args.mapId}/export`);
+}
+
+/**
+ * Merge a `MapExportFile` into the open map (`map_import` right). Returns the N
+ * committed event payloads (like the bulk-paste path) so the caller folds each
+ * locally and registers its `eventId` for echo dedupe; the wrapper-level
+ * `eventId` is always `0`.
+ */
+export function importMapOnServer(args: {
+  mapId: string;
+  data: unknown;
+}): Promise<ActionResult<ImportResult>> {
+  return mutationFetch<ImportResult>('POST', `/api/map/${args.mapId}/import`, args.data);
 }
 
 // ---------------------------------------------------------------------------

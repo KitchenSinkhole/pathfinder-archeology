@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { MapCanvas } from '@/components/map/MapCanvas';
-import { loadMapForView } from '@/lib/map/loadMap';
+import { loadMapForView, loadMapSettings } from '@/lib/map/loadMap';
 import { routesForSystems } from '@/lib/map/route';
 import { statsForSystems } from '@/lib/map/stats';
 import { intelForSystems } from '@/lib/map/intel';
@@ -43,12 +43,23 @@ export default async function MapPage({ params }: { params: Promise<{ slug?: str
   }
 
   const systemIds = data.systems.map((s) => s.systemId);
-  const [routes, stats, intel, structures] = await Promise.all([
+  const [routes, stats, intel, structures, settings] = await Promise.all([
     routesForSystems(systemIds),
     statsForSystems(systemIds),
     intelForSystems(systemIds),
     structuresForSystems(systemIds),
+    loadMapSettings(BigInt(session.characterId), mapId),
   ]);
+
+  // Non-null because `loadMapForView` already succeeded for the same viewer/map.
+  if (!settings) {
+    return (
+      <EmptyState
+        title="Map not found"
+        description="This map doesn't exist or has been deleted."
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -58,7 +69,14 @@ export default async function MapPage({ params }: { params: Promise<{ slug?: str
           {data.map.type} · {data.map.scope} · {data.systems.length} systems
         </p>
       </div>
-      <MapCanvas data={data} routes={routes} stats={stats} intel={intel} structures={structures} />
+      <MapCanvas
+        data={data}
+        routes={routes}
+        stats={stats}
+        intel={intel}
+        structures={structures}
+        settings={settings}
+      />
     </div>
   );
 }

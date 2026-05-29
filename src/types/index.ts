@@ -151,8 +151,12 @@ export type {
   MapPresenceEntry,
   MapViewData,
   MapListItem,
+  MapSettings,
   AdminMapListItem,
 } from '@/lib/map/loadMap';
+
+// Map import/export document + result types (src/lib/map/transfer.ts).
+export type { MapExportFile, ImportSummary, ImportResult } from '@/lib/map/transfer';
 
 // Route module view-model (computed in src/lib/map/route.ts).
 export type { HubRoute } from '@/lib/map/route';

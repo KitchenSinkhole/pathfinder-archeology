@@ -15,7 +15,13 @@ import {
   type Viewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import type { MapEventPayload, MapSystemNode, MapViewData, StructureIntel } from '@/types';
+import type {
+  MapEventPayload,
+  MapSettings,
+  MapSystemNode,
+  MapViewData,
+  StructureIntel,
+} from '@/types';
 import type { HubRoute } from '@/lib/map/route';
 import type { SystemStatsSummary } from '@/lib/map/stats';
 import type { SystemIntelSummary } from '@/lib/map/intel';
@@ -52,9 +58,10 @@ import {
   type SelectionRef,
 } from '@/components/sidebar/InspectorModule';
 import { SignatureModule } from '@/components/sidebar/SignatureModule';
-import { Info, Plus } from 'lucide-react';
+import { Info, Plus, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MapInfoDialog } from '@/components/dialogs/MapInfoDialog';
+import { MapSettingsDialog } from '@/components/dialogs/MapSettingsDialog';
 import { AddSystemDialog } from './AddSystemDialog';
 import { ConnectionEdge, type ConnectionEdgeData } from './ConnectionEdge';
 import { MapPresenceProvider } from './MapPresenceContext';
@@ -69,15 +76,18 @@ export function MapCanvas({
   stats,
   intel,
   structures: initialStructures,
+  settings,
 }: {
   data: MapViewData;
   routes: Record<number, HubRoute[]>;
   stats: Record<number, SystemStatsSummary>;
   intel: Record<number, SystemIntelSummary>;
   structures: Record<number, StructureIntel[]>;
+  settings: MapSettings;
 }) {
   const [selected, setSelected] = useState<SelectionRef | null>(null);
   const [mapInfoOpen, setMapInfoOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [addSystemOpen, setAddSystemOpen] = useState(false);
   const [viewData, setViewData] = useState<MapViewData>(data);
   // Captured via ReactFlow's onInit so the manual-add flow can place new nodes
@@ -514,6 +524,10 @@ export function MapCanvas({
               <Info />
               Map info
             </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSettingsOpen(true)}>
+              <Settings />
+              Settings
+            </Button>
           </div>
           <div
             ref={flowWrapperRef}
@@ -606,6 +620,13 @@ export function MapCanvas({
       </div>
 
       <MapInfoDialog open={mapInfoOpen} onOpenChange={setMapInfoOpen} viewData={viewData} />
+      <MapSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        mapId={mapId}
+        settings={settings}
+        onImported={onBulkPaste}
+      />
       <AddSystemDialog
         open={addSystemOpen}
         onOpenChange={setAddSystemOpen}

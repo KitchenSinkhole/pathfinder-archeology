@@ -11,9 +11,10 @@
 | stats | Record<number, SystemStatsSummary> | yes | Precomputed 24h kill stats keyed by EVE system id. |
 | intel | Record<number, SystemIntelSummary> | yes | Read-side integration intel keyed by EVE system id. |
 | structures | Record<number, StructureIntel[]> | yes | Manual structure intel keyed by EVE system id (page-loaded seed; not realtime-synced). |
+| settings | MapSettings | yes | Editable map metadata + behaviour toggles (from `loadMapSettings`), seeds the `MapSettingsDialog`. |
 
 ### Renders
-An unbounded two-column layout (the page scrolls). The wide left column stacks a right-aligned toolbar row ("Add system" + "Map info" ghost buttons) above the `ReactFlow` canvas (pixel height, user-resizable via a drag handle), then a horizontal drag handle and then `SignatureModule` at its full natural height. The narrow right column (`w-80`, `self-start`) contains `InspectorModule`, `RouteModule`, `IntelModule`, `StructureModule`, and `KillStatsModule` and does not stretch to match the left column's height. A `MapInfoDialog` and an `AddSystemDialog` are mounted (closed by default) inside the presence provider.
+An unbounded two-column layout (the page scrolls). The wide left column stacks a right-aligned toolbar row ("Add system" + "Map info" + "Settings" ghost buttons) above the `ReactFlow` canvas (pixel height, user-resizable via a drag handle), then a horizontal drag handle and then `SignatureModule` at its full natural height. The narrow right column (`w-80`, `self-start`) contains `InspectorModule`, `RouteModule`, `IntelModule`, `StructureModule`, and `KillStatsModule` and does not stretch to match the left column's height. A `MapInfoDialog` and an `AddSystemDialog` are mounted (closed by default) inside the presence provider.
 
 ### Behaviour & Interactions
 - `viewData` is seeded from `data` and mutated by both realtime events and local optimistic patches; the canvas is the single source of canvas-render state.
@@ -33,6 +34,7 @@ An unbounded two-column layout (the page scrolls). The wide left column stacks a
 - Toasts: client helpers in `@/lib/map/client` surface server errors as `toast.error` before returning the failure result; `MapCanvas` only handles rollback.
 - Add system (manual): the toolbar "Add system" button opens `AddSystemDialog`. Selecting a search result fires `onAddSystem(systemId)`, which POSTs via `addSystemOnServer` and applies the server payload through `awaitServer` (same path as `onConnect`). New nodes are placed at the current viewport centre (computed from the `ReactFlowInstance` captured in `onInit` + the canvas wrapper's bounding rect) with ±40px jitter so successive adds don't stack; it falls back to (0,0) before the instance is ready. This is the "add a system without jumping a wormhole" pathway — no connection is created.
 - Map info: the toolbar "Map info" button toggles `mapInfoOpen`, opening `MapInfoDialog` with the live `viewData`. The dialog reads counts/systems/connections straight from `viewData` and the online roster from the presence store — no fetch. Lives inside `MapPresenceProvider` so `usePresenceForMap` resolves.
+- Settings: the toolbar "Settings" button toggles `settingsOpen`, opening `MapSettingsDialog` seeded with the `settings` prop. Its import flow returns committed event payloads which are folded onto the canvas via the same `onBulkPaste` handler used by signature paste (registers each `eventId`, applies via `applyEvent`).
 
 ### Emits / Calls
 - `onNodesChange` — xyflow callback; applies `NodeChange[]` to the nodes state via `applyNodeChanges`.
@@ -45,7 +47,7 @@ An unbounded two-column layout (the page scrolls). The wide left column stacks a
 
 ### Depends On
 - `@xyflow/react`, `./SystemNode`, `./ConnectionEdge`, `./MapPresenceContext`
-- `@/components/dialogs/MapInfoDialog`, `./AddSystemDialog`, `@/components/ui/button`
+- `@/components/dialogs/MapInfoDialog`, `@/components/dialogs/MapSettingsDialog`, `./AddSystemDialog`, `@/components/ui/button`
 - `RouteModule`, `KillStatsModule`, `InspectorModule`, `SignatureModule`
 - `IntelModule`, `StructureModule`
 - Structure REST wrappers in `@/lib/structures/client`
@@ -57,6 +59,7 @@ An unbounded two-column layout (the page scrolls). The wide left column stacks a
 ### Local State
 - `selected: SelectionRef | null` — currently selected system or connection.
 - `mapInfoOpen: boolean` — whether the `MapInfoDialog` is open.
+- `settingsOpen: boolean` — whether the `MapSettingsDialog` is open.
 - `addSystemOpen: boolean` — whether the `AddSystemDialog` is open.
 - `flowInstance: ReactFlowInstance | null` (ref) — captured in `onInit`; used to map screen → flow coords for manual system placement.
 - `flowWrapperRef: HTMLDivElement | null` (ref) — the canvas wrapper, for its bounding rect (viewport centre).
