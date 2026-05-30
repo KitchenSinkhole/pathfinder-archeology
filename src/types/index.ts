@@ -261,6 +261,15 @@ export type { OpKey, OpDef } from '@/lib/esi/opkeys';
 export type { SystemEffect, SystemEffectBonus, SystemEffectKey } from '@/lib/eve/systemEffects';
 export type { WormholeJumpInfoRow } from '@/lib/eve/wormholeJumpInfo';
 
+// Activity-statistics view-models (Stage 17.7, computed in src/lib/stats/activity.ts).
+export type {
+  ActivityStatScope,
+  ActivityStatPeriod,
+  ActivityTriplet,
+  ActivityStatRow,
+  ActivityStatsResponse,
+} from '@/lib/stats/activity';
+
 // ESI client decoded-response types (Stage 4).
 export type {
   EsiStatus,

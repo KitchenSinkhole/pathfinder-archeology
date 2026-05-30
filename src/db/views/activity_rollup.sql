@@ -1,5 +1,5 @@
--- Stage 11.4. Weekly activity-log rollup over ap_map_event, refreshed hourly
--- by the `activity-rollup-refresh` graphile-worker task.
+-- Stage 11.4 (revised Stage 17.7). Weekly activity-log rollup over
+-- ap_map_event, refreshed hourly by the `activity-rollup-refresh` task.
 --
 -- This replaces the legacy `activity_log` table (per-week INSERT-DELAYED
 -- counter rows) by aggregating the unified `ap_map_event` history into the
@@ -12,6 +12,13 @@
 -- non-null and the index covers every row deterministically. Character id 0 is
 -- safe as the "no character" sentinel because ap_character.id is a bigserial
 -- starting at 1.
+--
+-- Stage 17.7: a pure canvas position move emits `system.updated` with only
+-- positionX/positionY in its payload. Moving a node around is not a contribution
+-- to the communal map, so it is re-bucketed to the derived kind `system.moved`
+-- (never an emitted `ap_map_event.kind`; exists only in this rollup) which the
+-- statistics reader excludes. A `system.updated` that also touches a substantive
+-- field (alias/tag/status/intelNotes/locked/rallyAt) stays `system.updated`.
 
 CREATE MATERIALIZED VIEW "ap_activity_rollup" AS
 SELECT
@@ -19,7 +26,13 @@ SELECT
   EXTRACT(WEEK    FROM occurred_at)::int      AS iso_week,
   COALESCE(character_id, 0::bigint)           AS character_id,
   map_id,
-  kind,
+  CASE
+    WHEN kind = 'system.updated'
+     AND (payload ? 'positionX' OR payload ? 'positionY')
+     AND NOT (payload ?| ARRAY['alias', 'tag', 'status', 'intelNotes', 'locked', 'rallyAt'])
+    THEN 'system.moved'
+    ELSE kind
+  END                                         AS kind,
   count(*)::int                               AS event_count
 FROM "ap_map_event"
 GROUP BY 1, 2, 3, 4, 5

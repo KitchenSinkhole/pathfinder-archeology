@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { CharacterPanel, type PanelCharacter } from './CharacterPanel';
 import { ReferenceMenu } from './ReferenceMenu';
+import { StatisticsButton } from './StatisticsButton';
 
 export function AppHeader({
   active,
@@ -20,6 +21,7 @@ export function AppHeader({
           Aperture
         </Link>
         <div className="flex items-center gap-1">
+          <StatisticsButton />
           <ReferenceMenu />
           <CharacterPanel
             active={active}

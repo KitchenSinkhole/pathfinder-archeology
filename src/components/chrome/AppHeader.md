@@ -13,8 +13,9 @@
 | travelAnimation | boolean | yes | The account's connection-travel-animation toggle, forwarded to the panel |
 
 ### Renders
-A bordered header bar: an "Aperture" link to `/maps` on the left; on the right, the `ReferenceMenu` info menu next to the `CharacterPanel`.
+A bordered header bar: an "Aperture" link to `/maps` on the left; on the right, the `StatisticsButton` and `ReferenceMenu` info menu next to the `CharacterPanel`.
 
 ### Depends On
 - `CharacterPanel` (client) — the data props are resolved server-side in `(app)/layout.tsx`.
 - `ReferenceMenu` (client) — header entry point for the static reference dialogs.
+- `StatisticsButton` (client) — launches the Stage 17.7 Statistics dialog.

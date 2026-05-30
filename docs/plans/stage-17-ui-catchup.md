@@ -97,10 +97,31 @@ dialog acts on an already-open map; re-import is idempotent for systems but appe
 natural unique key). Covered by `tests/integration/map-import-export.test.ts` (round-trip + remap +
 unresolved-endpoint skip).
 
-## Stage 17.7 — Statistics dialog
+## Stage 17.7 — Statistics dialog  ✅
 **Mode:** Plan mode
 **Goal:** TanStack Table over `ap_activity_rollup` (Stage 11); period navigation; sparklines; rights-gated Private/Corp/Alliance tabs. **First TanStack Table use.**
 **Done when:** Stats render per scope/period with working prev/next.
+
+Global, **header-launched** dialog (`StatisticsButton` beside `ReferenceMenu` in `AppHeader`) — faithful to
+legacy `stats.js`, which ranked characters across all maps of a scope (no mapId). Core reader is
+`src/lib/stats/activity.ts` (`resolveStatsAccess` + `loadActivityStats`): resolves in-scope maps via the
+existing `viewableMapPredicate`, then one raw `db.execute` over the MV with **main-character
+attribution** (`COALESCE(main_character_id, character.id, rollup.character_id)` — alts roll up to the
+account main per `ap_user.main_character_id`). `GET /api/statistics?scope&period&anchor` (Zod-validated,
+scope-gated 403). UI: `StatisticsDialog` (scope tabs + week/month/year segmented control + prev/label/next),
+`StatsTable` (the **first** `@tanstack/react-table` use — rank/portrait/triplets/total/sparkline, sortable),
+hand-rolled `Sparkline` (inline SVG, no chart dep — 17.8 picks the real chart lib).
+
+**Decisions / deviations:** the table covers **System / Connection / Signature** triplets only — `map.*`
+kinds are excluded as map-lifecycle noise. Drag-only canvas position moves (a `system.updated` whose
+payload carries only positionX/positionY) are **not** a contribution and are excluded too: migration
+`0023_activity_rollup_moves` re-buckets them to a derived `system.moved` kind inside the MV, which the
+reader filters out (`kind NOT LIKE 'map.%' AND kind <> 'system.moved'`). Periods are week/month/year derived
+from the weekly MV (each ISO week attributed to its Monday's calendar month/year); legacy day-granular
+month/year is gone with the daily `activity_log`. Legacy `LOG_ACTIVITY_ENABLED`-per-scope gating dropped
+(the rebuild logs every mutation unconditionally). Null-character (erased) events bucket as an
+`(unknown)` row. Covered by `tests/integration/statistics.test.ts` (rollup attribution, scope filter,
+period split, unknown bucket, `hasNext` boundary).
 
 ## Stage 17.8 — Killboard + System Graph modules
 **Mode:** Plan mode
