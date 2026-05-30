@@ -12,7 +12,7 @@ Fetches recent kills for one solar system from zKillboard, decodes the response 
 - `systemId` - EVE solar-system id.
 - `limit` - maximum rows returned after decoding.
 
-**Returns:** Recent kill summaries with zKillboard links, victim ship type id, value, and attacker count.
+**Returns:** Recent kill summaries — `killmailId`, ESI `hash`, zKillboard `href`, and zkb `totalValue`. The list endpoint carries nothing else; victim / ship / time / attacker count are resolved from the full ESI killmail (via `hash`) by `@/lib/map/killboard`.
 
 ---
 

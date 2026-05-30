@@ -8,7 +8,7 @@ opKey = Pathfinder's internal operation name (e.g. `getCharacterLocation`). It r
 ---
 
 ### `OP_KEYS`
-`as const satisfies Record<string, OpDef>` — 41 opKeys. Each value is an `OpDef`:
+`as const satisfies Record<string, OpDef>` — 42 opKeys. Each value is an `OpDef`:
 - `operationId: string` — swagger op (verified to exist by `tests/esi/opkeys.test.ts`).
 - `auth: 'none' | 'character'` — whether a character ESI token is required.
 - `inferred?: true` — pairing not confirmed against vendor source; re-confirm option-bag request shape in Stage 4.
@@ -18,6 +18,8 @@ opKey = Pathfinder's internal operation name (e.g. `getCharacterLocation`). It r
 **Note:** `getCharacterRoles` and `getCorporationRoles` both map to `get_characters_character_id_roles` (corp roles are a subset of that response) — intentional, not a duplicate bug.
 
 **Stage 15 additions:** `getCharacterTitles` (`get_characters_character_id_titles`) — mirrored into `ap_role(source='corp_title')` by `syncCharacterAuthz`. `getCharacterRoles` (existing) drives the Director → `authz_level='admin'` promotion. Both require character auth.
+
+**Stage 17.8 addition:** `getKillmail` (`get_killmails_killmail_id_killmail_hash`, auth none) — fetches the full killmail body (victim / ship / time / attacker count) that zKillboard's per-system list endpoint omits. Consumed by `@/lib/map/killboard`.
 
 ### `OpDef`
 Interface for a single opKey definition (see fields above).

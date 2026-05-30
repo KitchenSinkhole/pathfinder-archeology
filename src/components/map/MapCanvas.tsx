@@ -50,6 +50,8 @@ import { mapUpdateLoadSchema } from '@/lib/realtime/protocol';
 import { useMapSubscription, useRealtime } from '@/lib/realtime/useRealtime';
 import { RouteModule } from '@/components/sidebar/RouteModule';
 import { KillStatsModule } from '@/components/sidebar/KillStatsModule';
+import { SystemGraphModule } from '@/components/sidebar/SystemGraphModule';
+import { SystemKillboardModule } from '@/components/sidebar/SystemKillboardModule';
 import { IntelModule } from '@/components/sidebar/IntelModule';
 import { StructureModule } from '@/components/sidebar/StructureModule';
 import type { StructureFormValues } from '@/components/sidebar/StructureFormDialog';
@@ -638,6 +640,8 @@ export function MapCanvas({
               system={selectedSystem}
               stats={selectedSystem ? stats[selectedSystem.systemId] : undefined}
             />
+            <SystemGraphModule system={selectedSystem} />
+            <SystemKillboardModule system={selectedSystem} />
           </aside>
         </div>
 

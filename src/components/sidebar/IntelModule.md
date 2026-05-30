@@ -11,7 +11,7 @@
 | intel | SystemIntelSummary \| undefined | no | Read-side intel keyed by the selected system id |
 
 ### Renders
-Compact sidebar card with system metadata, sovereignty, faction warfare, EVE-Scout hits, recent zKillboard kills, and external links.
+Compact sidebar card with system metadata, sovereignty, faction warfare, EVE-Scout hits, and external links. Recent kills live in the separate `SystemKillboardModule`, not here.
 
 ### Behaviour & Interactions
 - Empty selected-system state prompts the user to select a system.

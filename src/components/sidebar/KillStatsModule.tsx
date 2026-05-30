@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { isWormholeSystem } from '@/lib/map/space';
 import type { MapSystemNode } from '@/lib/map/loadMap';
 import type { SystemStatsSummary } from '@/lib/map/stats';
 
@@ -17,10 +18,6 @@ const ROWS: { key: keyof SystemStatsSummary; label: string }[] = [
 ];
 
 const EMPTY: SystemStatsSummary = { jumps: 0, shipKills: 0, podKills: 0, factionKills: 0 };
-
-function isWormhole(system: MapSystemNode): boolean {
-  return system.statics.length > 0 || /^J\d{6}$/.test(system.name);
-}
 
 export function KillStatsModule({
   system,
@@ -39,7 +36,7 @@ export function KillStatsModule({
       <CardContent>
         {!system ? (
           <p className="text-xs text-muted-foreground">Select a system to see activity.</p>
-        ) : isWormhole(system) ? (
+        ) : isWormholeSystem(system) ? (
           <p className="text-xs text-muted-foreground">Not tracked in wormhole space.</p>
         ) : (
           <ul className="flex flex-col gap-1 text-xs">

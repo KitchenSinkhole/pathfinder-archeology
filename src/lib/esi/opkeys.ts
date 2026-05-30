@@ -83,6 +83,9 @@ export const OP_KEYS = {
   // Structures (player citadels)
   getUniverseStructure: { operationId: 'get_universe_structures_structure_id', auth: 'character' },
 
+  // Killmails (zKillboard list entries carry only id + hash; the body is here)
+  getKillmail: { operationId: 'get_killmails_killmail_id_killmail_hash', auth: 'none' },
+
   // Stats / sovereignty (cron-driven)
   getUniverseJumps: { operationId: 'get_universe_system_jumps', auth: 'none' },
   getUniverseKills: { operationId: 'get_universe_system_kills', auth: 'none' },

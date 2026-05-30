@@ -14,7 +14,7 @@ A `Card` with four rows of 24h counts. Shows a select prompt when nothing is sel
 
 ### Behaviour & Interactions
 - Read-only. Renders zeros until the Stage 11 stats-refresh job populates `ap_system_stats`.
-- Wormhole detection: has statics or `J######` name.
+- Wormhole detection via the shared `isWormholeSystem` helper (`@/lib/map/space`).
 
 ### Depends On
-- `@/components/ui/card`.
+- `@/components/ui/card`, `@/lib/map/space` (`isWormholeSystem`).

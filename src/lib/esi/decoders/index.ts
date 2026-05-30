@@ -33,3 +33,5 @@ export {
   type EsiCharacterTitle,
   type EsiCharacterTitles,
 } from './character';
+export { killmailSchema, type EsiKillmail } from './killmail';
+export { universeNamesSchema, type EsiUniverseNames } from './universeNames';

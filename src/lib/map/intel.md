@@ -6,11 +6,11 @@
 ---
 
 ### intelForSystems(systemIds: number[]): Promise<Record<number, SystemIntelSummary>>
-Loads sovereignty and faction-warfare state from the universe tables, fetches EVE-Scout connections once, fetches recent zKillboard kills per system, and returns client-serialisable summaries keyed by solar-system id.
+Loads sovereignty and faction-warfare state from the universe tables, fetches EVE-Scout connections once, and returns client-serialisable summaries keyed by solar-system id. Recent kills are **not** included here — the `SystemKillboardModule` owns that feed via `/api/system/[id]/killboard`.
 
-External zKillboard and EVE-Scout failures degrade to empty lists so the map still renders; the scheduled ESI refresh job remains the hard-failing path for sov/FW health.
+External EVE-Scout failures degrade to an empty list so the map still renders; the scheduled ESI refresh job remains the hard-failing path for sov/FW health.
 
 **Parameters:**
 - `systemIds` - EVE solar-system ids visible in the map view.
 
-**Returns:** Per-system sovereignty, FW, recent kill, EVE-Scout, and external-link summaries.
+**Returns:** Per-system sovereignty, FW, EVE-Scout, and external-link summaries.

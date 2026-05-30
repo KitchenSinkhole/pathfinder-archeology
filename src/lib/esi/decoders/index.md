@@ -15,3 +15,5 @@
 - `characterShipSchema` / `EsiCharacterShip` (`ship.ts`) - `getCharacterShip`.
 - `sovereigntyMapSchema` / `EsiSovereigntyMap` (`sovereignty.ts`) - `getSovereigntyMap`.
 - `factionWarSystemsSchema` / `EsiFactionWarSystems` (`sovereignty.ts`) - `getFactionWarSystems`.
+- `killmailSchema` / `EsiKillmail` (`killmail.ts`) - `getKillmail`.
+- `universeNamesSchema` / `EsiUniverseNames` (`universeNames.ts`) - `getUniverseNames`.

@@ -37,25 +37,6 @@ vi.mock('@/lib/integrations/evescout', async (importOriginal) => {
   };
 });
 
-vi.mock('@/lib/integrations/zkb', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/integrations/zkb')>();
-  return {
-    ...actual,
-    recentKillsForSystem: vi.fn(async (systemId: number) =>
-      systemId === 98213001
-        ? [{
-            killmailId: 444,
-            href: 'https://zkillboard.com/kill/444/',
-            killmailTime: null,
-            shipTypeId: null,
-            totalValue: null,
-            attackers: null,
-          }]
-        : [],
-    ),
-  };
-});
-
 import { esiCall } from '@/lib/esi/client';
 import { sovFwRefresh } from '@/lib/jobs/tasks/sovFwRefresh';
 import { intelForSystems } from '@/lib/map/intel';
@@ -187,7 +168,6 @@ describe.skipIf(!run)('Stage 13 sov-fw-refresh (real Postgres)', () => {
       corporationId: '98000001',
       allianceImage: 'https://images.evetech.net/alliances/99000001/logo?size=64',
     });
-    expect(intel[HS]!.recentKills).toHaveLength(1);
     expect(intel[HS]!.scoutConnections).toHaveLength(1);
     expect(intel[LS]!.factionWar).toMatchObject({
       occupierFactionId: '500002',

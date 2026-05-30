@@ -18,7 +18,6 @@ import {
   fetchEveScoutConnections,
   type EveScoutConnectionSummary,
 } from '@/lib/integrations/evescout';
-import { recentKillsForSystem, type RecentKillSummary } from '@/lib/integrations/zkb';
 
 export type SovereigntyIntel = {
   factionId: string | null;
@@ -46,7 +45,6 @@ export type SystemExternalLinks = {
 export type SystemIntelSummary = {
   sovereignty: SovereigntyIntel | null;
   factionWar: FactionWarIntel | null;
-  recentKills: RecentKillSummary[];
   scoutConnections: EveScoutConnectionSummary[];
   links: SystemExternalLinks;
 };
@@ -64,22 +62,19 @@ export async function intelForSystems(systemIds: number[]): Promise<Record<numbe
   ]);
 
   const out: Record<number, SystemIntelSummary> = {};
-  await Promise.all(
-    systems.map(async (system) => {
-      out[system.id] = {
-        sovereignty: sovRows.get(system.id) ?? null,
-        factionWar: fwRows.get(system.id) ?? null,
-        recentKills: await safeRecentKills(system.id),
-        scoutConnections: connectionsForSystem(scoutRows, system.id),
-        links: {
-          dotlan: dotlanSystemUrl(system.name),
-          eveeye: eveeyeSystemUrl(system.id),
-          anoik: anoikSystemUrl(system.name),
-          zkillboard: zkillboardSystemUrl(system.id),
-        },
-      };
-    }),
-  );
+  for (const system of systems) {
+    out[system.id] = {
+      sovereignty: sovRows.get(system.id) ?? null,
+      factionWar: fwRows.get(system.id) ?? null,
+      scoutConnections: connectionsForSystem(scoutRows, system.id),
+      links: {
+        dotlan: dotlanSystemUrl(system.name),
+        eveeye: eveeyeSystemUrl(system.id),
+        anoik: anoikSystemUrl(system.name),
+        zkillboard: zkillboardSystemUrl(system.id),
+      },
+    };
+  }
   return out;
 }
 
@@ -124,14 +119,6 @@ async function loadFw(systemIds: number[]): Promise<Map<number, FactionWarIntel>
 async function safeScoutConnections(): Promise<EveScoutConnectionSummary[]> {
   try {
     return await fetchEveScoutConnections();
-  } catch {
-    return [];
-  }
-}
-
-async function safeRecentKills(systemId: number): Promise<RecentKillSummary[]> {
-  try {
-    return await recentKillsForSystem(systemId, 5);
   } catch {
     return [];
   }

@@ -26,16 +26,6 @@ const SYSTEM: MapSystemNode = {
 const INTEL: SystemIntelSummary = {
   sovereignty: null,
   factionWar: null,
-  recentKills: [
-    {
-      killmailId: 123,
-      href: 'https://zkillboard.com/kill/123/',
-      killmailTime: '2026-05-26T12:00:00Z',
-      shipTypeId: 587,
-      totalValue: 15_000_000,
-      attackers: 2,
-    },
-  ],
   scoutConnections: [
     {
       sourceName: 'Thera',
@@ -61,7 +51,6 @@ describe('IntelModule', () => {
     const html = renderToStaticMarkup(<IntelModule system={SYSTEM} intel={INTEL} />);
     expect(html).toContain('The Forge');
     expect(html).toContain('EVE-Scout');
-    expect(html).toContain('#123');
     expect(html).toContain('DOTLAN');
   });
 

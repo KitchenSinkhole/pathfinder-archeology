@@ -26,7 +26,6 @@ export function IntelModule({
             <SovereigntyBlock intel={intel} />
             <FactionWarBlock intel={intel} />
             <ScoutBlock intel={intel} />
-            <KillBlock intel={intel} />
             {intel ? <ExternalLinks links={intel.links} /> : null}
           </>
         )}
@@ -115,31 +114,6 @@ function ScoutBlock({ intel }: { intel: SystemIntelSummary | undefined }) {
               <span>{row.hub}</span>
               <span className="truncate text-muted-foreground">
                 {row.sourceName} to {row.targetName}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function KillBlock({ intel }: { intel: SystemIntelSummary | undefined }) {
-  const rows = intel?.recentKills ?? [];
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-[10px] uppercase text-muted-foreground">Recent Kills</span>
-      {rows.length === 0 ? (
-        <span className="text-muted-foreground">No recent kills loaded.</span>
-      ) : (
-        <ul className="flex flex-col gap-1">
-          {rows.slice(0, 3).map((kill) => (
-            <li key={kill.killmailId} className="flex justify-between gap-2">
-              <a href={kill.href} target="_blank" rel="noreferrer" className="hover:underline">
-                #{kill.killmailId}
-              </a>
-              <span className="text-muted-foreground">
-                {kill.totalValue ? `${Math.round(kill.totalValue / 1_000_000)}m ISK` : 'value n/a'}
               </span>
             </li>
           ))}

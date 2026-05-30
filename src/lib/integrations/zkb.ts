@@ -33,13 +33,17 @@ export const zkbRecentKillsSchema = z.array(zkbKillSchema);
 
 export type ZkbKill = z.infer<typeof zkbKillSchema>;
 
+/**
+ * What zKillboard's per-system list endpoint actually returns for each kill:
+ * the id, the ESI hash, and zkb-derived value. Victim / ship / time / attacker
+ * count are *not* in this response — they come from the full ESI killmail,
+ * which the `hash` unlocks (see `@/lib/map/killboard`).
+ */
 export type RecentKillSummary = {
   killmailId: number;
+  hash: string | null;
   href: string;
-  killmailTime: string | null;
-  shipTypeId: number | null;
   totalValue: number | null;
-  attackers: number | null;
 };
 
 export class ZkbRateLimitError extends Error {
@@ -83,10 +87,8 @@ export async function recentKillsForSystem(
   const parsed = zkbRecentKillsSchema.parse(await res.json());
   return parsed.slice(0, limit).map((kill) => ({
     killmailId: kill.killmail_id,
+    hash: kill.zkb?.hash ?? null,
     href: `${ZKB_BASE}/kill/${kill.killmail_id}/`,
-    killmailTime: kill.killmail_time ?? null,
-    shipTypeId: kill.victim?.ship_type_id ?? null,
     totalValue: kill.zkb?.totalValue ?? null,
-    attackers: kill.attackers?.length ?? null,
   }));
 }
