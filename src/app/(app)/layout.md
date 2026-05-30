@@ -10,7 +10,7 @@ The `<main>` is full-width (no `max-w-*` constraint) so wide pages like the map 
 
 ### Behaviour & Interactions
 - `requireSession()` redirects to `/` when logged out.
-- Resolves the active character (`getActiveCharacter`), the account roster (`getAccountCharacters`), and the account's main (`getMainCharacterId`) server-side; redirects to `/` if the active character row is missing. The roster + main id thread through `AppHeader` to the switcher's Account settings dialog.
+- Resolves the active character (`getActiveCharacter`), the account roster (`getAccountCharacters`), the account's main (`getMainCharacterId`), and the connection-travel-animation toggle (`getConnectionTravelAnimation`) server-side; redirects to `/` if the active character row is missing. The roster + main id + travel toggle thread through `AppHeader` to the switcher's Account settings dialog.
 - The `RealtimeProvider` boots the SharedWorker once for the whole authenticated tree, so the banner and any `useMapSubscription` share one socket.
 
 ### Depends On

@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 import {
   getAccountCharacters,
   getActiveCharacter,
+  getConnectionTravelAnimation,
   getMainCharacterId,
   requireSession,
 } from '@/lib/session';
@@ -18,6 +19,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!active) redirect('/');
   const characters = await getAccountCharacters(session.userId);
   const mainCharacterId = await getMainCharacterId(session.userId);
+  const travelAnimation = await getConnectionTravelAnimation(session.userId);
 
   return (
     <RealtimeProvider>
@@ -27,6 +29,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           active={{ id: active.id.toString(), name: active.name }}
           characters={characters}
           mainCharacterId={mainCharacterId}
+          travelAnimation={travelAnimation}
         />
         <main className="w-full flex-1 px-4 py-6">{children}</main>
         <AppFooter />

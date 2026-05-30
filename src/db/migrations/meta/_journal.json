@@ -148,6 +148,13 @@
       "when": 1779612000000,
       "tag": "0021_character_tracking_enabled",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1779613200000,
+      "tag": "0022_account_connection_travel_animation",
+      "breakpoints": true
     }
   ]
 }

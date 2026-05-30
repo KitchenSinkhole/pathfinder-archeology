@@ -10,6 +10,7 @@
 | active | `{ id: string; name: string }` | yes | The session's identity character (account main); drives the trigger chip |
 | characters | `PanelCharacter[]` | yes | All characters on the account (`id`, `name`, `status`, `authzLevel`, `trackingEnabled`) |
 | mainCharacterId | `string \| null` | yes | The account's main — rendered as a "main" tag and forwarded to Account settings |
+| travelAnimation | boolean | yes | The account's connection-travel-animation toggle, forwarded to Account settings |
 
 ### Renders
 A trigger button (active character's portrait + name) opening a right-anchored Sheet: one row per character with a tracking checkbox, then "Add character", "Account settings", and "Sign out". Also renders the (initially closed) `AccountSettingsDialog`.

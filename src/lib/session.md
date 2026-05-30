@@ -20,6 +20,9 @@ All characters on the account, ordered by name. Returns only display-safe fields
 ### getMainCharacterId(userId: number): Promise<string | null>
 The account's `ap_user.main_character_id` as a string (bigint isn't JSON-safe), or `null` when unset. Feeds the Account Settings "main" selector (Stage 17.5); login-time resolution / bootstrap lives in `auth.ts` (`resolveMainCharacter`).
 
+### getConnectionTravelAnimation(userId: number): Promise<boolean>
+The account's `ap_user.connection_travel_animation` toggle (defaults to `true` when the row is missing). Threaded through the app layout to the Account Settings toggle and to `MapCanvas`, where it gates whether jump-traversals play the moving-dot animation.
+
 ### assertCharacterOwnership(characterId: bigint, userId: number): Promise<boolean>
 True iff the character belongs to `userId` **and** is `status='active'`. Single source of truth for the character-ownership authorization check; reused by `setCharacterTrackingAction` (and any future per-character account action).
 

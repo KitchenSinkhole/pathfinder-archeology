@@ -82,6 +82,15 @@ export async function getMainCharacterId(userId: number): Promise<string | null>
   return row?.mainCharacterId != null ? row.mainCharacterId.toString() : null;
 }
 
+export async function getConnectionTravelAnimation(userId: number): Promise<boolean> {
+  const [row] = await db
+    .select({ enabled: apUser.connectionTravelAnimation })
+    .from(apUser)
+    .where(eq(apUser.id, userId));
+  // Default on when the row is somehow missing — mirrors the column default.
+  return row?.enabled ?? true;
+}
+
 /**
  * Whether `characterId` belongs to `userId` and is currently `active`. The
  * single source of truth for the character-switch authorization check, reused

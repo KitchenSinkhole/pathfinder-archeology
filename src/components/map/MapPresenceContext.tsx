@@ -11,10 +11,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { MapPresenceEntry } from '@/lib/map/loadMap';
-import {
-  characterUpdateLoadSchema,
-  type CharacterUpdateLoad,
-} from '@/lib/realtime/protocol';
+import { characterUpdateLoadSchema, type CharacterUpdateLoad } from '@/lib/realtime/protocol';
 import { useRealtime } from '@/lib/realtime/useRealtime';
 
 // Client-side fan-in for the pilot-presence badge on `SystemNode`.
@@ -28,6 +25,22 @@ import { useRealtime } from '@/lib/realtime/useRealtime';
 
 type Subscriber = () => void;
 
+/**
+ * A detected jump of one tracked pilot between two systems, keyed by EVE
+ * solar-system id. Emitted by the presence store the moment it folds a
+ * `characterUpdate` that moves an online pilot from one located system to
+ * another. The travel-animation bridge resolves these to a map edge + direction.
+ */
+export type Traversal = {
+  characterId: number;
+  fromSystemId: number;
+  toSystemId: number;
+  /** ISO timestamp the move was detected server-side (`characterUpdate.locationAt`). */
+  at: string;
+};
+
+type TraversalSubscriber = (t: Traversal) => void;
+
 const EMPTY: readonly MapPresenceEntry[] = Object.freeze([]) as readonly MapPresenceEntry[];
 
 class PresenceStore {
@@ -35,6 +48,7 @@ class PresenceStore {
   private byCharacterSystem = new Map<number, number>();
   private subs = new Map<number, Set<Subscriber>>();
   private allSubs = new Set<Subscriber>();
+  private traversalSubs = new Set<TraversalSubscriber>();
   // Cached flattened snapshot for `usePresenceForMap`. `useSyncExternalStore`
   // requires the same reference between reads that don't mutate the store, so
   // we only rebuild this on `notify()`.
@@ -73,11 +87,7 @@ class PresenceStore {
     }
 
     // Hide offline pilots entirely — only insert when online AND located.
-    if (
-      load.online === true &&
-      load.systemId !== null &&
-      load.locationAt !== null
-    ) {
+    if (load.online === true && load.systemId !== null && load.locationAt !== null) {
       const entry: MapPresenceEntry = {
         characterId: load.characterId,
         characterName: load.characterName,
@@ -96,6 +106,25 @@ class PresenceStore {
     }
 
     this.notify(changed);
+
+    // A real jump: the pilot was located in `prev`, is now online and located
+    // in a different system. Offline transitions (no new system) and same-system
+    // re-reports don't qualify. `seed()` never reaches here, so initial roster
+    // placement doesn't animate.
+    if (
+      prev !== undefined &&
+      load.online === true &&
+      load.systemId !== null &&
+      load.locationAt !== null &&
+      prev !== load.systemId
+    ) {
+      this.emitTraversal({
+        characterId: load.characterId,
+        fromSystemId: prev,
+        toSystemId: load.systemId,
+        at: load.locationAt,
+      });
+    }
   }
 
   subscribe(systemId: number, sub: Subscriber): () => void {
@@ -122,6 +151,17 @@ class PresenceStore {
     return () => {
       this.allSubs.delete(sub);
     };
+  }
+
+  subscribeTraversals(sub: TraversalSubscriber): () => void {
+    this.traversalSubs.add(sub);
+    return () => {
+      this.traversalSubs.delete(sub);
+    };
+  }
+
+  private emitTraversal(t: Traversal): void {
+    for (const sub of this.traversalSubs) sub(t);
   }
 
   /** Every online + located pilot across the whole map, sorted by name. */
@@ -200,10 +240,7 @@ export function usePresenceForSystem(systemId: number): readonly MapPresenceEntr
     (cb: () => void) => store?.subscribe(systemId, cb) ?? (() => {}),
     [store, systemId],
   );
-  const getSnapshot = useCallback(
-    () => store?.getForSystem(systemId) ?? EMPTY,
-    [store, systemId],
-  );
+  const getSnapshot = useCallback(() => store?.getForSystem(systemId) ?? EMPTY, [store, systemId]);
   return useSyncExternalStore(subscribe, getSnapshot, () => EMPTY);
 }
 
@@ -214,10 +251,24 @@ export function usePresenceForSystem(systemId: number): readonly MapPresenceEntr
  */
 export function usePresenceForMap(): readonly MapPresenceEntry[] {
   const store = useContext(PresenceContext);
-  const subscribe = useCallback(
-    (cb: () => void) => store?.subscribeAll(cb) ?? (() => {}),
-    [store],
-  );
+  const subscribe = useCallback((cb: () => void) => store?.subscribeAll(cb) ?? (() => {}), [store]);
   const getSnapshot = useCallback(() => store?.getAll() ?? EMPTY, [store]);
   return useSyncExternalStore(subscribe, getSnapshot, () => EMPTY);
+}
+
+/**
+ * Subscribes to pilot jumps (see `Traversal`). The callback may change every
+ * render without re-subscribing — only the latest is invoked. Used by the
+ * travel-animation bridge to drive the moving-dot effect.
+ */
+export function useTraversals(cb: (t: Traversal) => void): void {
+  const store = useContext(PresenceContext);
+  const cbRef = useRef(cb);
+  useEffect(() => {
+    cbRef.current = cb;
+  });
+  useEffect(() => {
+    if (!store) return;
+    return store.subscribeTraversals((t) => cbRef.current(t));
+  }, [store]);
 }

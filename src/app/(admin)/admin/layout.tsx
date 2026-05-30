@@ -6,6 +6,7 @@ import { isManagerOrAdmin } from '@/lib/auth/rights';
 import {
   getAccountCharacters,
   getActiveCharacter,
+  getConnectionTravelAnimation,
   getMainCharacterId,
   requireSession,
 } from '@/lib/session';
@@ -20,22 +21,17 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   if (!active) redirect('/');
   const characters = await getAccountCharacters(session.userId);
   const mainCharacterId = await getMainCharacterId(session.userId);
+  const travelAnimation = await getConnectionTravelAnimation(session.userId);
 
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-b border-border">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-4">
-            <Link
-              href="/admin"
-              className="font-heading text-lg font-semibold tracking-tight"
-            >
+            <Link href="/admin" className="font-heading text-lg font-semibold tracking-tight">
               Aperture — Admin
             </Link>
-            <Link
-              href="/maps"
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
+            <Link href="/maps" className="text-sm text-muted-foreground hover:text-foreground">
               Leave admin
             </Link>
           </div>
@@ -43,6 +39,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             active={{ id: active.id.toString(), name: active.name }}
             characters={characters}
             mainCharacterId={mainCharacterId}
+            travelAnimation={travelAnimation}
           />
         </div>
       </header>

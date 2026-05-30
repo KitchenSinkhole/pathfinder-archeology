@@ -13,7 +13,10 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { setMainCharacterAction } from '@/app/(app)/actions/account';
+import {
+  setConnectionTravelAnimationAction,
+  setMainCharacterAction,
+} from '@/app/(app)/actions/account';
 import { DeleteAccountDialog } from './DeleteAccountDialog';
 
 export type AccountCharacter = {
@@ -39,15 +42,18 @@ export function AccountSettingsDialog({
   characters,
   mainCharacterId,
   activeCharacter,
+  travelAnimation,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   characters: AccountCharacter[];
   mainCharacterId: string | null;
   activeCharacter: { id: string; name: string };
+  travelAnimation: boolean;
 }) {
   // Optimistic local copy so the "Main" marker moves immediately on success.
   const [mainId, setMainId] = useState(mainCharacterId);
+  const [travelOn, setTravelOn] = useState(travelAnimation);
   const [pending, startTransition] = useTransition();
 
   function onSetMain(id: string) {
@@ -57,6 +63,17 @@ export function AccountSettingsDialog({
       if (result.ok) {
         setMainId(id);
       } else {
+        toast.error(result.error);
+      }
+    });
+  }
+
+  function onToggleTravel(next: boolean) {
+    setTravelOn(next);
+    startTransition(async () => {
+      const result = await setConnectionTravelAnimationAction(next);
+      if (!result.ok) {
+        setTravelOn(!next);
         toast.error(result.error);
       }
     });
@@ -113,6 +130,23 @@ export function AccountSettingsDialog({
             );
           })}
         </div>
+
+        <label className="mt-2 flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-muted">
+          <div className="flex flex-1 flex-col gap-0.5">
+            <span className="font-medium text-foreground">Show connection travel animation</span>
+            <span className="text-xs text-muted-foreground">
+              Subtle directional pulse when a tracked pilot jumps between connected systems.
+            </span>
+          </div>
+          <input
+            type="checkbox"
+            className="size-4 accent-primary"
+            checked={travelOn}
+            disabled={pending}
+            onChange={(e) => onToggleTravel(e.target.checked)}
+            aria-label="Show connection travel animation"
+          />
+        </label>
 
         <div className="mt-2 flex flex-col gap-2 rounded-lg border border-destructive/40 p-3">
           <div className="flex flex-col gap-0.5">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -13,6 +13,7 @@ import type { MapConnectionEdge } from '@/lib/map/loadMap';
 import { connectionTimeLeftMs } from '@/lib/map/connectionState';
 import { formatRelativeFromMs } from '@/lib/map/relativeTime';
 import { connectionBadges, connectionStyle } from './styling';
+import { useTravelForConnection } from './MapTravelContext';
 
 const EOL_COUNTDOWN_TICK_MS = 30_000;
 
@@ -91,9 +92,7 @@ export function ConnectionEdge(props: EdgeProps & { data: ConnectionEdgeData }) 
 
   const { parallelIndex, parallelCount } = data;
   const offset =
-    parallelCount > 1
-      ? (parallelIndex - (parallelCount - 1) / 2) * PARALLEL_STEP_PX
-      : 0;
+    parallelCount > 1 ? (parallelIndex - (parallelCount - 1) / 2) * PARALLEL_STEP_PX : 0;
 
   const sourceNode = useInternalNode(source);
   const targetNode = useInternalNode(target);
@@ -108,10 +107,10 @@ export function ConnectionEdge(props: EdgeProps & { data: ConnectionEdgeData }) 
   const anchors =
     sPos && tPos && sW && sH && tW && tH
       ? pickAnchors(
-          { x: sPos.x, y: sPos.y, w: sW, h: sH },
-          { x: tPos.x, y: tPos.y, w: tW, h: tH },
-          offset,
-        )
+        { x: sPos.x, y: sPos.y, w: sW, h: sH },
+        { x: tPos.x, y: tPos.y, w: tW, h: tH },
+        offset,
+      )
       : null;
 
   const [path, labelX, labelY] = getBezierPath({
@@ -127,10 +126,19 @@ export function ConnectionEdge(props: EdgeProps & { data: ConnectionEdgeData }) 
   const badges = connectionBadges(data);
   const countdown = useEolCountdown(data);
   const hasLabel = badges.length > 0 || countdown !== null;
+  const travel = useTravelForConnection(props.id);
 
   return (
     <>
       <BaseEdge path={path} style={finalStyle} />
+      {travel && (
+        <TravelDot
+          key={travel.token}
+          path={path}
+          direction={travel.direction}
+          color={style.stroke}
+        />
+      )}
       {hasLabel && (
         <EdgeLabelRenderer>
           <div
@@ -151,6 +159,47 @@ export function ConnectionEdge(props: EdgeProps & { data: ConnectionEdgeData }) 
         </EdgeLabelRenderer>
       )}
     </>
+  );
+}
+
+// A faint dot that glides once along the connection curve in the travel
+// direction when a tracked pilot jumps across it. Mounted (and remounted via
+// `key={token}`) per jump.
+//
+// The SMIL `<animateMotion>` is kicked imperatively with `beginElement()` on
+// mount instead of relying on the default `begin="0s"`: a begin offset is
+// resolved against the SVG document timeline (page load), so on a long-lived
+// canvas "0s" is already in the past by the time a jump happens and the browser
+// renders the animation as already-finished — the dot would snap to the curve's
+// end and never move. `begin="indefinite"` + `beginElement()` starts it at the
+// current document time so it actually plays. animateMotion runs source→target
+// by default; reverse traverses the path backwards via `keyPoints`.
+function TravelDot({
+  path,
+  direction,
+  color,
+}: {
+  path: string;
+  direction: 'forward' | 'reverse';
+  color?: string;
+}) {
+  const motionRef = useRef<SVGAnimateMotionElement>(null);
+  useEffect(() => {
+    motionRef.current?.beginElement();
+  }, []);
+  return (
+    <circle r={5} fill={color} opacity={0.55}>
+      <animateMotion
+        ref={motionRef}
+        begin="indefinite"
+        dur="1.2s"
+        path={path}
+        fill="freeze"
+        {...(direction === 'reverse'
+          ? { keyPoints: '1;0', keyTimes: '0;1', calcMode: 'linear' as const }
+          : {})}
+      />
+    </circle>
   );
 }
 

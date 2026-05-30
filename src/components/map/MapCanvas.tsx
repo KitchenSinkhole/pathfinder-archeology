@@ -53,10 +53,7 @@ import { KillStatsModule } from '@/components/sidebar/KillStatsModule';
 import { IntelModule } from '@/components/sidebar/IntelModule';
 import { StructureModule } from '@/components/sidebar/StructureModule';
 import type { StructureFormValues } from '@/components/sidebar/StructureFormDialog';
-import {
-  InspectorModule,
-  type SelectionRef,
-} from '@/components/sidebar/InspectorModule';
+import { InspectorModule, type SelectionRef } from '@/components/sidebar/InspectorModule';
 import { SignatureModule } from '@/components/sidebar/SignatureModule';
 import { Info, Plus, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -65,6 +62,7 @@ import { MapSettingsDialog } from '@/components/dialogs/MapSettingsDialog';
 import { AddSystemDialog } from './AddSystemDialog';
 import { ConnectionEdge, type ConnectionEdgeData } from './ConnectionEdge';
 import { MapPresenceProvider } from './MapPresenceContext';
+import { MapTravelProvider, TravelBridge } from './MapTravelContext';
 import { SystemNode, type SystemNodeData } from './SystemNode';
 
 const nodeTypes = { system: SystemNode };
@@ -77,6 +75,7 @@ export function MapCanvas({
   intel,
   structures: initialStructures,
   settings,
+  travelAnimation,
 }: {
   data: MapViewData;
   routes: Record<number, HubRoute[]>;
@@ -84,6 +83,7 @@ export function MapCanvas({
   intel: Record<number, SystemIntelSummary>;
   structures: Record<number, StructureIntel[]>;
   settings: MapSettings;
+  travelAnimation: boolean;
 }) {
   const [selected, setSelected] = useState<SelectionRef | null>(null);
   const [mapInfoOpen, setMapInfoOpen] = useState(false);
@@ -92,7 +92,10 @@ export function MapCanvas({
   const [viewData, setViewData] = useState<MapViewData>(data);
   // Captured via ReactFlow's onInit so the manual-add flow can place new nodes
   // at the current viewport centre rather than (0,0).
-  const flowInstance = useRef<ReactFlowInstance<Node<SystemNodeData>, Edge<ConnectionEdgeData>> | null>(null);
+  const flowInstance = useRef<ReactFlowInstance<
+    Node<SystemNodeData>,
+    Edge<ConnectionEdgeData>
+  > | null>(null);
   const flowWrapperRef = useRef<HTMLDivElement>(null);
   // Structure intel is deployment-global and not realtime-synced; we manage it
   // as plain local state seeded from the page load and updated on our own CRUD.
@@ -142,7 +145,9 @@ export function MapCanvas({
   const runOptimistic = useCallback(
     async (
       optimistic: MapEventPayload,
-      run: () => Promise<{ ok: true; data: MapEventPayload; eventId: number } | { ok: false; error: string }>,
+      run: () => Promise<
+        { ok: true; data: MapEventPayload; eventId: number } | { ok: false; error: string }
+      >,
     ) => {
       let snapshot: MapViewData | null = null;
       setViewData((prev) => {
@@ -161,7 +166,9 @@ export function MapCanvas({
 
   const awaitServer = useCallback(
     async (
-      run: () => Promise<{ ok: true; data: MapEventPayload; eventId: number } | { ok: false; error: string }>,
+      run: () => Promise<
+        { ok: true; data: MapEventPayload; eventId: number } | { ok: false; error: string }
+      >,
     ) => {
       const result = await run();
       if (!result.ok) return;
@@ -268,7 +275,12 @@ export function MapCanvas({
   // ---- Inspector callbacks -----------------------------------------------
   const onSystemPatch = useCallback(
     (mapSystemId: string, patch: UpdateSystemBody) => {
-      const opt: MapEventPayload = { kind: 'system.updated', eventId: 0, id: mapSystemId, ...patch };
+      const opt: MapEventPayload = {
+        kind: 'system.updated',
+        eventId: 0,
+        id: mapSystemId,
+        ...patch,
+      };
       runOptimistic(opt, () => updateSystemOnServer({ mapId, mapSystemId, patch }));
     },
     [mapId, runOptimistic],
@@ -276,9 +288,8 @@ export function MapCanvas({
 
   const onSystemRemove = useCallback(
     (mapSystemId: string) => {
-      runOptimistic(
-        { kind: 'system.removed', eventId: 0, id: mapSystemId },
-        () => removeSystemOnServer({ mapId, mapSystemId }),
+      runOptimistic({ kind: 'system.removed', eventId: 0, id: mapSystemId }, () =>
+        removeSystemOnServer({ mapId, mapSystemId }),
       );
       setSelected(null);
     },
@@ -300,9 +311,8 @@ export function MapCanvas({
 
   const onConnectionDelete = useCallback(
     (connectionId: string) => {
-      runOptimistic(
-        { kind: 'connection.delete', eventId: 0, id: connectionId },
-        () => deleteConnectionOnServer({ mapId, connectionId }),
+      runOptimistic({ kind: 'connection.delete', eventId: 0, id: connectionId }, () =>
+        deleteConnectionOnServer({ mapId, connectionId }),
       );
       setSelected(null);
     },
@@ -331,9 +341,8 @@ export function MapCanvas({
 
   const onSignatureDelete = useCallback(
     (signatureId: string) => {
-      runOptimistic(
-        { kind: 'signature.delete', eventId: 0, id: signatureId },
-        () => deleteSignatureOnServer({ mapId, signatureId }),
+      runOptimistic({ kind: 'signature.delete', eventId: 0, id: signatureId }, () =>
+        deleteSignatureOnServer({ mapId, signatureId }),
       );
     },
     [mapId, runOptimistic],
@@ -361,7 +370,9 @@ export function MapCanvas({
       const raw = localStorage.getItem('aperture:map:canvas-height');
       // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe one-time restore from localStorage, no external source to subscribe to
       setCanvasHeight(raw ? parseInt(raw, 10) : Math.round(window.innerHeight * 0.7));
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const onResizeStart = useCallback(
@@ -412,11 +423,7 @@ export function MapCanvas({
     systems: MapViewData['systems'];
     selected: SelectionRef | null;
   } | null>(null);
-  if (
-    !lastSync ||
-    lastSync.systems !== viewData.systems ||
-    lastSync.selected !== selected
-  ) {
+  if (!lastSync || lastSync.systems !== viewData.systems || lastSync.selected !== selected) {
     setLastSync({ systems: viewData.systems, selected });
     setNodes((prev) => {
       const prevById = new Map(prev.map((n) => [n.id, n]));
@@ -496,20 +503,17 @@ export function MapCanvas({
     [selectedSystem],
   );
 
-  const onStructurePatch = useCallback(
-    async (structureId: string, values: StructureFormValues) => {
-      const result = await updateStructureOnServer({ structureId, patch: values });
-      if (!result.ok) return;
-      const updated = result.data;
-      setStructures((prev) => ({
-        ...prev,
-        [updated.systemId]: (prev[updated.systemId] ?? [])
-          .map((s) => (s.id === structureId ? updated : s))
-          .sort(sortByName),
-      }));
-    },
-    [],
-  );
+  const onStructurePatch = useCallback(async (structureId: string, values: StructureFormValues) => {
+    const result = await updateStructureOnServer({ structureId, patch: values });
+    if (!result.ok) return;
+    const updated = result.data;
+    setStructures((prev) => ({
+      ...prev,
+      [updated.systemId]: (prev[updated.systemId] ?? [])
+        .map((s) => (s.id === structureId ? updated : s))
+        .sort(sortByName),
+    }));
+  }, []);
 
   const onStructureDelete = useCallback(
     async (structureId: string) => {
@@ -527,127 +531,132 @@ export function MapCanvas({
 
   return (
     <MapPresenceProvider initial={data.presence}>
-      <div className="flex gap-4">
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <div className="flex items-center justify-end gap-1">
-            <Button variant="ghost" size="sm" onClick={() => setAddSystemOpen(true)}>
-              <Plus />
-              Add system
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setMapInfoOpen(true)}>
-              <Info />
-              Map info
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSettingsOpen(true)}>
-              <Settings />
-              Settings
-            </Button>
-          </div>
-          <div
-            ref={flowWrapperRef}
-            style={{ height: canvasHeight }}
-            className="overflow-hidden rounded-lg ring-1 ring-foreground/10"
-          >
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              nodeTypes={nodeTypes}
-              edgeTypes={edgeTypes}
-              onNodeClick={onNodeClick}
-              onEdgeClick={onEdgeClick}
-              onPaneClick={onPaneClick}
-              onInit={(inst) => {
-                flowInstance.current = inst;
-              }}
-              onNodesChange={onNodesChange}
-              onNodeDragStop={onNodeDragStop}
-              onConnect={onConnect}
-              nodesDraggable
-              nodesConnectable
-              connectionMode={ConnectionMode.Loose}
-              edgesFocusable
-              colorMode="dark"
-              fitView={initialViewport === null}
-              defaultViewport={initialViewport ?? undefined}
-              zoomOnScroll={false}
-              preventScrolling={false}
-              onMoveEnd={onMoveEnd}
-              proOptions={{ hideAttribution: true }}
+      <MapTravelProvider>
+        {travelAnimation && (
+          <TravelBridge systems={viewData.systems} connections={viewData.connections} />
+        )}
+        <div className="flex gap-4">
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <div className="flex items-center justify-end gap-1">
+              <Button variant="ghost" size="sm" onClick={() => setAddSystemOpen(true)}>
+                <Plus />
+                Add system
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setMapInfoOpen(true)}>
+                <Info />
+                Map info
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setSettingsOpen(true)}>
+                <Settings />
+                Settings
+              </Button>
+            </div>
+            <div
+              ref={flowWrapperRef}
+              style={{ height: canvasHeight }}
+              className="overflow-hidden rounded-lg ring-1 ring-foreground/10"
             >
-              <Background />
-              <Controls showInteractive={false} />
-            </ReactFlow>
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                onNodeClick={onNodeClick}
+                onEdgeClick={onEdgeClick}
+                onPaneClick={onPaneClick}
+                onInit={(inst) => {
+                  flowInstance.current = inst;
+                }}
+                onNodesChange={onNodesChange}
+                onNodeDragStop={onNodeDragStop}
+                onConnect={onConnect}
+                nodesDraggable
+                nodesConnectable
+                connectionMode={ConnectionMode.Loose}
+                edgesFocusable
+                colorMode="dark"
+                fitView={initialViewport === null}
+                defaultViewport={initialViewport ?? undefined}
+                zoomOnScroll={false}
+                preventScrolling={false}
+                onMoveEnd={onMoveEnd}
+                proOptions={{ hideAttribution: true }}
+              >
+                <Background />
+                <Controls showInteractive={false} />
+              </ReactFlow>
+            </div>
+
+            {/* Drag handle — resizes the map canvas; sigs panel stays at full height below */}
+            <div
+              role="separator"
+              aria-orientation="horizontal"
+              className="-my-2 flex h-4 cursor-ns-resize items-center justify-center"
+              onMouseDown={onResizeStart}
+            >
+              <div className="h-1 w-10 rounded-full bg-border transition-colors hover:bg-foreground/30" />
+            </div>
+
+            <SignatureModule
+              mapId={mapId}
+              system={selectedSystem}
+              signatures={viewData.signatures}
+              connections={viewData.connections}
+              systems={viewData.systems}
+              onCreate={onSignatureCreate}
+              onPatch={onSignaturePatch}
+              onDelete={onSignatureDelete}
+              onBulkPaste={onBulkPaste}
+            />
           </div>
 
-          {/* Drag handle — resizes the map canvas; sigs panel stays at full height below */}
-          <div
-            role="separator"
-            aria-orientation="horizontal"
-            className="-my-2 flex h-4 cursor-ns-resize items-center justify-center"
-            onMouseDown={onResizeStart}
-          >
-            <div className="h-1 w-10 rounded-full bg-border transition-colors hover:bg-foreground/30" />
-          </div>
-
-          <SignatureModule
-            mapId={mapId}
-            system={selectedSystem}
-            signatures={viewData.signatures}
-            connections={viewData.connections}
-            systems={viewData.systems}
-            onCreate={onSignatureCreate}
-            onPatch={onSignaturePatch}
-            onDelete={onSignatureDelete}
-            onBulkPaste={onBulkPaste}
-          />
+          <aside className="flex w-80 shrink-0 flex-col gap-4 self-start">
+            <InspectorModule
+              selected={selected}
+              viewData={viewData}
+              onSystemPatch={onSystemPatch}
+              onSystemRemove={onSystemRemove}
+              onConnectionPatch={onConnectionPatch}
+              onConnectionDelete={onConnectionDelete}
+            />
+            <RouteModule
+              system={selectedSystem}
+              routes={selectedSystem ? routes[selectedSystem.systemId] : undefined}
+            />
+            <IntelModule
+              system={selectedSystem}
+              intel={selectedSystem ? intel[selectedSystem.systemId] : undefined}
+            />
+            <StructureModule
+              system={selectedSystem}
+              structures={selectedSystem ? (structures[selectedSystem.systemId] ?? []) : []}
+              onCreate={onStructureCreate}
+              onPatch={onStructurePatch}
+              onDelete={onStructureDelete}
+            />
+            <KillStatsModule
+              system={selectedSystem}
+              stats={selectedSystem ? stats[selectedSystem.systemId] : undefined}
+            />
+          </aside>
         </div>
 
-        <aside className="flex w-80 shrink-0 flex-col gap-4 self-start">
-          <InspectorModule
-            selected={selected}
-            viewData={viewData}
-            onSystemPatch={onSystemPatch}
-            onSystemRemove={onSystemRemove}
-            onConnectionPatch={onConnectionPatch}
-            onConnectionDelete={onConnectionDelete}
-          />
-          <RouteModule
-            system={selectedSystem}
-            routes={selectedSystem ? routes[selectedSystem.systemId] : undefined}
-          />
-          <IntelModule
-            system={selectedSystem}
-            intel={selectedSystem ? intel[selectedSystem.systemId] : undefined}
-          />
-          <StructureModule
-            system={selectedSystem}
-            structures={selectedSystem ? (structures[selectedSystem.systemId] ?? []) : []}
-            onCreate={onStructureCreate}
-            onPatch={onStructurePatch}
-            onDelete={onStructureDelete}
-          />
-          <KillStatsModule
-            system={selectedSystem}
-            stats={selectedSystem ? stats[selectedSystem.systemId] : undefined}
-          />
-        </aside>
-      </div>
-
-      <MapInfoDialog open={mapInfoOpen} onOpenChange={setMapInfoOpen} viewData={viewData} />
-      <MapSettingsDialog
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        mapId={mapId}
-        settings={settings}
-        onImported={onBulkPaste}
-      />
-      <AddSystemDialog
-        open={addSystemOpen}
-        onOpenChange={setAddSystemOpen}
-        mapId={mapId}
-        existingSystemIds={existingSystemIds}
-        onAdd={onAddSystem}
-      />
+        <MapInfoDialog open={mapInfoOpen} onOpenChange={setMapInfoOpen} viewData={viewData} />
+        <MapSettingsDialog
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          mapId={mapId}
+          settings={settings}
+          onImported={onBulkPaste}
+        />
+        <AddSystemDialog
+          open={addSystemOpen}
+          onOpenChange={setAddSystemOpen}
+          mapId={mapId}
+          existingSystemIds={existingSystemIds}
+          onAdd={onAddSystem}
+        />
+      </MapTravelProvider>
     </MapPresenceProvider>
   );
 }

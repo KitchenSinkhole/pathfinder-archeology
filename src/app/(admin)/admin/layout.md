@@ -14,7 +14,7 @@
 - **No `RealtimeProvider`** — admin pages don't subscribe to map channels. If a future admin page needs realtime, mount it locally rather than promoting it here.
 
 ### Depends On
-- `requireSession`, `getActiveCharacter`, `getAccountCharacters`, `getMainCharacterId` from `@/lib/session`.
+- `requireSession`, `getActiveCharacter`, `getAccountCharacters`, `getMainCharacterId`, `getConnectionTravelAnimation` from `@/lib/session`.
 - `isManagerOrAdmin` from `@/lib/auth/rights`.
 - `CharacterPanel`, `AppFooter` from `@/components/chrome/*`.
 - `AdminNav` from `@/components/admin/AdminNav`.

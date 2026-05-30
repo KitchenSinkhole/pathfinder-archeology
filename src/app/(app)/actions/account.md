@@ -12,6 +12,11 @@ Sets `ap_user.main_character_id` to `targetCharacterId` for the current account.
 
 ---
 
+### setConnectionTravelAnimationAction(enabled: boolean): Promise<AccountActionResult>
+Sets `ap_user.connection_travel_animation` for the current account. Revalidates the `/` layout so the toggle's initial state (threaded through the app layout) and any open map reflect the change. Always returns `{ ok: true }` — there is nothing to validate beyond the session.
+
+---
+
 ### deleteAccountAction(): Promise<AccountActionResult>
 Hard-deletes the `ap_user` row for the current session. The FK cascade removes characters / roles / tracking; `ap_map_event` and `ap_structure_event` rows keep their history with `character_id` set null; owned maps are orphaned (`owner_character_id` set null). No soft-delete grace — irreversible. On success calls `signOut({ redirectTo: '/' })`, which throws a redirect (the trailing `{ ok: true }` is unreachable but satisfies the type). Returns `{ ok: false, error }` only if the delete itself fails.
 

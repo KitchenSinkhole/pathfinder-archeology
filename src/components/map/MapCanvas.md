@@ -12,6 +12,7 @@
 | intel | Record<number, SystemIntelSummary> | yes | Read-side integration intel keyed by EVE system id. |
 | structures | Record<number, StructureIntel[]> | yes | Manual structure intel keyed by EVE system id (page-loaded seed; not realtime-synced). |
 | settings | MapSettings | yes | Editable map metadata + behaviour toggles (from `loadMapSettings`), seeds the `MapSettingsDialog`. |
+| travelAnimation | boolean | yes | The viewer's per-account connection-travel-animation toggle. When true, mounts the `TravelBridge` that plays the moving-dot effect on pilot jumps. |
 
 ### Renders
 An unbounded two-column layout (the page scrolls). The wide left column stacks a right-aligned toolbar row ("Add system" + "Map info" + "Settings" ghost buttons) above the `ReactFlow` canvas (pixel height, user-resizable via a drag handle), then a horizontal drag handle and then `SignatureModule` at its full natural height. The narrow right column (`w-80`, `self-start`) contains `InspectorModule`, `RouteModule`, `IntelModule`, `StructureModule`, and `KillStatsModule` and does not stretch to match the left column's height. A `MapInfoDialog` and an `AddSystemDialog` are mounted (closed by default) inside the presence provider.
@@ -43,10 +44,11 @@ An unbounded two-column layout (the page scrolls). The wide left column stacks a
 - `@/lib/map/client` — all eight mutation wrappers + `fetchWormholeTypes` (via the inspector).
 
 - Wraps the canvas subtree in `MapPresenceProvider` seeded from `data.presence` (`MapPresenceContext`) so each `SystemNode` can pull its system's online-pilot slice via `usePresenceForSystem` without prop-drilling. The provider also folds incoming `characterUpdate` envelopes onto that store.
+- Inside that, wraps the subtree in `MapTravelProvider` (`MapTravelContext`) so `ConnectionEdge` can read its own travel pulse. When `travelAnimation` is true, mounts `TravelBridge` (passing `viewData.systems` + `viewData.connections`) which listens to presence traversals and pulses the matching edge; when false the bridge is absent so no animation ever plays.
 - Threads `viewData.connections` and `viewData.systems` into `SignatureModule` so its `ConnectionSelect` can list connections incident to the active system without an API call.
 
 ### Depends On
-- `@xyflow/react`, `./SystemNode`, `./ConnectionEdge`, `./MapPresenceContext`
+- `@xyflow/react`, `./SystemNode`, `./ConnectionEdge`, `./MapPresenceContext`, `./MapTravelContext`
 - `@/components/dialogs/MapInfoDialog`, `@/components/dialogs/MapSettingsDialog`, `./AddSystemDialog`, `@/components/ui/button`
 - `RouteModule`, `KillStatsModule`, `InspectorModule`, `SignatureModule`
 - `IntelModule`, `StructureModule`

@@ -10,6 +10,7 @@
 | active | `{ id: string; name: string }` | yes | Identity character (account main), forwarded to the panel chip |
 | characters | `PanelCharacter[]` | yes | Account roster (incl. `authzLevel`, `trackingEnabled`), forwarded to the panel |
 | mainCharacterId | `string \| null` | yes | The account's main, forwarded to the panel |
+| travelAnimation | boolean | yes | The account's connection-travel-animation toggle, forwarded to the panel |
 
 ### Renders
 A bordered header bar: an "Aperture" link to `/maps` on the left; on the right, the `ReferenceMenu` info menu next to the `CharacterPanel`.

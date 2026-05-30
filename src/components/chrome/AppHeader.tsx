@@ -6,10 +6,12 @@ export function AppHeader({
   active,
   characters,
   mainCharacterId,
+  travelAnimation,
 }: {
   active: { id: string; name: string };
   characters: PanelCharacter[];
   mainCharacterId: string | null;
+  travelAnimation: boolean;
 }) {
   return (
     <header className="border-b border-border">
@@ -23,6 +25,7 @@ export function AppHeader({
             active={active}
             characters={characters}
             mainCharacterId={mainCharacterId}
+            travelAnimation={travelAnimation}
           />
         </div>
       </div>

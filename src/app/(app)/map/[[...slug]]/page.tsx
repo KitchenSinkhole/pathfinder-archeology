@@ -6,7 +6,7 @@ import { routesForSystems } from '@/lib/map/route';
 import { statsForSystems } from '@/lib/map/stats';
 import { intelForSystems } from '@/lib/map/intel';
 import { structuresForSystems } from '@/lib/structures/read';
-import { requireSession } from '@/lib/session';
+import { getConnectionTravelAnimation, requireSession } from '@/lib/session';
 
 function parseMapId(slug?: string[]): bigint | null {
   const raw = slug?.[0];
@@ -35,29 +35,24 @@ export default async function MapPage({ params }: { params: Promise<{ slug?: str
   const data = await loadMapForView(mapId, BigInt(session.characterId));
   if (!data) {
     return (
-      <EmptyState
-        title="Map not found"
-        description="This map doesn't exist or has been deleted."
-      />
+      <EmptyState title="Map not found" description="This map doesn't exist or has been deleted." />
     );
   }
 
   const systemIds = data.systems.map((s) => s.systemId);
-  const [routes, stats, intel, structures, settings] = await Promise.all([
+  const [routes, stats, intel, structures, settings, travelAnimation] = await Promise.all([
     routesForSystems(systemIds),
     statsForSystems(systemIds),
     intelForSystems(systemIds),
     structuresForSystems(systemIds),
     loadMapSettings(BigInt(session.characterId), mapId),
+    getConnectionTravelAnimation(session.userId),
   ]);
 
   // Non-null because `loadMapForView` already succeeded for the same viewer/map.
   if (!settings) {
     return (
-      <EmptyState
-        title="Map not found"
-        description="This map doesn't exist or has been deleted."
-      />
+      <EmptyState title="Map not found" description="This map doesn't exist or has been deleted." />
     );
   }
 
@@ -76,6 +71,7 @@ export default async function MapPage({ params }: { params: Promise<{ slug?: str
         intel={intel}
         structures={structures}
         settings={settings}
+        travelAnimation={travelAnimation}
       />
     </div>
   );

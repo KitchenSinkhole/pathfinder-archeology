@@ -7,7 +7,7 @@
 xyflow `EdgeProps` with `data: ConnectionEdgeData` (`MapConnectionEdge & { parallelIndex: number; parallelCount: number }`) and `selected`.
 
 ### Renders
-A bezier `BaseEdge` styled via `connectionStyle` (scope→colour, wormhole recoloured by mass, EOL dashed, frigate thinned) plus a midpoint label of badges (`connectionBadges`: jump-mass, EOL, FRIG, ROLL, PRES) when any apply. When `isEol` is true the label also carries a live countdown ("23h", "2d", "expired") derived from `eolAt + apertureConfig.WORMHOLE_EOL_LIFETIME_MS`.
+A bezier `BaseEdge` styled via `connectionStyle` (scope→colour, wormhole recoloured by mass, EOL dashed, frigate thinned) plus a midpoint label of badges (`connectionBadges`: jump-mass, EOL, FRIG, ROLL, PRES) when any apply. When `isEol` is true the label also carries a live countdown ("23h", "2d", "expired") derived from `eolAt + apertureConfig.WORMHOLE_EOL_LIFETIME_MS`. When a travel pulse is active for this connection, a faint `TravelDot` (SVG `<circle>` r 3, opacity 0.55, edge stroke colour) with an `<animateMotion>` glides once along the curve.
 
 ### Behaviour & Interactions
 - Selectable by click — `MapCanvas` consumes `onSelectionChange` and routes the selected edge into the sidebar inspector.
@@ -17,6 +17,8 @@ A bezier `BaseEdge` styled via `connectionStyle` (scope→colour, wormhole recol
 - Edits all live in the sidebar inspector (`InspectorModule.ConnectionInspector`).
 - Endpoint sides snap dynamically: `pickAnchors` reads source/target node geometry from `useInternalNode`, compares the centre-to-centre delta, and picks the dominant axis. `|dx| >= |dy|` → right/left; otherwise → bottom/top, oriented so the source side faces the target. The `sourceX/Y/Position` and `targetX/Y/Position` props xyflow passes (which derive from whichever handles the connection was created on) are only used as a fallback while the nodes haven't been measured yet.
 - Parallel edges (multiple wormholes between the same two systems): `parallelIndex`/`parallelCount` from `ConnectionEdgeData` drive a perpendicular `offset` passed to `pickAnchors` — 12 px per step, centred around 0. For two parallel connections the offsets are −6/+6 px; for three: −12/0/+12 px. The offset shifts the anchor along the node face so each line exits from a visually distinct point.
+- **Travel animation:** `useTravelForConnection(id)` (from `MapTravelContext`) returns the current pulse (`{ direction, token }`) or null. When set, a `TravelDot` keyed by `token` mounts (a fresh jump remounts it). The dot's `<animateMotion>` follows the same bezier `path` source→target by default; `direction === 'reverse'` traverses it backwards via `keyPoints="1;0"`. The pulse self-clears after ~1.3s (managed by the store). No pulse ever fires when the account has the animation disabled (the bridge that emits them isn't mounted).
+  - The SMIL animation is started imperatively via `beginElement()` in a mount effect (with `begin="indefinite"`), **not** the default `begin="0s"`. A SMIL begin offset is resolved against the SVG document timeline (page load); on a long-lived canvas "0s" is already in the past when a jump occurs, so the browser would render the animation as already-finished — the dot snaps to the curve's end (`fill="freeze"`) and never visibly moves. `beginElement()` starts it at the current document time.
 
 ### Depends On
 - `@xyflow/react` (`BaseEdge`, `EdgeLabelRenderer`, `Position`, `getBezierPath`, `useInternalNode`, `EdgeProps`).

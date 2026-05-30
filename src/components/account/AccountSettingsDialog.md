@@ -12,16 +12,18 @@
 | characters | AccountCharacter[] | yes | The account roster (`id`, `name`, `status`, `authzLevel`) |
 | mainCharacterId | string \| null | yes | Current main; `null` until bootstrapped on first login |
 | activeCharacter | { id: string; name: string } | yes | The signed-in character; its name is the delete confirmation phrase |
+| travelAnimation | boolean | yes | Initial state of the connection-travel-animation toggle |
 
 ### Renders
-A roster list — each row shows portrait, name, role label (Member / Manager / Admin), and either a "Main" marker (current main), the kicked/banned status, or a "Set as main" button. Below it, a destructive-bordered "Delete account" section embedding `DeleteAccountDialog`.
+A roster list — each row shows portrait, name, role label (Member / Manager / Admin), and either a "Main" marker (current main), the kicked/banned status, or a "Set as main" button. Below it, a "Show connection travel animation" checkbox row, then a destructive-bordered "Delete account" section embedding `DeleteAccountDialog`.
 
 ### Behaviour & Interactions
 - `mainId` is local optimistic state seeded from `mainCharacterId`; clicking "Set as main" calls `setMainCharacterAction` in a transition and moves the marker on success, toasting on failure.
 - Only `active` characters that aren't already main are selectable; the in-flight transition disables all set-main buttons.
+- `travelOn` is local optimistic state seeded from `travelAnimation`; toggling the checkbox calls `setConnectionTravelAnimationAction` in a transition, reverting + toasting on failure. Both transitions share the one `pending` flag.
 
 ### Emits / Calls
-- `setMainCharacterAction(id)` — from `@/app/(app)/actions/account`
+- `setMainCharacterAction(id)`, `setConnectionTravelAnimationAction(enabled)` — from `@/app/(app)/actions/account`
 
 ### Depends On
 - `DeleteAccountDialog` — the type-to-confirm deletion flow

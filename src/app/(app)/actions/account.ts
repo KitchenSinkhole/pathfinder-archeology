@@ -39,6 +39,24 @@ export async function setMainCharacterAction(
 }
 
 /**
+ * Toggle the per-account connection travel animation (the subtle moving dot
+ * played on a connection when a tracked pilot jumps across it). Persisted on
+ * `ap_user`; the per-map row stays untouched because the preference is personal,
+ * not shared with other viewers of the map.
+ */
+export async function setConnectionTravelAnimationAction(
+  enabled: boolean,
+): Promise<AccountActionResult> {
+  const session = await requireSession();
+  await db
+    .update(apUser)
+    .set({ connectionTravelAnimation: enabled, updatedAt: new Date() })
+    .where(eq(apUser.id, session.userId));
+  revalidatePath('/', 'layout');
+  return { ok: true };
+}
+
+/**
  * Delete the account and every character on it. The FK rules do the rest:
  * characters / roles / tracking cascade away, audit rows (`ap_map_event`,
  * `ap_structure_event`) keep their history with `character_id` set null, and

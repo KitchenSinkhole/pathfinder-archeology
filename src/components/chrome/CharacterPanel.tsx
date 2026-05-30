@@ -45,10 +45,12 @@ export function CharacterPanel({
   active,
   characters,
   mainCharacterId,
+  travelAnimation,
 }: {
   active: { id: string; name: string };
   characters: PanelCharacter[];
   mainCharacterId: string | null;
+  travelAnimation: boolean;
 }) {
   const params = useParams();
   const [open, setOpen] = useState(false);
@@ -88,7 +90,9 @@ export function CharacterPanel({
       <SheetContent side="right">
         <SheetHeader>
           <SheetTitle>Characters</SheetTitle>
-          <SheetDescription>Choose which of your characters Aperture tracks on your map.</SheetDescription>
+          <SheetDescription>
+            Choose which of your characters Aperture tracks on your map.
+          </SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-1 px-4">
@@ -164,6 +168,7 @@ export function CharacterPanel({
         characters={characters}
         mainCharacterId={mainCharacterId}
         activeCharacter={active}
+        travelAnimation={travelAnimation}
       />
     </Sheet>
   );
