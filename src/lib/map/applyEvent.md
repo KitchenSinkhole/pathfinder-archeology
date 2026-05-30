@@ -18,7 +18,7 @@ Dispatches on `payload.kind` and returns a new `MapViewData` without mutating th
 **Per-kind behaviour:**
 - `system.added` — upserts the full system node body into `state.systems` (handles both new placements and re-activations of previously-removed systems).
 - `system.removed` — filters the system out of `state.systems` (rows persist server-side at `visible=false`; the canvas just stops showing them). Signatures whose `mapSystemId` matches the removed system are intentionally retained — the DB rows persist (cascade only on hard row delete) and will reappear in the inspector if the system is re-added.
-- `system.updated` — merges the patch into the matching system; only the canvas-visible fields are applied (`alias`, `tag`, `status`, `locked`, `positionX`, `positionY`). `intelNotes` and `rallyAt` are not in `MapViewData` and are silently ignored.
+- `system.updated` — merges the patch into the matching system; canvas-visible fields applied: `alias`, `tag`, `status`, `locked`, `rallyAt`, `positionX`, `positionY`. `intelNotes` is not in `MapViewData` and is silently ignored.
 - `connection.create` — appends the full edge body to `state.connections`.
 - `connection.update` — merges the patch into the matching connection; `eolAt` is applied when present (so the canvas EOL countdown reflects the new stamp without a refetch).
 - `connection.delete` — removes the connection by id.

@@ -130,6 +130,7 @@ const systemNodeBody = {
   constellationName: z.string(),
   statics: z.array(z.string()),
   locked: z.boolean(),
+  rallyAt: z.string().nullable(),
   positionX: z.number(),
   positionY: z.number(),
 };

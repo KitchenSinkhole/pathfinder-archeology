@@ -70,6 +70,7 @@ describe('formatHistoryMessage', () => {
       constellationName: 'Kimotoro',
       statics: [],
       locked: false,
+      rallyAt: null,
       positionX: 0,
       positionY: 0,
     };

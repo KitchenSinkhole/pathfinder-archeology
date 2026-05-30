@@ -25,6 +25,7 @@ describe('mapEventPayloadSchema', () => {
       constellationName: 'Kimotoro',
       statics: [],
       locked: false,
+      rallyAt: null,
       positionX: 10,
       positionY: 20,
     };

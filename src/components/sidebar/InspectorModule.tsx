@@ -185,17 +185,9 @@ function SystemInspector({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => onPatch({ rallyAt: new Date().toISOString() })}
+            onClick={() => onPatch({ rallyAt: system.rallyAt ? null : new Date().toISOString() })}
           >
-            Set rally
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => onPatch({ rallyAt: null })}
-          >
-            Clear rally
+            {system.rallyAt ? 'Clear rally' : 'Set rally'}
           </Button>
         </div>
 

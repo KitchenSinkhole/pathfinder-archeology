@@ -42,7 +42,8 @@ export function applyEvent(state: MapViewData, payload: MapEventPayload): MapVie
           if (payload.locked !== undefined) next.locked = payload.locked;
           if (payload.positionX !== undefined) next.positionX = payload.positionX;
           if (payload.positionY !== undefined) next.positionY = payload.positionY;
-          // intelNotes and rallyAt are not in MapViewData; silently skipped.
+          if (payload.rallyAt !== undefined) next.rallyAt = payload.rallyAt;
+          // intelNotes is not in MapViewData; silently skipped.
           return next;
         }),
       };

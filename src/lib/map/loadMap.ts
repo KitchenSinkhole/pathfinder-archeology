@@ -55,6 +55,8 @@ export type MapSystemNode = {
   /** Target-class labels for each wormhole static (e.g. `["C3", "C5"]`); empty for k-space. */
   statics: string[];
   locked: boolean;
+  /** ISO timestamp when the rally point was set; null when no rally is active. */
+  rallyAt: string | null;
   positionX: number;
   positionY: number;
 };
@@ -202,6 +204,7 @@ export async function loadMapForView(
       tag: apMapSystem.tag,
       status: apMapSystem.status,
       locked: apMapSystem.locked,
+      rallyAt: apMapSystem.rallyAt,
       positionX: apMapSystem.positionX,
       positionY: apMapSystem.positionY,
       name: universeSystem.name,
@@ -277,6 +280,7 @@ export async function loadMapForView(
       constellationName: s.constellationName,
       statics: staticsBySystem.get(s.systemId) ?? [],
       locked: s.locked,
+      rallyAt: s.rallyAt ? s.rallyAt.toISOString() : null,
       positionX: s.positionX,
       positionY: s.positionY,
     })),

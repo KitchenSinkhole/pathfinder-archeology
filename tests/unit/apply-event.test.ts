@@ -29,6 +29,7 @@ const sys1: MapSystemNode = {
   constellationName: 'Kimotoro',
   statics: [],
   locked: false,
+  rallyAt: null,
   positionX: 100,
   positionY: 200,
 };

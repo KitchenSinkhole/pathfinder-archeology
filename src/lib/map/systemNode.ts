@@ -36,6 +36,7 @@ export async function buildSystemNode(
       tag: apMapSystem.tag,
       status: apMapSystem.status,
       locked: apMapSystem.locked,
+      rallyAt: apMapSystem.rallyAt,
       positionX: apMapSystem.positionX,
       positionY: apMapSystem.positionY,
       name: universeSystem.name,
@@ -72,6 +73,7 @@ export async function buildSystemNode(
     constellationName: row.constellationName,
     statics: staticRows.map((s) => s.code),
     locked: row.locked,
+    rallyAt: row.rallyAt ? row.rallyAt.toISOString() : null,
     positionX: row.positionX,
     positionY: row.positionY,
   };
