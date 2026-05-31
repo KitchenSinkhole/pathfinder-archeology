@@ -25,6 +25,10 @@ Hook returning the pilot list for one EVE solar-system. Returns a stable array r
 
 Hook returning every online + located pilot across the whole map, sorted by name. Subscribes to the store's map-wide subscriber set, so it re-renders whenever any system's slice changes. The flattened snapshot is cached on the store (rebuilt only on mutation) to satisfy `useSyncExternalStore`'s stable-reference requirement. Used by `MapInfoDialog` for the online-pilot count and the Users roster.
 
+### usePresenceStore(): PresenceStore | null
+
+Returns the presence store instance for callers that need to read it live at event time rather than subscribe to a slice. The instance is stable for the provider's lifetime; null outside a provider. Used by `SignaturePasteHotkey` to check, at paste time, whether any of the viewer's characters is located in the selected system (via `getSystemForCharacter`).
+
 ### useTraversals(cb: (t: Traversal) => void): void
 
 Subscribes to pilot jumps. The store emits a `Traversal` (`{ characterId, fromSystemId, toSystemId, at }`, solar-system ids) whenever `apply()` folds a `characterUpdate` that moves an online + located pilot from one system to a *different* located system. Seed/offline transitions and same-system re-reports don't emit. The callback is held in a ref so it can change every render without re-subscribing. Consumed by `MapTravelContext`'s `TravelBridge` to drive the connection travel animation.
@@ -37,6 +41,10 @@ Subscribes to pilot jumps. The store emits a `Traversal` (`{ characterId, fromSy
 - **Offline pilots are hidden.** The store only inserts an entry when `online === true && systemId !== null && locationAt !== null`. An envelope with any of those falsy removes the character from their prior system (if any) and inserts nothing.
 - **Sorted by character name** within each system, so the hover list renders deterministically.
 - **Re-seed (full replace)** notifies every previously-present *and* currently-present system — so a system that lost all its pilots between server-load snapshots still re-renders to empty.
+
+### PresenceStore (exported)
+
+The store class is exported for unit testing. Relevant methods beyond the internal subscribe/notify plumbing: `seed(initial)`, `apply(load)`, `getForSystem(id)`, `getAll()`, and `getSystemForCharacter(characterId)` (the EVE system id that character is online+located in, else null — read live for the CTRL+V location check).
 
 ### Depends On
 - `@/lib/map/loadMap` (`MapPresenceEntry` type)

@@ -26,14 +26,14 @@ A shadcn `Dialog`: header, monospace textarea, preview table (one row per parsed
 
 ### Emits / Calls
 - `resolveSignaturesOnServer({ mapId, rows })` — preview resolver.
-- `pasteSignaturesOnServer({ mapId, body })` — submit.
+- `applySignaturePaste({ mapId, mapSystemId, rows, options, onResult })` — submit (shared helper that POSTs, folds payloads via `onResult`, and toasts the summary). Closes the dialog when it returns `true`.
 - `onResult(payloads)` — caller's hook into `applyEvent` + `appliedEventIds`.
 
 ### Depends On
 - `parseSignaturePaste` (`src/lib/map/signatureParser.ts`)
+- `applySignaturePaste` (`src/lib/map/applySignaturePaste.ts`) — shared apply + success toast
 - shadcn `Dialog` primitive (`src/components/ui/dialog.tsx`)
 - lucide-react icons (`Plus`, `Pencil`, `Trash2`, `ClipboardPaste`, `HelpCircle`, `Link2Off`)
-- `sonner` for the success toast
 
 ### Local State
 - `text: string` — textarea content

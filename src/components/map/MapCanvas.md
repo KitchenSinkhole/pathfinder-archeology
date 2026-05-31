@@ -14,6 +14,7 @@
 | settings | MapSettings | yes | Editable map metadata + behaviour toggles (from `loadMapSettings`), seeds the `MapSettingsDialog`. |
 | travelAnimation | boolean | yes | The viewer's per-account connection-travel-animation toggle. When true, mounts the `TravelBridge` that plays the moving-dot effect on pilot jumps. |
 | canConfigureTagging | boolean | yes | Owner/admin gate (Stage 17.10): passed to `MapSettingsDialog` to show the Tagging tab. |
+| viewerCharacterIds | number[] | yes | The viewer's account character ids; passed to `SignaturePasteHotkey` for the CTRL+V fast-paste location check. |
 
 ### Renders
 An unbounded two-column layout (the page scrolls). The wide left column stacks a right-aligned toolbar row ("Add system" + "Map info" + "Settings" ghost buttons) above the `ReactFlow` canvas (pixel height, user-resizable via a drag handle), then a horizontal drag handle and then `SignatureModule` at its full natural height. The narrow right column (`w-80`, `self-start`) contains `InspectorModule`, `RouteModule`, `IntelModule`, `StructureModule`, `KillStatsModule`, `SystemGraphModule`, `SystemKillboardModule`, and `TagsModule` (Stage 17.10 — auto-tag "next available", hidden when the map runs no scheme) and does not stretch to match the left column's height. A `MapInfoDialog` and an `AddSystemDialog` are mounted (closed by default) inside the presence provider.
@@ -47,10 +48,11 @@ An unbounded two-column layout (the page scrolls). The wide left column stacks a
 - Wraps the canvas subtree in `MapPresenceProvider` seeded from `data.presence` (`MapPresenceContext`) so each `SystemNode` can pull its system's online-pilot slice via `usePresenceForSystem` without prop-drilling. The provider also folds incoming `characterUpdate` envelopes onto that store.
 - Inside that, wraps the subtree in `MapTravelProvider` (`MapTravelContext`) so `ConnectionEdge` can read its own travel pulse. When `travelAnimation` is true, mounts `TravelBridge` (passing `viewData.systems` + `viewData.connections`) which listens to presence traversals and pulses the matching edge; when false the bridge is absent so no animation ever plays.
 - Inside that, wraps the subtree in `MapUnderglowProvider` (`MapUnderglowContext`) so each `SystemNode` can read its own underglow slice, and always mounts `MapUnderglowBridge` (passing `viewData.systems`) which turns incoming `systemNotification` realtime events (Stage 17.8 zKB kills) into a per-node glow pulse.
+- Mounts `SignaturePasteHotkey` (inside `MapPresenceProvider`, so it can read live presence) — the CTRL+V fast-paste listener. On a scanner-data paste it applies add+update sigs straight to `selectedSystem` via `onBulkPaste`, gating behind a mismatch confirm when none of `viewerCharacterIds` are located in the selected system.
 - Threads `viewData.connections` and `viewData.systems` into `SignatureModule` so its `ConnectionSelect` can list connections incident to the active system without an API call.
 
 ### Depends On
-- `@xyflow/react`, `./SystemNode`, `./ConnectionEdge`, `./MapPresenceContext`, `./MapTravelContext`, `./MapUnderglowContext`, `./MapUnderglowBridge`
+- `@xyflow/react`, `./SystemNode`, `./ConnectionEdge`, `./MapPresenceContext`, `./MapTravelContext`, `./MapUnderglowContext`, `./MapUnderglowBridge`, `./SignaturePasteHotkey`
 - `@/components/dialogs/MapInfoDialog`, `@/components/dialogs/MapSettingsDialog`, `./AddSystemDialog`, `@/components/ui/button`
 - `RouteModule`, `KillStatsModule`, `InspectorModule`, `SignatureModule`
 - `IntelModule`, `StructureModule`, `SystemGraphModule`, `SystemKillboardModule` (both self-fetch per-selected-system from `/api/system/[id]/…`)

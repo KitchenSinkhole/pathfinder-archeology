@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { ClipboardPaste, Plus, Pencil, Trash2, HelpCircle, Link2Off } from 'lucide-react';
-import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -13,10 +12,8 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { parseSignaturePaste } from '@/lib/map/signatureParser';
-import {
-  pasteSignaturesOnServer,
-  resolveSignaturesOnServer,
-} from '@/lib/map/client';
+import { resolveSignaturesOnServer } from '@/lib/map/client';
+import { applySignaturePaste } from '@/lib/map/applySignaturePaste';
 import type {
   BulkPasteOptions,
   MapEventPayload,
@@ -157,19 +154,14 @@ export function SignaturePasteDialog({
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const result = await pasteSignaturesOnServer({
+      const ok = await applySignaturePaste({
         mapId,
-        body: { mapSystemId, rows: parsed, options },
+        mapSystemId,
+        rows: parsed,
+        options,
+        onResult,
       });
-      if (!result.ok) return;
-      onResult(result.data.payloads);
-      const { added, updated, removed, connectionsRemoved } = result.data.summary;
-      toast.success(
-        `Paste applied: ${added} added, ${updated} updated, ${removed} removed${
-          connectionsRemoved ? `, ${connectionsRemoved} connections removed` : ''
-        }.`,
-      );
-      handleOpenChange(false);
+      if (ok) handleOpenChange(false);
     });
   }
 

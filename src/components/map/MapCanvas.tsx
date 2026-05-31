@@ -66,6 +66,7 @@ import { MapSettingsDialog } from '@/components/dialogs/MapSettingsDialog';
 import { AddSystemDialog } from './AddSystemDialog';
 import { ConnectionEdge, type ConnectionEdgeData } from './ConnectionEdge';
 import { MapPresenceProvider } from './MapPresenceContext';
+import { SignaturePasteHotkey } from './SignaturePasteHotkey';
 import { MapTravelProvider, TravelBridge } from './MapTravelContext';
 import { MapUnderglowProvider } from './MapUnderglowContext';
 import { MapUnderglowBridge } from './MapUnderglowBridge';
@@ -83,6 +84,7 @@ export function MapCanvas({
   settings,
   travelAnimation,
   canConfigureTagging,
+  viewerCharacterIds,
 }: {
   data: MapViewData;
   routes: Record<number, HubRoute[]>;
@@ -93,6 +95,8 @@ export function MapCanvas({
   travelAnimation: boolean;
   /** Owner/admin gate (Stage 17.10): shows the Map Settings "Tagging" tab. */
   canConfigureTagging: boolean;
+  /** Viewer's account character ids — matched against presence for the CTRL+V fast-paste location check. */
+  viewerCharacterIds: number[];
 }) {
   const [selected, setSelected] = useState<SelectionRef | null>(null);
   const [mapInfoOpen, setMapInfoOpen] = useState(false);
@@ -546,6 +550,13 @@ export function MapCanvas({
           <TravelBridge systems={viewData.systems} connections={viewData.connections} />
         )}
         <MapUnderglowBridge systems={viewData.systems} />
+        <SignaturePasteHotkey
+          mapId={mapId}
+          selectedSystem={selectedSystem}
+          systems={viewData.systems}
+          viewerCharacterIds={viewerCharacterIds}
+          onBulkPaste={onBulkPaste}
+        />
         <div className="flex gap-4">
           <div className="flex min-w-0 flex-1 flex-col gap-4">
             <div className="flex items-center justify-end gap-1">

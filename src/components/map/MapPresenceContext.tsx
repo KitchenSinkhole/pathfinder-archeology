@@ -43,7 +43,7 @@ type TraversalSubscriber = (t: Traversal) => void;
 
 const EMPTY: readonly MapPresenceEntry[] = Object.freeze([]) as readonly MapPresenceEntry[];
 
-class PresenceStore {
+export class PresenceStore {
   private bySystem = new Map<number, MapPresenceEntry[]>();
   private byCharacterSystem = new Map<number, number>();
   private subs = new Map<number, Set<Subscriber>>();
@@ -144,6 +144,15 @@ class PresenceStore {
 
   getForSystem(systemId: number): readonly MapPresenceEntry[] {
     return this.bySystem.get(systemId) ?? EMPTY;
+  }
+
+  /**
+   * The EVE solar-system id one character is currently online + located in, or
+   * null if it's offline / unlocated. Read live at event time (the store
+   * instance is stable), so callers don't need to subscribe for this.
+   */
+  getSystemForCharacter(characterId: number): number | null {
+    return this.byCharacterSystem.get(characterId) ?? null;
   }
 
   subscribeAll(sub: Subscriber): () => void {
@@ -254,6 +263,16 @@ export function usePresenceForMap(): readonly MapPresenceEntry[] {
   const subscribe = useCallback((cb: () => void) => store?.subscribeAll(cb) ?? (() => {}), [store]);
   const getSnapshot = useCallback(() => store?.getAll() ?? EMPTY, [store]);
   return useSyncExternalStore(subscribe, getSnapshot, () => EMPTY);
+}
+
+/**
+ * The presence store itself, for callers that need to read it live at event
+ * time rather than subscribe to a slice (e.g. the CTRL+V paste handler checking
+ * "is any of my characters in the selected system?"). The store instance is
+ * stable for the provider's lifetime. Null outside a provider.
+ */
+export function usePresenceStore(): PresenceStore | null {
+  return useContext(PresenceContext);
 }
 
 /**

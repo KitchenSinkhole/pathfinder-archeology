@@ -7,7 +7,11 @@ import { statsForSystems } from '@/lib/map/stats';
 import { intelForSystems } from '@/lib/map/intel';
 import { structuresForSystems } from '@/lib/structures/read';
 import { isMapOwnerOrAdmin } from '@/lib/auth/rights';
-import { getConnectionTravelAnimation, requireSession } from '@/lib/session';
+import {
+  getAccountCharacters,
+  getConnectionTravelAnimation,
+  requireSession,
+} from '@/lib/session';
 
 function parseMapId(slug?: string[]): bigint | null {
   const raw = slug?.[0];
@@ -41,16 +45,30 @@ export default async function MapPage({ params }: { params: Promise<{ slug?: str
   }
 
   const systemIds = data.systems.map((s) => s.systemId);
-  const [routes, stats, intel, structures, settings, travelAnimation, canConfigureTagging] =
-    await Promise.all([
-      routesForSystems(systemIds),
-      statsForSystems(systemIds),
-      intelForSystems(systemIds),
-      structuresForSystems(systemIds),
-      loadMapSettings(BigInt(session.characterId), mapId),
-      getConnectionTravelAnimation(session.userId),
-      isMapOwnerOrAdmin(BigInt(session.characterId), mapId),
-    ]);
+  const [
+    routes,
+    stats,
+    intel,
+    structures,
+    settings,
+    travelAnimation,
+    canConfigureTagging,
+    accountCharacters,
+  ] = await Promise.all([
+    routesForSystems(systemIds),
+    statsForSystems(systemIds),
+    intelForSystems(systemIds),
+    structuresForSystems(systemIds),
+    loadMapSettings(BigInt(session.characterId), mapId),
+    getConnectionTravelAnimation(session.userId),
+    isMapOwnerOrAdmin(BigInt(session.characterId), mapId),
+    getAccountCharacters(session.userId),
+  ]);
+
+  // Match the CTRL+V paste target against where any of the viewer's pilots are.
+  const viewerCharacterIds = accountCharacters
+    .filter((c) => c.status === 'active')
+    .map((c) => Number(c.id));
 
   // Non-null because `loadMapForView` already succeeded for the same viewer/map.
   if (!settings) {
@@ -76,6 +94,7 @@ export default async function MapPage({ params }: { params: Promise<{ slug?: str
         settings={settings}
         travelAnimation={travelAnimation}
         canConfigureTagging={canConfigureTagging}
+        viewerCharacterIds={viewerCharacterIds}
       />
     </div>
   );
