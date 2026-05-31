@@ -128,12 +128,62 @@ period split, unknown bucket, `hasNext` boundary).
 **Goal:** `system_killboard` recent-kills feed (reuse Stage 13 `zkb` client; live WS optional); `system_graph` charts over `ap_system_stats` (K-space only).
 **Done when:** Killboard lists recent kills for the selected system; graphs render for K-space.
 
-## Stage 17.9 — Thera + Tags + Dotlan modules
+## Stage 17.9 — Thera module
 **Mode:** Plan mode
-**Goal:** Thera eve-scout sync → connections (reuse Stage 13 `evescout`); Tags next-bookmark grid; Dotlan K-space embed/link.
-**Done when:** Thera lists eve-scout connections with sync; Tags grid renders; Dotlan shows for K-space.
+**Goal:** Thera eve-scout sync → connections (reuse Stage 13 `evescout`).
+**Done when:** Thera lists eve-scout connections with sync.
 
-## Stage 17.10 — Remaining dialogs + library swaps + Phase-4 gate
+## Stage 17.10 — Auto-tagging module (ABC + 0121)
+**Mode:** Plan mode
+**Goal:** An **optional** per-map auto-tagging feature that assigns a tag to each newly discovered
+system on the map, using one of two pluggable tagging schemes. The architecture must be **extensible** —
+adding a third scheme later should not require touching the first two. A side panel surfaces the next
+available tags so scanners can bookmark ahead of discovery.
+
+**Prerequisite — Home system:** Both schemes require an admin to configure a **Home** system on the map
+(the central node tagging is calculated from). The Home system **cannot be deleted** from the map while
+it is designated as Home, and there is exactly one Home per map. Configuring/clearing Home is an
+admin-gated map setting.
+
+**Scheme A — `ABC` (per-class sequential letters):**
+- Each wormhole class is tagged independently with the next available letter of the alphabet, starting
+  at `A`. The first C1 discovered becomes `C1(A)`, the next `C1(B)`, then `C1(C)`, etc. — each class
+  (C1, C2, … C6, plus the other WH-space classes) keeps its own independent letter sequence.
+- Letters are reclaimed on deletion: if `C1(B)` is removed, `B` becomes the next available letter for
+  that class and is reused before `C`/`D`/etc. (always assign the **lowest** free letter).
+- The UI panel shows the **next three available letters per class** to help scanners bookmark.
+
+**Scheme B — `0121` (positional chain numbering):**
+- Each system in a chain hanging off Home is numbered by the order it was discovered *as a child of its
+  parent*, with the digit appended to the parent's tag. The first hole discovered off Home is `1`.
+  - `1` → first hole off Home
+  - `11` → first hole off `1`; `12` → second hole off `1`
+  - `111` → first hole off `11`; `121` → first hole off `12`
+  - `1111`, `1112`, `11121`, … and so on, depth-first by parent.
+- A tag is therefore `parent_tag` + `next_unused_child_index` (child indices start at 1; the root level
+  hangs directly off Home). Indices are reclaimed per-parent when a child system is deleted (assign the
+  lowest free index for that parent).
+- The UI panel shows the next available tag(s) for the relevant parent(s).
+
+**Assignment trigger & topology:** A tag is assigned when a system is *newly added* to the map. `0121`
+depends on the connection topology (parent = the system you came from), so the scheme must resolve a
+system's parent from its connection to an already-tagged system (or Home). Re-tagging on later topology
+changes is out of scope for this stage unless trivially free — assignment is at discovery time.
+
+**Touches (indicative — finalize in plan mode):** map-level config for tagging scheme + Home system
+(schema migration on `ap_map`, or a small `ap_map_tagging` table; new enum `tag_scheme` = `none|abc|0121`);
+a tag column/store on `ap_map_system` (the assigned tag string); a `src/lib/tagging/**` core with a
+**strategy interface** (`nextTag(context)` / `availableTags(context)`) and one module per scheme so a
+third scheme is additive; hook into the system-create mutation pathway (Server Action / API) so tags are
+assigned on discovery and reclaimed on delete; a `TagsModule` side panel rendering next-available tags;
+Home-system delete guard (reject delete while designated Home); admin map-settings UI for scheme + Home.
+
+**Done when:** An admin can set a map's tagging scheme and designate a Home system; newly discovered
+systems receive the correct `ABC` or `0121` tag; deleting a tagged system frees its tag/index for reuse;
+the Home system cannot be deleted while designated; the side panel shows the next available tags for the
+active scheme; adding a hypothetical third scheme requires only a new strategy module.
+
+## Stage 17.11 — Remaining dialogs + library swaps + Phase-4 gate
 **Mode:** Plan mode
 **Goal:** Connection mass-log detail; API Status; Changelog (Stage 13 GitHub); Notification full-screen dialog; admin HTML tables → TanStack Table; intel notes textarea → Tiptap; drop `empty.js`; Phase-4 gate test suite (SPEC §9).
 **Done when:** SPEC §9 Phase 4 gate green — every feature-matrix §§1–14 row not dropped in §8.2 has a working implementation.
