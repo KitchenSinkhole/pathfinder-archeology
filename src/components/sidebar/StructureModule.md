@@ -14,7 +14,7 @@
 | onDelete | (structureId: string) => void | yes | Delete a structure |
 
 ### Renders
-A `Card` titled "Structures" with an "Add" button (when a system is selected) and a list of structure rows (name, type, owner, notes, "added by"), each with edit/delete icon buttons.
+A `Card` titled "Structures" with an "Add" button (when a system is selected) and a list of structure rows (name, type, owner, notes, "added by"), each with edit/delete icon buttons. The owner line shows the corp's CCP logo (`ccpImageUrl`) when `ownerCorporationId` is set.
 
 ### Behaviour & Interactions
 - Empty states: "Select a system…" (no system) / "No structures recorded." (none).

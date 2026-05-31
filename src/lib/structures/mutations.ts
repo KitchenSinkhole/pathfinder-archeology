@@ -2,6 +2,7 @@ import 'server-only';
 import { eq, type InferInsertModel } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { apStructure, apStructureEvent } from '@/db/schema';
+import { upsertCorporations } from './corporations';
 import type { ApStructure } from '@/types';
 
 /**
@@ -20,6 +21,7 @@ export type CreateStructureInput = {
   systemId: number;
   name: string;
   structureTypeId: number;
+  ownerCorporationId?: number | null;
   ownerName?: string | null;
   notes?: string | null;
   characterId: bigint | null;
@@ -28,6 +30,7 @@ export type CreateStructureInput = {
 export type UpdateStructurePatch = {
   name?: string;
   structureTypeId?: number;
+  ownerCorporationId?: number | null;
   ownerName?: string | null;
   notes?: string | null;
 };
@@ -43,6 +46,25 @@ export type DeleteStructureInput = {
   characterId: bigint | null;
 };
 
+/**
+ * Resolve the owner corp picked in the dialog into the stored FK. The corp name
+ * is seeded into `universe_corporation` (so the FK target exists and the name is
+ * cached) and only the id is stored on the structure. Returns null when no corp
+ * is set. Run before the structure transaction — a stray cache row is harmless
+ * if it aborts.
+ */
+async function resolveOwnerCorporationId(
+  corpId: number | null | undefined,
+  name: string | null | undefined,
+): Promise<bigint | null> {
+  const trimmedName = name?.trim() || null;
+  if (corpId != null && trimmedName) {
+    await upsertCorporations([{ id: corpId, name: trimmedName }]);
+    return BigInt(corpId);
+  }
+  return null;
+}
+
 /** Plain JSON snapshot of a structure row for the audit `payload` (no bigints/Dates). */
 function snapshot(row: ApStructure) {
   return {
@@ -50,7 +72,7 @@ function snapshot(row: ApStructure) {
     systemId: row.systemId,
     name: row.name,
     structureTypeId: row.structureTypeId,
-    ownerName: row.ownerName,
+    ownerCorporationId: row.ownerCorporationId?.toString() ?? null,
     notes: row.notes,
     createdByCharacterId: row.createdByCharacterId?.toString() ?? null,
     createdAt: row.createdAt.toISOString(),
@@ -59,7 +81,11 @@ function snapshot(row: ApStructure) {
 }
 
 /** Insert a structure + a `create` audit event. Returns the new row. */
-export function createStructure(input: CreateStructureInput): Promise<ApStructure> {
+export async function createStructure(input: CreateStructureInput): Promise<ApStructure> {
+  const ownerCorporationId = await resolveOwnerCorporationId(
+    input.ownerCorporationId,
+    input.ownerName,
+  );
   return db.transaction(async (tx) => {
     const [row] = await tx
       .insert(apStructure)
@@ -67,7 +93,7 @@ export function createStructure(input: CreateStructureInput): Promise<ApStructur
         systemId: input.systemId,
         name: input.name,
         structureTypeId: input.structureTypeId,
-        ownerName: input.ownerName ?? null,
+        ownerCorporationId,
         notes: input.notes ?? null,
         createdByCharacterId: input.characterId,
       })
@@ -88,13 +114,20 @@ export function createStructure(input: CreateStructureInput): Promise<ApStructur
  * `update` audit event carrying the patch. Returns the updated row, or null if
  * the id does not exist (no event written).
  */
-export function updateStructure(input: UpdateStructureInput): Promise<ApStructure | null> {
+export async function updateStructure(input: UpdateStructureInput): Promise<ApStructure | null> {
+  const { patch } = input;
+  // The dialog sends both owner fields together; either key present means the
+  // owner is being set. The corp name only seeds the cache — the structure
+  // stores just the FK.
+  const ownerKeyPresent = 'ownerCorporationId' in patch || 'ownerName' in patch;
+  const ownerCorporationId = ownerKeyPresent
+    ? await resolveOwnerCorporationId(patch.ownerCorporationId, patch.ownerName)
+    : null;
   return db.transaction(async (tx) => {
-    const { patch } = input;
     const set: Partial<InferInsertModel<typeof apStructure>> = { updatedAt: new Date() };
     if ('name' in patch) set.name = patch.name;
     if ('structureTypeId' in patch) set.structureTypeId = patch.structureTypeId;
-    if ('ownerName' in patch) set.ownerName = patch.ownerName;
+    if (ownerKeyPresent) set.ownerCorporationId = ownerCorporationId;
     if ('notes' in patch) set.notes = patch.notes;
 
     const [row] = await tx

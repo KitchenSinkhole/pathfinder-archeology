@@ -35,3 +35,4 @@ export {
 } from './character';
 export { killmailSchema, type EsiKillmail } from './killmail';
 export { universeNamesSchema, type EsiUniverseNames } from './universeNames';
+export { searchResultSchema, type EsiSearchResult } from './search';

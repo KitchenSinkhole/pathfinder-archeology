@@ -17,7 +17,9 @@ Patches only the keys present in `patch`; always bumps `updated_at`. Writes an `
 Hard-deletes the row + a `delete` audit event holding the full pre-delete snapshot (so the intel is recoverable). Returns the deleted row, or `null` if missing (→ 404).
 
 ### Input types
-- `CreateStructureInput` — `{ systemId, name, structureTypeId, ownerName?, notes?, characterId }`
-- `UpdateStructurePatch` — `{ name?, structureTypeId?, ownerName?, notes? }`
+- `CreateStructureInput` — `{ systemId, name, structureTypeId, ownerCorporationId?, ownerName?, notes?, characterId }`
+- `UpdateStructurePatch` — `{ name?, structureTypeId?, ownerCorporationId?, ownerName?, notes? }`
 - `UpdateStructureInput` — `{ structureId, patch, characterId }`
 - `DeleteStructureInput` — `{ structureId, characterId }`
+
+`ownerCorporationId` arrives as `number | null` (the EVE corp id resolved from ESI search) and `ownerName` as that corp's name. The structure stores only the FK: a resolved corp upserts `{ id, name }` into `universe_corporation` (guaranteeing the FK target + caching the name) and stores `owner_corporation_id`; with no corp the id is null. There is no free-text owner column — the name lives solely in `universe_corporation`. The dialog always sends both keys, so an update treats either key's presence as "owner is being set".

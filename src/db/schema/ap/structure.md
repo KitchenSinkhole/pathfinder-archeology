@@ -11,7 +11,7 @@
 - `system_id` — `integer` FK → `universe_system.id` `ON DELETE RESTRICT`.
 - `name` — `text`, not null. User-typed structure name.
 - `structure_type_id` — `integer` FK → `universe_type.id` `ON DELETE RESTRICT`. The Upwell structure type (Astrahus, Fortizar, Keepstar, Raitaru, Azbel, Sotiyo, Athanor, Tatara, Ansiblex, …). Real FK because type is static SDE data.
-- `owner_name` — `text`, nullable. Free-text owner intel (not authoritatively resolvable).
+- `owner_corporation_id` — `bigint` FK → `universe_corporation.id` `ON DELETE RESTRICT`, nullable. The corp picked from the ESI search; the name is read from the FK'd `universe_corporation` cache row (single source of truth). **Not** an FK to `ap_corporation` (that table is member-corps-only for the rights matrix). Null when the owner is unknown.
 - `notes` — `text`, nullable. Free-text intel.
 - `created_by_character_id` — `bigint` FK → `ap_character.id` `ON DELETE SET NULL` (audit; never cascade-wipe intel when a character is erased).
 - `created_at` / `updated_at` — `timestamptz`, default `now()`.

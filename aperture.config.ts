@@ -143,6 +143,10 @@ export const apertureConfig = {
     'esi-location.read_online.v1',
     'esi-characters.read_corporation_roles.v1',
     'esi-characters.read_titles.v1',
+    // Powers the corporation search in the structure-intel dialog. The ESI
+    // `/characters/{id}/search/` endpoint gates ALL categories behind this one
+    // scope despite its structure-specific name.
+    'esi-search.search_structures.v1',
   ],
 
   /**

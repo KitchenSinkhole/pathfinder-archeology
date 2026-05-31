@@ -21,6 +21,7 @@ const createStructureBodySchema = z.object({
   systemId: z.number().int().positive(),
   name: z.string().min(1).max(100),
   structureTypeId: z.number().int().positive(),
+  ownerCorporationId: z.number().int().positive().nullable().optional(),
   ownerName: z.string().max(100).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
 });

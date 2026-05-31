@@ -5,6 +5,7 @@ import {
   apCharacter,
   apStructure,
   universeCategory,
+  universeCorporation,
   universeGroup,
   universeType,
 } from '@/db/schema';
@@ -17,6 +18,9 @@ export type StructureIntel = {
   name: string;
   structureTypeId: number;
   typeName: string;
+  /** EVE corporation id of the owner, or null when unknown. */
+  ownerCorporationId: number | null;
+  /** Owner corp name from the `universe_corporation` cache; null when no owner is set. */
   ownerName: string | null;
   notes: string | null;
   /** `ap_character.name` of the creator — light at-a-glance accountability. Null if erased. */
@@ -48,7 +52,8 @@ export async function structuresForSystems(
       name: apStructure.name,
       structureTypeId: apStructure.structureTypeId,
       typeName: universeType.name,
-      ownerName: apStructure.ownerName,
+      ownerCorporationId: apStructure.ownerCorporationId,
+      ownerName: universeCorporation.name,
       notes: apStructure.notes,
       createdByName: apCharacter.name,
       createdAt: apStructure.createdAt,
@@ -56,6 +61,7 @@ export async function structuresForSystems(
     })
     .from(apStructure)
     .innerJoin(universeType, eq(apStructure.structureTypeId, universeType.id))
+    .leftJoin(universeCorporation, eq(apStructure.ownerCorporationId, universeCorporation.id))
     .leftJoin(apCharacter, eq(apStructure.createdByCharacterId, apCharacter.id))
     .where(inArray(apStructure.systemId, systemIds))
     .orderBy(asc(apStructure.systemId), asc(apStructure.name));
@@ -68,6 +74,7 @@ export async function structuresForSystems(
       name: r.name,
       structureTypeId: r.structureTypeId,
       typeName: r.typeName,
+      ownerCorporationId: r.ownerCorporationId === null ? null : Number(r.ownerCorporationId),
       ownerName: r.ownerName,
       notes: r.notes,
       createdByName: r.createdByName,
@@ -117,13 +124,23 @@ export async function withTypeName(row: ApStructure): Promise<StructureIntel> {
       .where(eq(apCharacter.id, row.createdByCharacterId));
     createdByName = charRow?.name ?? null;
   }
+  // The owner name lives only in the cache; resolve it from the FK (null owner → null).
+  let ownerName: string | null = null;
+  if (row.ownerCorporationId !== null) {
+    const [corpRow] = await db
+      .select({ name: universeCorporation.name })
+      .from(universeCorporation)
+      .where(eq(universeCorporation.id, row.ownerCorporationId));
+    ownerName = corpRow?.name ?? null;
+  }
   return {
     id: row.id.toString(),
     systemId: row.systemId,
     name: row.name,
     structureTypeId: row.structureTypeId,
     typeName: typeRow?.name ?? '',
-    ownerName: row.ownerName,
+    ownerCorporationId: row.ownerCorporationId === null ? null : Number(row.ownerCorporationId),
+    ownerName,
     notes: row.notes,
     createdByName,
     createdAt: row.createdAt.toISOString(),

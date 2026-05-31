@@ -17,3 +17,4 @@
 - `factionWarSystemsSchema` / `EsiFactionWarSystems` (`sovereignty.ts`) - `getFactionWarSystems`.
 - `killmailSchema` / `EsiKillmail` (`killmail.ts`) - `getKillmail`.
 - `universeNamesSchema` / `EsiUniverseNames` (`universeNames.ts`) - `getUniverseNames`.
+- `searchResultSchema` / `EsiSearchResult` (`search.ts`) - `search` (per-category id arrays; corp search for the structure dialog).

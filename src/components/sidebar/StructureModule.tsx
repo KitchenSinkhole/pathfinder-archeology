@@ -5,6 +5,7 @@ import { Building2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StructureFormDialog, type StructureFormValues } from './StructureFormDialog';
+import { ccpImageUrl } from '@/lib/integrations/links';
 import type { MapSystemNode, StructureIntel } from '@/types';
 
 /**
@@ -73,7 +74,19 @@ export function StructureModule({
                     <span className="truncate">{s.name}</span>
                   </span>
                   <span className="text-muted-foreground">{s.typeName}</span>
-                  {s.ownerName ? <span className="truncate">Owner: {s.ownerName}</span> : null}
+                  {s.ownerName ? (
+                    <span className="flex items-center gap-1.5 truncate">
+                      {s.ownerCorporationId !== null ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={ccpImageUrl('corporations', s.ownerCorporationId, 'logo', 32)}
+                          alt=""
+                          className="size-4 shrink-0 rounded-sm"
+                        />
+                      ) : null}
+                      <span className="truncate">{s.ownerName}</span>
+                    </span>
+                  ) : null}
                   {s.notes ? <span className="text-muted-foreground">{s.notes}</span> : null}
                   {s.createdByName ? (
                     <span className="text-[10px] text-muted-foreground">added by {s.createdByName}</span>

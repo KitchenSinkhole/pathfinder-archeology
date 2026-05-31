@@ -18,6 +18,7 @@ export const runtime = 'nodejs';
 const updateStructureBodySchema = z.object({
   name: z.string().min(1).max(100).optional(),
   structureTypeId: z.number().int().positive().optional(),
+  ownerCorporationId: z.number().int().positive().nullable().optional(),
   ownerName: z.string().max(100).nullable().optional(),
   notes: z.string().max(2000).nullable().optional(),
 });

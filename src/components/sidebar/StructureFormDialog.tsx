@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Loader2, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -19,15 +20,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { fetchStructureTypes } from '@/lib/structures/client';
-import type { StructureIntel, UpwellStructureType } from '@/types';
+import { fetchStructureTypes, searchCorporationsOnServer } from '@/lib/structures/client';
+import { ccpImageUrl } from '@/lib/integrations/links';
+import type { CorpSearchResult, StructureIntel, UpwellStructureType } from '@/types';
 
 export type StructureFormValues = {
   name: string;
   structureTypeId: number;
+  /** EVE corporation id resolved from ESI search; null when the owner is unknown. */
+  ownerCorporationId: number | null;
   ownerName: string | null;
   notes: string | null;
 };
+
+/** The owner the dialog holds while editing — a resolved corp, or null. */
+type OwnerSelection = { id: number | null; name: string };
+
+const CORP_SEARCH_DEBOUNCE_MS = 250;
+const CORP_SEARCH_MIN_CHARS = 3;
 
 /**
  * Create/edit dialog for a manual structure. `initial` present ⇒ edit mode.
@@ -96,7 +106,9 @@ function StructureForm({
 }) {
   const [name, setName] = useState(initial?.name ?? '');
   const [typeId, setTypeId] = useState(initial ? String(initial.structureTypeId) : '');
-  const [ownerName, setOwnerName] = useState(initial?.ownerName ?? '');
+  const [owner, setOwner] = useState<OwnerSelection | null>(
+    initial?.ownerName ? { id: initial.ownerCorporationId, name: initial.ownerName } : null,
+  );
   const [notes, setNotes] = useState(initial?.notes ?? '');
 
   const typeLabels = useMemo(
@@ -127,7 +139,8 @@ function StructureForm({
     onSubmit({
       name: trimmed,
       structureTypeId: numericTypeId,
-      ownerName: ownerName.trim() || null,
+      ownerCorporationId: owner?.id ?? null,
+      ownerName: owner?.name ?? null,
       notes: notes.trim() || null,
     });
     onClose();
@@ -166,16 +179,10 @@ function StructureForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="structure-owner" className="text-sm font-medium">
+        <span className="text-sm font-medium">
           Owner <span className="text-muted-foreground">(optional)</span>
-        </label>
-        <Input
-          id="structure-owner"
-          value={ownerName}
-          onChange={(e) => setOwnerName(e.target.value)}
-          placeholder="Corp / alliance name"
-          maxLength={100}
-        />
+        </span>
+        <OwnerCorpField value={owner} onChange={setOwner} />
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -200,5 +207,134 @@ function StructureForm({
         <Button type="submit">{initial ? 'Save' : 'Add structure'}</Button>
       </DialogFooter>
     </form>
+  );
+}
+
+/**
+ * Corporation owner picker. Either shows the selected corp as a chip (with its
+ * CCP logo when an id is resolved) and a clear button, or a debounced search box
+ * whose dropdown maps the owner to a real EVE corporation via ESI. Legacy
+ * free-text owners load as a chip with a null id (no logo) until re-picked.
+ */
+function OwnerCorpField({
+  value,
+  onChange,
+}: {
+  value: OwnerSelection | null;
+  onChange: (next: OwnerSelection | null) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<CorpSearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  // Drops out-of-order responses: only the latest issued request may commit.
+  const requestSeq = useRef(0);
+
+  useEffect(() => {
+    if (value !== null) return; // not searching while a corp is selected
+    const trimmed = query.trim();
+    const seq = ++requestSeq.current;
+    const timer = setTimeout(async () => {
+      const data =
+        trimmed.length < CORP_SEARCH_MIN_CHARS ? [] : await fetchResults(trimmed);
+      if (seq !== requestSeq.current) return;
+      setResults(data);
+      setLoading(false);
+    }, CORP_SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+
+    async function fetchResults(q: string): Promise<CorpSearchResult[]> {
+      const result = await searchCorporationsOnServer(q);
+      return result.ok ? result.data : [];
+    }
+  }, [query, value]);
+
+  function choose(corp: CorpSearchResult) {
+    onChange({ id: corp.id, name: corp.name });
+    setQuery('');
+    setResults([]);
+  }
+
+  function clear() {
+    onChange(null);
+    setQuery('');
+    setResults([]);
+  }
+
+  if (value !== null) {
+    return (
+      <div className="flex items-center justify-between gap-2 rounded-md border border-input px-3 py-2">
+        <span className="flex min-w-0 items-center gap-2 text-sm">
+          {value.id !== null ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={ccpImageUrl('corporations', value.id, 'logo', 32)}
+              alt=""
+              className="size-5 shrink-0 rounded-sm"
+            />
+          ) : null}
+          <span className="truncate">{value.name}</span>
+        </span>
+        <Button
+          type="button"
+          size="icon-xs"
+          variant="ghost"
+          aria-label="Clear owner"
+          onClick={clear}
+        >
+          <X className="size-3" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+        {loading ? (
+          <Loader2 className="absolute top-1/2 right-2.5 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+        ) : null}
+        <Input
+          value={query}
+          onChange={(e) => {
+            const next = e.target.value;
+            setQuery(next);
+            setLoading(next.trim().length >= CORP_SEARCH_MIN_CHARS);
+          }}
+          placeholder="Search corporation by name"
+          className="pl-8"
+        />
+      </div>
+
+      {query.trim().length >= CORP_SEARCH_MIN_CHARS ? (
+        <div className="mt-1 max-h-56 overflow-auto rounded-md ring-1 ring-foreground/10">
+          {results.length === 0 ? (
+            <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+              {loading ? 'Searching…' : 'No matching corporations.'}
+            </div>
+          ) : (
+            <ul>
+              {results.map((corp) => (
+                <li key={corp.id}>
+                  <button
+                    type="button"
+                    onClick={() => choose(corp)}
+                    className="flex w-full items-center gap-2 border-t border-foreground/10 px-3 py-2 text-left text-xs first:border-t-0 hover:bg-muted/50"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={ccpImageUrl('corporations', corp.id, 'logo', 32)}
+                      alt=""
+                      className="size-5 shrink-0 rounded-sm"
+                    />
+                    <span className="truncate">{corp.name}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ) : null}
+    </div>
   );
 }

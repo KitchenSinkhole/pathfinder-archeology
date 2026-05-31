@@ -248,6 +248,9 @@ export type { SystemSearchResult } from '@/lib/map/systemSearch';
 // Read-side structure-intel view-models (computed in src/lib/structures/read.ts).
 export type { StructureIntel, UpwellStructureType } from '@/lib/structures/read';
 
+// Corporation name-search result for the structure owner picker (src/lib/structures/corpSearch.ts).
+export type { CorpSearchResult } from '@/lib/structures/corpSearch';
+
 // Structure mutation input types (src/lib/structures/mutations.ts).
 export type {
   CreateStructureInput,

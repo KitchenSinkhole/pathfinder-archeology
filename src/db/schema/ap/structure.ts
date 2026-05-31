@@ -9,6 +9,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { universeSystem } from '../universe/geography';
 import { universeType } from '../universe/items';
+import { universeCorporation } from '../universe/corporation';
 import { apCharacter } from './character';
 
 // SPEC §10 row 9 / spec-08 `system_intel`. Manual structure-intel: one row per
@@ -20,6 +21,13 @@ import { apCharacter } from './character';
 // it can never supply intel on other corps' structures — which is the whole
 // point of the feature. The structure *type* is static SDE data and therefore
 // a real FK; the structure identity/owner are user-supplied notes.
+//
+// `owner_corporation_id` is the EVE corporation picked from the ESI search in the
+// add/edit dialog, FK → `universe_corporation` (the corp name cache) so the owner
+// resolves to a real corp and its name has a single source of truth (the cache
+// row). It deliberately does NOT point at `ap_corporation`: that table is limited
+// to *member* corps for the rights matrix, and a structure owner is usually a
+// corp no member belongs to. Null when the owner is unknown.
 export const apStructure = pgTable(
   'ap_structure',
   {
@@ -31,7 +39,10 @@ export const apStructure = pgTable(
     structureTypeId: integer('structure_type_id')
       .notNull()
       .references(() => universeType.id, { onDelete: 'restrict' }),
-    ownerName: text('owner_name'),
+    ownerCorporationId: bigint('owner_corporation_id', { mode: 'bigint' }).references(
+      () => universeCorporation.id,
+      { onDelete: 'restrict' },
+    ),
     notes: text('notes'),
     // Audit only — erasing a character must not cascade-wipe gathered intel.
     createdByCharacterId: bigint('created_by_character_id', { mode: 'bigint' }).references(

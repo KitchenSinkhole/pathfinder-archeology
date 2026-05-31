@@ -1,5 +1,5 @@
 import { requestJson, type FetchResult } from '@/lib/http/fetchJson';
-import type { StructureIntel, UpwellStructureType } from '@/types';
+import type { CorpSearchResult, StructureIntel, UpwellStructureType } from '@/types';
 
 /**
  * Browser-side fetch wrappers for the structure-intel REST routes. Unlike the
@@ -12,6 +12,7 @@ export type CreateStructureBody = {
   systemId: number;
   name: string;
   structureTypeId: number;
+  ownerCorporationId?: number | null;
   ownerName?: string | null;
   notes?: string | null;
 };
@@ -19,6 +20,7 @@ export type CreateStructureBody = {
 export type UpdateStructureBody = {
   name?: string;
   structureTypeId?: number;
+  ownerCorporationId?: number | null;
   ownerName?: string | null;
   notes?: string | null;
 };
@@ -44,6 +46,19 @@ export function deleteStructureOnServer(args: {
   structureId: string;
 }): Promise<FetchResult<{ id: string }>> {
   return requestJson<FetchResult<{ id: string }>>('DELETE', `/api/structures/${args.structureId}`);
+}
+
+/**
+ * Corporation name search for the owner picker. Read-only (any signed-in user);
+ * the caller debounces and a query under 3 chars returns `[]` from the server.
+ */
+export function searchCorporationsOnServer(
+  query: string,
+): Promise<FetchResult<CorpSearchResult[]>> {
+  return requestJson<FetchResult<CorpSearchResult[]>>(
+    'GET',
+    `/api/structures/corp-search?q=${encodeURIComponent(query)}`,
+  );
 }
 
 /** Upwell structure types for the picker. Static reference data — cached per session. */
