@@ -127,3 +127,24 @@
     @apply font-sans;
     }
 }
+
+@layer utilities {
+  /* Map-node underglow (Stage 17.8). Config rides in as CSS custom properties
+     so one keyframe serves every preset (killmail, rally, …). See
+     SystemUnderglow.tsx / MapUnderglowContext.tsx. */
+  @keyframes underglow {
+    0%, 100% {
+      opacity: calc(var(--underglow-brightness, 0.8) * 0.35);
+      transform: scale(0.96);
+    }
+    50% {
+      opacity: var(--underglow-brightness, 0.8);
+      transform: scale(1.06);
+    }
+  }
+  .animate-underglow {
+    background: var(--underglow-color, #ef4444);
+    filter: blur(10px);
+    animation: underglow var(--underglow-speed, 1400ms) ease-in-out infinite;
+  }
+}

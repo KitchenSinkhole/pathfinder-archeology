@@ -41,10 +41,11 @@ Every frame is `{ task, load }` (NDJSON/JSON). `envelopeSchema` keeps `load` as 
 | `characterUpdate` | server → client | `{ characterId, data? }` | Character status/location changes (other tabs of the same character update). |
 | `characterLogout` | server → client | `{ characterIds: number[] }` | On logout/session expiry — evict subscriptions, notify remaining users. |
 | `logData` | server → client | `{ mapId, data? }` | A map-history event (the `ap_map_event` history record) is appended. |
+| `systemNotification` | server → client | `{ mapId, systemId, kind, killmail }` | A transient server-observed event about a solar system on a map (Stage 17.8: a zKillboard kill in an on-map system). Like `characterUpdate`, broadcast by direct `pg_notify` that **bypasses `ap_map_event`** — it carries no map state. `kind` (extensible; today `'killmail'`) selects the flavour; the client owns the visual treatment. |
 
 ### Firm vs forward-declared
 
-**Firm now** (control plane + access fanout): `subscribe`, `unsubscribe`, `healthCheck`, `mapDeleted`, `characterLogout`, `mapAccess`.
+**Firm now** (control plane + access fanout): `subscribe`, `unsubscribe`, `healthCheck`, `mapDeleted`, `characterLogout`, `mapAccess`, `systemNotification` (Stage 17.8).
 
 **Forward-declared now, tightened in Stage 6** (data bodies): `mapUpdate`, `mapConnectionAccess`, `characterUpdate`, `logData`. Their event-reference fields (`mapId`, `eventId`, `characterId`) are firm; the `data` body is a `z.unknown()` passthrough because the `ap_map_system` / `ap_map_connection` / `ap_map_event` row schemas don't exist until Stage 6. Each carries a `// tightened in Stage 6` marker in the code.
 

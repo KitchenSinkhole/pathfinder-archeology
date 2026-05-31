@@ -281,3 +281,20 @@ export type {
   EsiSovereigntyMap,
   EsiFactionWarSystems,
 } from '@/lib/esi/decoders';
+
+/**
+ * Visual configuration for a map-node "underglow" — a pulsing colored glow
+ * rendered beneath a `SystemNode` (Stage 17.8). The component is intentionally
+ * notification-agnostic; callers (`underglowPresets.ts`) pick the look per
+ * notification kind (killmail = red, future rally/unscanned-sig presets, …).
+ */
+export type UnderglowConfig = {
+  /** Any CSS color. */
+  color: string;
+  /** Peak glow intensity, 0..1. */
+  brightness: number;
+  /** Transient lifetime in ms; `0` ⇒ persistent until explicitly cleared. */
+  durationMs: number;
+  /** Duration of one pulse cycle in ms. */
+  speedMs: number;
+};

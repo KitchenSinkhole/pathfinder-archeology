@@ -50,3 +50,10 @@ Stage 11 (graphile-worker runtime) adds:
 Inferred type alias for `typeof apertureConfig` so consumers don't need to import the runtime value just to type a parameter.
 
 Stage 13 adds `INTEGRATION_REQUEST_TIMEOUT_MS` for read-side third-party clients and `GITHUB_CHANGELOG_REPO` for the GitHub changelog feed.
+
+Stage 17.8 (zKillboard live feed → underglow) adds:
+- `INTEGRATION_USER_AGENT` — `User-Agent` for read-side integration requests (zKB rejects a blank UA with 403); now also used by `zkb.ts`.
+- `ZKB_R2Z2_BASE` — base URL of zKillboard's R2Z2 ephemeral feed (RedisQ replacement).
+- `ZKB_FEED_POLL_MS` — delay between feed sweeps; R2Z2 mandates ≥6s (hard floor).
+- `ZKB_FEED_INDEX_REFRESH_MS` — how often the feed rebuilds its `solarSystemId → mapIds` index from active maps.
+- `ZKB_FEED_MAX_CATCHUP` — max sequence files pulled per tick (bounds a burst; the feed is live-only, no backfill).

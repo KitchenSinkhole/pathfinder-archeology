@@ -36,6 +36,33 @@ export const apertureConfig = {
   /** Per-request timeout for read-side third-party integrations (zKillboard, EVE-Scout, GitHub). */
   INTEGRATION_REQUEST_TIMEOUT_MS: 5_000,
 
+  /** `User-Agent` sent on read-side third-party integration requests. zKillboard rejects a blank UA with 403. */
+  INTEGRATION_USER_AGENT: 'Aperture/0.0.0',
+
+  /**
+   * Stage 17.8. zKillboard R2Z2 ephemeral feed base (the RedisQ replacement).
+   * `GET <base>/sequence.json` → `{ sequence }`; `GET <base>/<seq>.json` →
+   * one killmail (ESI body + `zkb` block) or 404 when not yet published.
+   */
+  ZKB_R2Z2_BASE: 'https://r2z2.zkillboard.com/ephemeral',
+
+  /**
+   * Stage 17.8. Delay between zKB feed poll ticks. R2Z2 mandates a ≥6s wait
+   * between sequence sweeps; going faster risks an IP block. Hard floor, not a
+   * runtime knob.
+   */
+  ZKB_FEED_POLL_MS: 6_000,
+
+  /** Stage 17.8. How often the feed rebuilds its in-memory `solarSystemId → mapIds` index from active maps. */
+  ZKB_FEED_INDEX_REFRESH_MS: 30_000,
+
+  /**
+   * Stage 17.8. Max sequence files the feed pulls in one tick. Bounds a burst
+   * (and the per-tick request budget against the 20 req/s R2Z2 limit); a deeper
+   * backlog is skipped — the feed is live-only and does not backfill.
+   */
+  ZKB_FEED_MAX_CATCHUP: 200,
+
   /** Repository slug used by the changelog integration. Normalised from the legacy fork mismatch. */
   GITHUB_CHANGELOG_REPO: 'exodus4d/pathfinder',
 

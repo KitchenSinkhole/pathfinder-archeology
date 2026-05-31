@@ -26,6 +26,8 @@ const handle = app.getRequestHandler();
 app.prepare().then(async () => {
   const { attachWsServer } = await import('@/lib/realtime/wsServer');
   const { startWorker, stopWorker } = await import('@/lib/jobs/runner');
+  const { env } = await import('@/lib/env');
+  const { startZkbFeed, stopZkbFeed } = await import('@/lib/integrations/zkbFeed');
 
   const server = createServer((req, res) => {
     handle(req, res);
@@ -41,6 +43,10 @@ app.prepare().then(async () => {
     } catch (err) {
       console.error('graphile-worker boot failed:', err);
     }
+    if (env.ZKB_FEED_ENABLED) {
+      startZkbFeed();
+      console.log('▲ zKillboard feed started');
+    }
   });
 
   // Stop the worker before letting the HTTP server close; graphile-worker
@@ -50,6 +56,11 @@ app.prepare().then(async () => {
     if (shuttingDown) return;
     shuttingDown = true;
     console.log(`Received ${signal}, shutting down…`);
+    try {
+      await stopZkbFeed();
+    } catch (err) {
+      console.error('stopZkbFeed failed:', err);
+    }
     try {
       await stopWorker();
     } catch (err) {

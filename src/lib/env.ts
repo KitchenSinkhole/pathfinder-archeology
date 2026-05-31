@@ -24,6 +24,13 @@ const schema = z
     EVE_USER_AGENT: z.string().default('Aperture/0.0.0 (contact@example.com)'),
     ESI_TOKEN_ENC_KEY: z.string().default(''),
     SETUP_PASSWORD: z.string().default(''),
+    // Stage 17.8: master switch for the server-side zKillboard live feed
+    // (`src/lib/integrations/zkbFeed.ts`). Default on; set `false` to disable
+    // the outbound feed (CI, air-gapped dev, or when zKB is degraded).
+    ZKB_FEED_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   })
   .superRefine((v, ctx) => {

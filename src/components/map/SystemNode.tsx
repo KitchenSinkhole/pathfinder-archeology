@@ -7,6 +7,8 @@ import type { MapSystemNode } from '@/lib/map/loadMap';
 import { systemClassColor, systemStatusColor } from './styling';
 import { InlineTextEdit } from './InlineTextEdit';
 import { usePresenceForSystem } from './MapPresenceContext';
+import { useUnderglowForSystem } from './MapUnderglowContext';
+import { SystemUnderglow } from './SystemUnderglow';
 
 // System tile. Status stripe + security badge + tag + alias/name + presence
 // badge + lock + a J-space statics line. Alias and tag are inline
@@ -31,13 +33,15 @@ export function SystemNode({ data, selected }: NodeProps & { data: SystemNodeDat
   const isWormhole = data.statics.length > 0 || /^J\d{6}$/.test(data.name);
   const onAliasOrTagCommit = data.onAliasOrTagCommit;
   const pilots = usePresenceForSystem(data.systemId);
+  const glow = useUnderglowForSystem(data.id);
 
   return (
     <div
-      className="min-w-36 cursor-pointer rounded-md bg-card text-xs text-card-foreground shadow-sm ring-1"
+      className="relative min-w-36 cursor-pointer rounded-md bg-card text-xs text-card-foreground shadow-sm ring-1"
       style={{ borderLeft: `4px solid ${color}`, outline: selected ? `2px solid ${color}` : 'none' }}
       title={`${data.regionName} › ${data.constellationName}`}
     >
+      {glow && <SystemUnderglow key={glow.token} {...glow.config} />}
       <Handle type="source" position={Position.Top} style={{ opacity: 0.2 }} />
       <Handle type="source" position={Position.Right} style={{ opacity: 0.2 }} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0.2 }} />

@@ -14,6 +14,7 @@ Fields:
 - `AUTH_EVE_SSO_BASE` — EVE SSO base URL; defaulted to `https://login.eveonline.com` (point at `https://sisilogin.testeveonline.com` for SISI).
 - `ESI_BASE_URL` — ESI base URL; defaulted to `https://esi.evetech.net`. Used by the Stage 4 ESI client to build request URLs.
 - `EVE_USER_AGENT` — required by Stage 4 (ESI client); defaulted.
+- `ZKB_FEED_ENABLED` — Stage 17.8 master switch for the server-side zKillboard live feed (`zkbFeed.ts`). String `'true'`/`'false'`, parsed to a boolean; defaults to `true`. Set `'false'` to disable the outbound feed (CI, air-gapped dev, zKB degraded). Only `server.ts` reads it (the only place the feed is booted).
 - `NODE_ENV` — narrowed to `development | test | production`.
 
 ### Env

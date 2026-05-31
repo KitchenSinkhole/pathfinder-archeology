@@ -65,6 +65,8 @@ import { AddSystemDialog } from './AddSystemDialog';
 import { ConnectionEdge, type ConnectionEdgeData } from './ConnectionEdge';
 import { MapPresenceProvider } from './MapPresenceContext';
 import { MapTravelProvider, TravelBridge } from './MapTravelContext';
+import { MapUnderglowProvider } from './MapUnderglowContext';
+import { MapUnderglowBridge } from './MapUnderglowBridge';
 import { SystemNode, type SystemNodeData } from './SystemNode';
 
 const nodeTypes = { system: SystemNode };
@@ -534,9 +536,11 @@ export function MapCanvas({
   return (
     <MapPresenceProvider initial={data.presence}>
       <MapTravelProvider>
+        <MapUnderglowProvider>
         {travelAnimation && (
           <TravelBridge systems={viewData.systems} connections={viewData.connections} />
         )}
+        <MapUnderglowBridge systems={viewData.systems} />
         <div className="flex gap-4">
           <div className="flex min-w-0 flex-1 flex-col gap-4">
             <div className="flex items-center justify-end gap-1">
@@ -660,6 +664,7 @@ export function MapCanvas({
           existingSystemIds={existingSystemIds}
           onAdd={onAddSystem}
         />
+        </MapUnderglowProvider>
       </MapTravelProvider>
     </MapPresenceProvider>
   );

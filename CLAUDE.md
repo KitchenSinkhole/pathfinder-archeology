@@ -167,7 +167,7 @@ There are exactly three pathways. Pick the right one; do not invent a fourth.
 - **Native WebSocket served by the same Next.js deployment.** Not a separate process.
 - **Postgres `LISTEN/NOTIFY`** is the only fanout mechanism. The channel the `ap_map_event` trigger publishes to is the channel the WS handler subscribes to. Job dispatch uses the same mechanism.
 - **SharedWorker** on the browser — one character with many tabs holds exactly **one** socket.
-- Task vocabulary is fixed: `mapUpdate`, `mapAccess`, `mapConnectionAccess`, `mapDeleted`, `characterUpdate`, `characterLogout`, `healthCheck`, `logData`, plus client→server `subscribe` / `unsubscribe`. Don't invent new task names without updating the spec.
+- Task vocabulary is fixed: `mapUpdate`, `mapAccess`, `mapConnectionAccess`, `mapDeleted`, `characterUpdate`, `characterLogout`, `healthCheck`, `logData`, `systemNotification`, plus client→server `subscribe` / `unsubscribe`. Don't invent new task names without updating the spec. `systemNotification` (Stage 17.8) is a transient server-observed system event (e.g. a zKillboard kill in an on-map system) — like `characterUpdate` it is broadcast by a direct `pg_notify` that bypasses `ap_map_event`.
 - If realtime is unhealthy, the UI **must** surface a degraded-mode banner — never silently render stale state.
 
 ### Background jobs

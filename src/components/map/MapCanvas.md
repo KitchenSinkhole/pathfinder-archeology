@@ -45,10 +45,11 @@ An unbounded two-column layout (the page scrolls). The wide left column stacks a
 
 - Wraps the canvas subtree in `MapPresenceProvider` seeded from `data.presence` (`MapPresenceContext`) so each `SystemNode` can pull its system's online-pilot slice via `usePresenceForSystem` without prop-drilling. The provider also folds incoming `characterUpdate` envelopes onto that store.
 - Inside that, wraps the subtree in `MapTravelProvider` (`MapTravelContext`) so `ConnectionEdge` can read its own travel pulse. When `travelAnimation` is true, mounts `TravelBridge` (passing `viewData.systems` + `viewData.connections`) which listens to presence traversals and pulses the matching edge; when false the bridge is absent so no animation ever plays.
+- Inside that, wraps the subtree in `MapUnderglowProvider` (`MapUnderglowContext`) so each `SystemNode` can read its own underglow slice, and always mounts `MapUnderglowBridge` (passing `viewData.systems`) which turns incoming `systemNotification` realtime events (Stage 17.8 zKB kills) into a per-node glow pulse.
 - Threads `viewData.connections` and `viewData.systems` into `SignatureModule` so its `ConnectionSelect` can list connections incident to the active system without an API call.
 
 ### Depends On
-- `@xyflow/react`, `./SystemNode`, `./ConnectionEdge`, `./MapPresenceContext`, `./MapTravelContext`
+- `@xyflow/react`, `./SystemNode`, `./ConnectionEdge`, `./MapPresenceContext`, `./MapTravelContext`, `./MapUnderglowContext`, `./MapUnderglowBridge`
 - `@/components/dialogs/MapInfoDialog`, `@/components/dialogs/MapSettingsDialog`, `./AddSystemDialog`, `@/components/ui/button`
 - `RouteModule`, `KillStatsModule`, `InspectorModule`, `SignatureModule`
 - `IntelModule`, `StructureModule`, `SystemGraphModule`, `SystemKillboardModule` (both self-fetch per-selected-system from `/api/system/[id]/…`)

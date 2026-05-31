@@ -9,7 +9,7 @@ The WS is broadcast-only (SPEC §§5–6): server fans `pg_notify('map:'||map_id
 
 ### Constants
 
-- `SERVER_TO_CLIENT_TASKS` — `['mapUpdate','mapAccess','mapConnectionAccess','mapDeleted','characterUpdate','characterLogout','healthCheck','logData']`.
+- `SERVER_TO_CLIENT_TASKS` — `['mapUpdate','mapAccess','mapConnectionAccess','mapDeleted','characterUpdate','characterLogout','healthCheck','logData','systemNotification']`.
 - `CLIENT_TO_SERVER_TASKS` — `['subscribe','unsubscribe']`.
 
 ### Types
@@ -28,7 +28,8 @@ The WS is broadcast-only (SPEC §§5–6): server fans `pg_notify('map:'||map_id
 - `mapUpdateLoadSchema` (`{ mapId, kind?, data?: MapEventPayload }`) — `bus.ts` builds `{ mapId, kind, data }` from the notify payload.
 - Other data-bearing loads (forward-declared): `mapConnectionAccessLoadSchema` (`{ mapId, data? }`), `logDataLoadSchema` (`{ mapId, data? }`).
 - `characterUpdateLoadSchema` — `{ characterId, characterName, online, systemId, shipTypeId, shipTypeName, shipName, locationAt }`. `characterName`, `shipTypeName`, and `shipName` are resolved server-side by the location-poll (Stage 12 / Stage 13 presence-badge) so the client renders the hover panel without a separate roster lookup; `shipTypeName` is null when `shipTypeId` is null, and `shipName` (the pilot's custom hull name from `ap_character.last_ship_name`) is null before the first online tick. The schema is exposed publicly because the client presence-context re-uses it to parse incoming envelopes.
-- `serverToClientMessageSchema` — `z.discriminatedUnion('task', …)` over the eight server tasks (envelope + typed load).
+- `systemNotificationLoadSchema` — `{ mapId, systemId, kind: 'killmail', killmail: { killmailId, shipTypeId, totalValue, href } }`. Stage 17.8 follow-up: a transient server-observed system event (a zKillboard kill in an on-map system). Like `characterUpdate`, broadcast by direct `pg_notify` bypassing `ap_map_event` (`src/lib/integrations/zkbFeed.ts`); the bus discriminates on the top-level `task`. `systemId` is the EVE solar-system id; `kind` is the (extensible) notification flavour, with the client owning the visual treatment (`underglowPresets.ts`). Exposed publicly so the bus and the client bridge both parse it.
+- `serverToClientMessageSchema` — `z.discriminatedUnion('task', …)` over the nine server tasks (envelope + typed load).
 - `clientToServerMessageSchema` — discriminated union over `subscribe` / `unsubscribe`.
 
 ### Notes

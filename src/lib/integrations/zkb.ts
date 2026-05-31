@@ -71,7 +71,7 @@ export async function recentKillsForSystem(
   const res = await fetch(url, {
     headers: {
       Accept: 'application/json',
-      'User-Agent': 'Aperture/0.0.0',
+      'User-Agent': apertureConfig.INTEGRATION_USER_AGENT,
     },
     signal: AbortSignal.timeout(apertureConfig.INTEGRATION_REQUEST_TIMEOUT_MS),
   });

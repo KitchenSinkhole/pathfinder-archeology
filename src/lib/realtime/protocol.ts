@@ -44,6 +44,7 @@ export const SERVER_TO_CLIENT_TASKS = [
   'characterLogout',
   'healthCheck',
   'logData',
+  'systemNotification',
 ] as const;
 
 export const CLIENT_TO_SERVER_TASKS = ['subscribe', 'unsubscribe'] as const;
@@ -331,6 +332,32 @@ export const characterUpdateLoadSchema = z.object({
 
 export type CharacterUpdateLoad = z.infer<typeof characterUpdateLoadSchema>;
 
+/**
+ * `systemNotification` envelope load (Stage 17.8 follow-up). A *transient*
+ * server-observed event about a solar system on a map — it carries no map state
+ * and so, like `characterUpdate`, is broadcast by a direct `pg_notify` that
+ * bypasses `ap_map_event` (see `src/lib/integrations/zkbFeed.ts`). The bus
+ * discriminates on the top-level `task` field.
+ *
+ * `kind` selects the notification flavour; the client owns the visual treatment
+ * (`underglowPresets.ts`) so the wire stays lean. `systemId` is the EVE
+ * solar-system id; the client resolves it to the on-screen node. Today the only
+ * kind is `killmail`; the enum widens as new server notifications are added.
+ */
+export const systemNotificationLoadSchema = z.object({
+  mapId: z.number().int().positive(),
+  systemId: z.number().int(),
+  kind: z.enum(['killmail']),
+  killmail: z.object({
+    killmailId: z.number().int(),
+    shipTypeId: z.number().int().nullable(),
+    totalValue: z.number().nullable(),
+    href: z.string(),
+  }),
+});
+
+export type SystemNotificationLoad = z.infer<typeof systemNotificationLoadSchema>;
+
 export const logDataLoadSchema = z.object({
   mapId: z.number().int().positive(),
   // tightened in Stage 6/10: the ap_map_event history record.
@@ -354,6 +381,7 @@ export const serverToClientMessageSchema = z.discriminatedUnion('task', [
   message('characterLogout', characterLogoutLoadSchema),
   message('healthCheck', healthCheckLoadSchema),
   message('logData', logDataLoadSchema),
+  message('systemNotification', systemNotificationLoadSchema),
 ]);
 
 export const clientToServerMessageSchema = z.discriminatedUnion('task', [
