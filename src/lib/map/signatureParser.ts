@@ -6,15 +6,18 @@
  * components (the paste dialog) without dragging in the DB-bound resolver,
  * which is `server-only`.
  *
- * The EVE client emits **5 tab-separated columns** in fixed order:
- * `Distance, ID, Name, Group, Signal`. The probe scanner never includes a
- * wormhole-type code (`A239` / `K162` / …) in the paste — that's only knowable
+ * The EVE client emits **6 tab-separated columns** in fixed order:
+ * `ID, Class, Group, Name, Signal, Distance` (see
+ * `docs/reference/signature-scan-results.md`). The probe scanner never includes
+ * a wormhole-type code (`A239` / `K162` / …) in the paste — that's only knowable
  * after warping in. Manual WH-code entry lives in the existing
  * `WormholeTypeSelect` dropdown on each sig row.
  *
- * The legacy `docs/spec/08-frontend-ui-modules.md:139` documents the columns as
- * `<id> <group> <name> <%> <distance>` — that's wrong for the current client.
+ * Class and Distance are used/validated but not carried in the output — only
+ * the four fields the resolver needs survive in `ParsedSigRow`.
  */
+
+import { isValidSignatureClass } from './signatureClasses';
 
 export type ParsedSigRow = {
   /** In-game 3-char + 3-digit id, e.g. `ABC-123`. Always uppercased. */
@@ -28,13 +31,19 @@ export type ParsedSigRow = {
 };
 
 const SIG_ID_RE = /^[A-Z]{3}-\d{3}$/i;
-// First cell must look like a distance (`1.23 AU`, `4 230 km`, `-` for unresolved).
-const DISTANCE_RE = /^(?:-|[\d.,\s]+\s*(?:AU|km|m))$/i;
 
 /**
  * Split clipboard text into structured rows. Pure: no DB calls, no `Date.now()`.
- * Skips blanks, header lines, and rows whose first cell isn't a Distance.
- * Tolerates clipboards that strip tabs by also splitting on 2+ spaces.
+ * A row is accepted only when its first cell is a valid sig id (the
+ * language-independent `AAA-NNN` gate, which also drops the header row) and its
+ * second cell is a recognized localized Class label. The Class check primarily
+ * discards other in-game signature classes (ships, deployables, drones, …) that
+ * are valid scanner entries but don't belong on a map; it also drops unrelated
+ * pasted text.
+ *
+ * Tolerates clipboards that strip tabs by also splitting on 2+ spaces, but that
+ * fallback is best-effort: without tabs, blank Group/Name columns collapse and
+ * can't be recovered positionally.
  */
 export function parseSignaturePaste(text: string): ParsedSigRow[] {
   const out: ParsedSigRow[] = [];
@@ -47,17 +56,16 @@ export function parseSignaturePaste(text: string): ParsedSigRow[] {
     const cells = line.includes('\t') ? line.split('\t') : line.split(/ {2,}/);
     if (cells.length < 2) continue;
 
-    const distance = cells[0]?.trim() ?? '';
-    if (!DISTANCE_RE.test(distance)) continue; // header row or garbage
+    const sigId = (cells[0] ?? '').trim().toUpperCase();
+    if (!SIG_ID_RE.test(sigId)) continue; // header row or garbage
 
-    // Pad to 5 cells so partial rows (no name/group/signal) still parse.
-    while (cells.length < 5) cells.push('');
+    if (!isValidSignatureClass(cells[1])) continue; // not a signature/anomaly line
 
-    const sigId = (cells[1] ?? '').trim().toUpperCase();
-    if (!SIG_ID_RE.test(sigId)) continue;
+    // Pad to 6 cells so partial rows (no group/name/signal) still parse.
+    while (cells.length < 6) cells.push('');
 
-    const name = blankToNull(cells[2]);
-    const groupName = blankToNull(cells[3]);
+    const groupName = blankToNull(cells[2]);
+    const name = blankToNull(cells[3]);
     const signal = blankToNull(cells[4]);
 
     out.push({ sigId, name, groupName, signal });

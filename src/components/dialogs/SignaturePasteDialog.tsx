@@ -187,7 +187,7 @@ export function SignaturePasteDialog({
           <textarea
             value={text}
             onChange={(e) => onTextChange(e.target.value)}
-            placeholder={'Distance\tID\tName\tGroup\tSignal'}
+            placeholder={'ID\tClass\tGroup\tName\tSignal\tDistance'}
             className="h-28 resize-none rounded-md border border-border bg-background px-2 py-1.5 font-mono text-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
             autoFocus
             spellCheck={false}

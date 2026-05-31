@@ -67,11 +67,11 @@ As the scan resolves, the client populates the **Group** column (e.g., `Wormhole
 _Raw Tab-Separated Paste:_
 
 ```text
-AXP-378 Cosmic Signature 0.0% 8.35 AU
-BIF-460 Cosmic Signature Relic Site 35.5% 10.69 AU
-KFE-716 Cosmic Signature 0.0% 15.21 AU
-QXX-268 Cosmic Signature Wormhole 55.0% 12.50 AU
-UNO-708 Cosmic Signature Wormhole Unstable Wormhole 100.0% 17.43 AU
+AXP-378	Cosmic Signature			0.0%	8.35 AU
+BIF-460	Cosmic Signature	Relic Site		35.5%	10.69 AU
+KFE-716	Cosmic Signature				0.0%	15.21 AU
+QXX-268	Cosmic Signature	Wormhole	55.0%	12.50 AU
+UNO-708	Cosmic Signature	Wormhole Unstable Wormhole 100.0% 17.43 AU
 ```
 
 ---

@@ -254,6 +254,9 @@ export type { ResolvedSigRow } from '@/lib/map/signatureReader';
 // Scanner-level signature group catalog (src/lib/map/signatureGroups.ts).
 export type { SignatureGroupOption } from '@/lib/map/signatureGroups';
 
+// Localized signature Class catalog (src/lib/map/signatureClasses.ts).
+export type { SignatureClassKind, SignatureClassOption } from '@/lib/map/signatureClasses';
+
 // ESI opKey identifiers (map in src/lib/esi/opkeys.ts).
 export type { OpKey, OpDef } from '@/lib/esi/opkeys';
 
