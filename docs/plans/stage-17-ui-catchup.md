@@ -128,10 +128,33 @@ period split, unknown bucket, `hasNext` boundary).
 **Goal:** `system_killboard` recent-kills feed (reuse Stage 13 `zkb` client; live WS optional); `system_graph` charts over `ap_system_stats` (K-space only).
 **Done when:** Killboard lists recent kills for the selected system; graphs render for K-space.
 
-## Stage 17.9 — Thera module
+## Stage 17.9 — Thera module  ✅
 **Mode:** Plan mode
 **Goal:** Thera eve-scout sync → connections (reuse Stage 13 `evescout`).
 **Done when:** Thera lists eve-scout connections with sync.
+
+**Built:** A global, always-on **sidebar** module (`TheraModule`, mounted after `TagsModule` in the
+`MapCanvas` `aside`) — faithful to legacy `global_thera.js` (global scope, not gated on the selected
+system), covering **both Thera and Turnur** hubs. Core is `src/lib/map/thera.ts`:
+`loadTheraConnections` fetches the EVE-Scout feed via the Stage 13 `fetchEveScoutConnections` client
+(behind a 60s in-process TTL cache — no Redis), orients each row so the shattered hub is the source +
+the connected system the target, and enriches the target with its `universe_system.security` class
+label; `syncTheraConnections` folds chosen rows onto the map reusing the `importMapData`
+transaction-with-payloads pattern + the `locationCommit` idempotency rules (ensure-visible system,
+skip the edge if one already links the pair either direction), fanning newly-added targets radially
+around the hub. Auto-tagging (17.10) is wired as a fourth add/connect pathway: ABC rides in
+`system.added` (`assignTagOnAdd`), 0121 emitted as a best-effort follow-up `system.updated` after
+commit (`assignTagOnConnect`). Routes: `GET /api/map/[mapId]/thera` (`requireMapView`, EVE-Scout
+failure → 502) and `POST …/thera/sync` (`requireMapMutate('map_update')`); client wrappers
+`fetchTheraConnections` / `syncTheraConnectionsOnServer`; `TheraConnection`/`TheraSyncInput`/
+`TheraSyncResult` re-exported from `src/types`. **Decisions:** per-row on-map status (green = hub +
+target placed AND an edge links them; amber = missing) is computed **client-side from live
+`viewData`**, so a synced row flips green for free as the `onBulkPaste` echo (or a peer's realtime
+update) lands — no extra request, no drift endpoint. Sync trusts client-passed system ids (consistent
+with the connections route; FKs reject bad ids). The optional "stale" (on-map-but-gone-from-EVE-Scout)
+section was **deferred** — not needed for the done-when. Covered by `tests/integration/thera-sync.test.ts`
+(orientation incl. hub-on-target flip + class enrichment + null-id drop; fold add + idempotent re-sync;
+self-loop skip).
 
 ## Stage 17.10 — Auto-tagging module (ABC + 0121)  ✅
 **Mode:** Plan mode

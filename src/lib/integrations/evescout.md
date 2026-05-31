@@ -8,6 +8,8 @@
 ### fetchEveScoutConnections(): Promise<EveScoutConnectionSummary[]>
 Fetches the public EVE-Scout signature feed, rejects `{ error }` envelopes, decodes rows with Zod, and maps them into compact connection summaries.
 
+EVE-Scout v2 orients each row from the shattered hub's perspective: `out_system_*` is always Thera/Turnur (mapped to `source`), `in_system_*` is the connected system (mapped to `target`). `signatureId` comes from `in_signature` (the connected side's sig).
+
 **Returns:** Normalised source/target system ids and names, hub classification, signature id, and timestamps.
 
 ---

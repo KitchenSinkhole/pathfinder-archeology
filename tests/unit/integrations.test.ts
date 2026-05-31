@@ -64,10 +64,10 @@ describe('Stage 13 decoders', () => {
     expect(
       eveScoutConnectionsSchema.parse([
         {
-          system_source: 'Thera',
-          system_source_id: 31000005,
-          system_target: 'Jita',
-          system_target_id: 30000142,
+          out_system_name: 'Thera',
+          out_system_id: 31000005,
+          in_system_name: 'Jita',
+          in_system_id: 30000142,
         },
       ]),
     ).toHaveLength(1);
@@ -130,11 +130,11 @@ describe('Stage 13 integration clients', () => {
   it('maps EVE-Scout connections and rejects error envelopes', async () => {
     mockJson([
       {
-        system_source: 'Thera',
-        system_source_id: 31000005,
-        system_target: 'Jita',
-        system_target_id: 30000142,
-        signature_id: 'ABC',
+        out_system_name: 'Thera',
+        out_system_id: 31000005,
+        in_system_name: 'Jita',
+        in_system_id: 30000142,
+        in_signature: 'ABC',
         updated_at: '2026-05-26T12:00:00Z',
       },
     ]);

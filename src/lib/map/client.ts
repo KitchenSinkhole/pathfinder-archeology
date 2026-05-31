@@ -9,6 +9,9 @@ import type {
   ResolvedSigRow,
   SignatureGroupKey,
   SystemSearchResult,
+  TheraConnection,
+  TheraSyncInput,
+  TheraSyncResult,
   WormholeTypeOption,
 } from '@/types';
 import type {
@@ -298,6 +301,36 @@ export function importMapOnServer(args: {
   data: unknown;
 }): Promise<ActionResult<ImportResult>> {
   return mutationFetch<ImportResult>('POST', `/api/map/${args.mapId}/import`, args.data);
+}
+
+// ---------------------------------------------------------------------------
+// Thera module (Stage 17.9)
+// ---------------------------------------------------------------------------
+
+/**
+ * List the current EVE-Scout Thera/Turnur connections (read; view rights).
+ * Returns a plain `FetchResult` — no `eventId`. The module computes per-row
+ * sync status client-side against its live `viewData`.
+ */
+export function fetchTheraConnections(args: {
+  mapId: string;
+}): Promise<FetchResult<TheraConnection[]>> {
+  return readFetch<TheraConnection[]>(`/api/map/${args.mapId}/thera`);
+}
+
+/**
+ * Fold the chosen Thera/Turnur connections onto the open map (`map_update`).
+ * Returns the N committed event payloads (like the import / bulk-paste paths)
+ * so the caller folds each locally and registers its `eventId` for echo dedupe;
+ * the wrapper-level `eventId` is always `0`.
+ */
+export function syncTheraConnectionsOnServer(args: {
+  mapId: string;
+  connections: TheraSyncInput[];
+}): Promise<ActionResult<TheraSyncResult>> {
+  return mutationFetch<TheraSyncResult>('POST', `/api/map/${args.mapId}/thera/sync`, {
+    connections: args.connections,
+  });
 }
 
 // ---------------------------------------------------------------------------

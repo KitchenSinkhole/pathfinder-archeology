@@ -160,6 +160,9 @@ export type {
 // Map import/export document + result types (src/lib/map/transfer.ts).
 export type { MapExportFile, ImportSummary, ImportResult } from '@/lib/map/transfer';
 
+// Thera module view-model + sync types (Stage 17.9, src/lib/map/thera.ts).
+export type { TheraHub, TheraConnection, TheraSyncInput, TheraSyncResult } from '@/lib/map/thera';
+
 // Auto-tagging strategy contract + view-model (Stage 17.10, src/lib/tagging/types.ts).
 export type {
   ActiveScheme,

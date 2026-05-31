@@ -3,14 +3,22 @@ import { apertureConfig } from '../../../aperture.config';
 
 const EVESCOUT_BASE = 'https://api.eve-scout.com/v2/public';
 
+// EVE-Scout v2 `/signatures` orients every row from the shattered hub's
+// perspective: `out_system_*` is always Thera/Turnur, `in_system_*` is the
+// connected system. `out_signature`/`in_signature` are the wormhole sig ids as
+// seen from each end.
 export const eveScoutConnectionSchema = z
   .object({
-    system_source: z.string(),
-    system_source_id: z.coerce.number().int().optional(),
-    system_target: z.string(),
-    system_target_id: z.coerce.number().int().optional(),
-    signature_id: z.string().nullable().optional(),
-    type: z.string().nullable().optional(),
+    id: z.coerce.string().optional(),
+    out_system_id: z.coerce.number().int().optional(),
+    out_system_name: z.string(),
+    out_signature: z.string().nullable().optional(),
+    in_system_id: z.coerce.number().int().optional(),
+    in_system_name: z.string(),
+    in_system_class: z.string().nullable().optional(),
+    in_signature: z.string().nullable().optional(),
+    signature_type: z.string().nullable().optional(),
+    wh_type: z.string().nullable().optional(),
     created_at: z.string().nullable().optional(),
     updated_at: z.string().nullable().optional(),
     expires_at: z.string().nullable().optional(),
@@ -51,12 +59,13 @@ export async function fetchEveScoutConnections(): Promise<EveScoutConnectionSumm
   if (error.success) throw new EveScoutError(error.data.error);
 
   return eveScoutConnectionsSchema.parse(json).map((row) => ({
-    sourceName: row.system_source,
-    sourceSystemId: row.system_source_id ?? null,
-    targetName: row.system_target,
-    targetSystemId: row.system_target_id ?? null,
-    signatureId: row.signature_id ?? null,
-    hub: classifyHub(row.system_source, row.system_target),
+    sourceName: row.out_system_name,
+    sourceSystemId: row.out_system_id ?? null,
+    targetName: row.in_system_name,
+    targetSystemId: row.in_system_id ?? null,
+    // The connected (in) system's sig is what a mapper records on that side.
+    signatureId: row.in_signature ?? null,
+    hub: classifyHub(row.out_system_name, row.in_system_name),
     updatedAt: row.updated_at ?? row.created_at ?? null,
     expiresAt: row.expires_at ?? null,
   }));

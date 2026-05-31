@@ -54,6 +54,7 @@ An unbounded two-column layout (the page scrolls). The wide left column stacks a
 - `@/components/dialogs/MapInfoDialog`, `@/components/dialogs/MapSettingsDialog`, `./AddSystemDialog`, `@/components/ui/button`
 - `RouteModule`, `KillStatsModule`, `InspectorModule`, `SignatureModule`
 - `IntelModule`, `StructureModule`, `SystemGraphModule`, `SystemKillboardModule` (both self-fetch per-selected-system from `/api/system/[id]/…`)
+- `TagsModule`, `TheraModule` (global, always-on; `TheraModule` self-fetches `/api/map/[id]/thera` and folds synced edges via `onBulkPaste`)
 - Structure REST wrappers in `@/lib/structures/client`
 - `applyEvent` (`@/lib/map/applyEvent`)
 - `mapUpdateLoadSchema` (`@/lib/realtime/protocol`)

@@ -53,6 +53,7 @@ import { KillStatsModule } from '@/components/sidebar/KillStatsModule';
 import { SystemGraphModule } from '@/components/sidebar/SystemGraphModule';
 import { SystemKillboardModule } from '@/components/sidebar/SystemKillboardModule';
 import { TagsModule } from '@/components/sidebar/TagsModule';
+import { TheraModule } from '@/components/sidebar/TheraModule';
 import { IntelModule } from '@/components/sidebar/IntelModule';
 import { StructureModule } from '@/components/sidebar/StructureModule';
 import type { StructureFormValues } from '@/components/sidebar/StructureFormDialog';
@@ -651,6 +652,7 @@ export function MapCanvas({
             <SystemGraphModule system={selectedSystem} />
             <SystemKillboardModule system={selectedSystem} />
             <TagsModule viewData={viewData} selectedSystemId={selectedSystem?.id ?? null} />
+            <TheraModule mapId={mapId} viewData={viewData} onBulkPaste={onBulkPaste} />
           </aside>
         </div>
 

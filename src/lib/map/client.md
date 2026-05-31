@@ -55,9 +55,15 @@ GET `/api/map/{mapId}/export` (`map_export` right). Returns the map's current st
 ### importMapOnServer({ mapId, data }): Promise<ActionResult<ImportResult>>
 POST `/api/map/{mapId}/import` (`map_import` right). Merges a `MapExportFile` into the open map and returns the N committed event payloads (wrapper-level `eventId` is `0`); the caller folds each via `applyEvent` and registers its `eventId`.
 
+### fetchTheraConnections({ mapId }): Promise<FetchResult<TheraConnection[]>>
+GET `/api/map/{mapId}/thera` (view rights). Lists the current EVE-Scout Thera/Turnur connections; the `TheraModule` computes per-row sync status client-side from live `viewData`.
+
+### syncTheraConnectionsOnServer({ mapId, connections }): Promise<ActionResult<TheraSyncResult>>
+POST `/api/map/{mapId}/thera/sync` (`map_update` right). Folds the chosen connections onto the map and returns the N committed event payloads (wrapper-level `eventId` is `0`); the caller folds each via `onBulkPaste` and registers its `eventId`.
+
 ---
 
 ### Depends On
 - `sonner` (`toast.error`)
-- Types from `@/types`: `ActionResult`, `MapEventPayload`, `WormholeTypeOption`, `BulkPasteOptions`, `BulkPasteResult`, `ParsedSigRow`, `ResolvedSigRow`, `MapExportFile`, `ImportResult`
+- Types from `@/types`: `ActionResult`, `MapEventPayload`, `WormholeTypeOption`, `BulkPasteOptions`, `BulkPasteResult`, `ParsedSigRow`, `ResolvedSigRow`, `MapExportFile`, `ImportResult`, `TheraConnection`, `TheraSyncInput`, `TheraSyncResult`
 - Enum value types from `@/lib/map/enumLabels`
