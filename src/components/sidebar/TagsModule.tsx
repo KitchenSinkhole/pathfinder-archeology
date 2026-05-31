@@ -57,7 +57,7 @@ export function TagsModule({
               <li key={row.classLabel} className="flex items-center justify-between">
                 <span className="text-muted-foreground">{row.classLabel}</span>
                 <span className="font-mono">
-                  {row.next.map((t) => `${row.classLabel}(${t})`).join('  ')}
+                  {row.next.map((t) => `${t}`).join('  ')}
                 </span>
               </li>
             ))}
