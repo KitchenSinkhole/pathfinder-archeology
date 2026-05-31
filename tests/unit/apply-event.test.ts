@@ -7,7 +7,7 @@ import type { MapConnectionEdge, MapSignature, MapSystemNode, MapViewData } from
 // ---------------------------------------------------------------------------
 
 const makeState = (overrides?: Partial<MapViewData>): MapViewData => ({
-  map: { id: '1', name: 'Test Map', scope: 'wh', type: 'private' },
+  map: { id: '1', name: 'Test Map', scope: 'wh', type: 'private', tagScheme: 'none', homeMapSystemId: null },
   systems: [],
   connections: [],
   signatures: [],

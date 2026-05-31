@@ -16,6 +16,8 @@
 - `owner_character_id` — `bigint`, nullable, FK → `ap_character.id` `ON DELETE SET NULL`. Required when `type='private'`; NULL otherwise. Stage 15.
 - `owner_corporation_id` — `bigint`, nullable. Required when `type='corp'`; NULL otherwise. No FK (no `ap_corporation` until Stage 15). Stage 15.
 - `owner_alliance_id` — `bigint`, nullable. Required when `type='alliance'`; NULL otherwise. No FK. Stage 15.
+- `tag_scheme` — `tag_scheme` enum, default `none`. Stage 17.10 auto-tagging scheme (`none`/`abc`/`0121`).
+- `home_map_system_id` — `bigint`, nullable. Stage 17.10. The map's Home system both tagging schemes calculate from; cannot be deleted while designated (guard in `removeSystem`). FK → `ap_map_system.id` `ON DELETE SET NULL` is **declared in SQL only** (migration 0024) to avoid the `map.ts ↔ map_system.ts` import cycle — same pattern as `ap_user.main_character_id`.
 - `created_at` / `updated_at` — `timestamptz`, default `now()`.
 - `deleted_at` — `timestamptz`, nullable. **Two-phase deletion**: `NULL` = active; non-null = soft-deleted (30-day grace before a cron hard-purge). No `active` boolean per CLAUDE.md lifecycle rule.
 

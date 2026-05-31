@@ -33,6 +33,9 @@ Per-`type` rule above. Throws if called with `'map_create'` (which has no target
 ### canCreateMap(characterId): Promise<boolean>
 Pure corp-right check; no target. Admin always passes.
 
+### isMapOwnerOrAdmin(characterId, mapId): Promise<boolean>
+Stage 17.10. Owner-or-admin gate that **bypasses the corp-right matrix** — true only for a global admin or the map's owner (per the `ap_map.type` owner rule). Used to restrict auto-tagging config (scheme + Home) tighter than `map_update`, which a corp can grant to ordinary members. False for missing / soft-deleted / unowned maps.
+
 ### isAdmin(session): Promise<boolean>
 Cheap session-level admin probe — does not touch any map table.
 

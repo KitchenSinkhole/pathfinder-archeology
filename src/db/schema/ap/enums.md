@@ -40,3 +40,9 @@
 
 ### roleSource
 `pgEnum('role_source', ['builtin', 'corp_title', 'external'])` — Stage 15. Where an `ap_role` row originates. `corp_title` rows are mirrored from EVE corporation titles; `external_ref` is `'<corp_id>:<title_id>'`. `external` rows come from Discord/third-party syncs.
+
+### structureEventKind
+`pgEnum('structure_event_kind', ['create', 'update', 'delete'])` — Stage 17.2. The mutation recorded in `ap_structure_event`, the append-only accountability log for manual structure intel.
+
+### tagScheme
+`pgEnum('tag_scheme', ['none', 'abc', '0121'])` — Stage 17.10. The auto-tagging scheme a map runs (`ap_map.tag_scheme`, default `none`). `abc` = per-WH-class sequential letters; `0121` = positional chain numbering off the Home system. Adding a third scheme is additive (one `ALTER TYPE … ADD VALUE` + a strategy module + a `registry.ts` line).

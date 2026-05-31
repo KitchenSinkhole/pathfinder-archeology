@@ -38,6 +38,7 @@ import type {
   roleSource,
   signatureGroupKey,
   structureEventKind,
+  tagScheme,
 } from '@/db/schema/ap/enums';
 
 export type UniverseRegion = InferSelectModel<typeof universeRegion>;
@@ -138,6 +139,7 @@ export type MapType = (typeof mapType.enumValues)[number];
 export type RoleSource = (typeof roleSource.enumValues)[number];
 export type SignatureGroupKey = (typeof signatureGroupKey.enumValues)[number];
 export type StructureEventKind = (typeof structureEventKind.enumValues)[number];
+export type TagScheme = (typeof tagScheme.enumValues)[number];
 /** The six cosmic-signature groups (every group except `wormhole`). Their site
  * names are baked into the EVE client and have no SDE rows, so they're carried
  * as free-text `name` strings rather than a `typeId` FK. */
@@ -157,6 +159,16 @@ export type {
 
 // Map import/export document + result types (src/lib/map/transfer.ts).
 export type { MapExportFile, ImportSummary, ImportResult } from '@/lib/map/transfer';
+
+// Auto-tagging strategy contract + view-model (Stage 17.10, src/lib/tagging/types.ts).
+export type {
+  ActiveScheme,
+  TagSystem,
+  TagEdge,
+  TagContext,
+  TagStrategy,
+  AvailableTags,
+} from '@/lib/tagging/types';
 
 // Route module view-model (computed in src/lib/map/route.ts).
 export type { HubRoute } from '@/lib/map/route';

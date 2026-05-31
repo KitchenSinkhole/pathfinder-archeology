@@ -15,7 +15,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { updateMapSettingsAction } from '@/app/(app)/actions/map';
 import { exportMapOnServer, importMapOnServer } from '@/lib/map/client';
-import type { MapEventPayload, MapSettings } from '@/types';
+import type { MapEventPayload, MapSettings, MapSystemNode } from '@/types';
+
+/** Minimal system shape the Home picker needs. */
+type HomeOption = Pick<MapSystemNode, 'id' | 'name' | 'alias'>;
+
+const TAG_SCHEME_OPTIONS: { value: MapSettings['tagScheme']; label: string }[] = [
+  { value: 'none', label: 'Off' },
+  { value: 'abc', label: 'ABC — per-class letters' },
+  { value: '0121', label: '0121 — chain numbering' },
+];
 
 /**
  * Map Settings dialog (Stage 17.6) — the consolidated edit / settings /
@@ -32,6 +41,8 @@ export function MapSettingsDialog({
   mapId,
   settings,
   onImported,
+  canConfigureTagging,
+  systems,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -39,6 +50,10 @@ export function MapSettingsDialog({
   settings: MapSettings;
   /** Fold imported event payloads onto the live canvas (reuses the bulk-paste handler). */
   onImported: (payloads: MapEventPayload[]) => void;
+  /** Owner/admin gate (Stage 17.10): shows the Tagging tab. */
+  canConfigureTagging: boolean;
+  /** Visible systems, for the Home-system picker. */
+  systems: HomeOption[];
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -54,6 +69,7 @@ export function MapSettingsDialog({
           <TabsList>
             <TabsTab value="general">General</TabsTab>
             <TabsTab value="settings">Settings</TabsTab>
+            {canConfigureTagging && <TabsTab value="tagging">Tagging</TabsTab>}
             <TabsTab value="export">Export</TabsTab>
             <TabsTab value="import">Import</TabsTab>
           </TabsList>
@@ -64,6 +80,11 @@ export function MapSettingsDialog({
           <TabsPanel value="settings">
             <SettingsPanel mapId={mapId} settings={settings} />
           </TabsPanel>
+          {canConfigureTagging && (
+            <TabsPanel value="tagging">
+              <TaggingPanel mapId={mapId} settings={settings} systems={systems} />
+            </TabsPanel>
+          )}
           <TabsPanel value="export">
             <ExportPanel mapId={mapId} mapName={settings.name} />
           </TabsPanel>
@@ -73,6 +94,93 @@ export function MapSettingsDialog({
         </Tabs>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function TaggingPanel({
+  mapId,
+  settings,
+  systems,
+}: {
+  mapId: string;
+  settings: MapSettings;
+  systems: HomeOption[];
+}) {
+  const [scheme, setScheme] = useState<MapSettings['tagScheme']>(settings.tagScheme);
+  const [homeMapSystemId, setHomeMapSystemId] = useState(settings.homeMapSystemId ?? '');
+  const [pending, startTransition] = useTransition();
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    startTransition(async () => {
+      const result = await updateMapSettingsAction({
+        mapId,
+        tagScheme: scheme,
+        homeMapSystemId: homeMapSystemId === '' ? null : homeMapSystemId,
+      });
+      if (result.ok) toast.success('Tagging updated.');
+      else toast.error(result.error);
+    });
+  }
+
+  const selectClass =
+    'h-9 rounded-md border border-input bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
+
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="map-tag-scheme" className="text-sm font-medium">
+          Auto-tagging scheme
+        </label>
+        <select
+          id="map-tag-scheme"
+          value={scheme}
+          onChange={(e) => setScheme(e.target.value as MapSettings['tagScheme'])}
+          className={selectClass}
+        >
+          {TAG_SCHEME_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">
+          Newly discovered systems are tagged automatically. ABC assigns per-class letters; 0121
+          numbers each system by its position in the chain off Home.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="map-home-system" className="text-sm font-medium">
+          Home system
+        </label>
+        <select
+          id="map-home-system"
+          value={homeMapSystemId}
+          onChange={(e) => setHomeMapSystemId(e.target.value)}
+          disabled={scheme === 'none'}
+          className={`${selectClass} disabled:opacity-50`}
+        >
+          <option value="">— None —</option>
+          {systems.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.alias ? `${s.alias} (${s.name})` : s.name}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">
+          The central node both schemes calculate from. It cannot be removed from the map while
+          designated.
+        </p>
+      </div>
+
+      <div className="flex justify-end">
+        <Button type="submit" disabled={pending}>
+          <Save />
+          {pending ? 'Saving…' : 'Save'}
+        </Button>
+      </div>
+    </form>
   );
 }
 

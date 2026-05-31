@@ -3,6 +3,8 @@ import { type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { getSession } from '@/lib/session';
 import { createConnection } from '@/lib/map/mutations/connections';
+import { updateSystem } from '@/lib/map/mutations/systems';
+import { assignTagOnConnect } from '@/lib/tagging/service';
 import { connectionScope, whJumpMass, whMass } from '@/db/schema/ap/enums';
 import { parseBigInt, requireMapMutate } from '../../utils';
 
@@ -71,6 +73,26 @@ export async function POST(
     preserveMass: parsed.data.preserveMass,
     isRolling: parsed.data.isRolling,
   });
+
+  // Auto-tagging (Stage 17.10): on a 0121 map a new edge may root an untagged
+  // child to its now-known parent. Emit the tag as a separate `system.updated`
+  // event (the WS echo folds it onto every client). No-op for ABC / unscheme'd
+  // maps. Tagging failures never fail the connection itself.
+  if (result.ok) {
+    try {
+      const tagged = await assignTagOnConnect(guard.mapId, sourceId, targetId);
+      if (tagged) {
+        await updateSystem({
+          mapId: guard.mapId,
+          mapSystemId: tagged.mapSystemId,
+          characterId: guard.characterId,
+          patch: { tag: tagged.tag },
+        });
+      }
+    } catch (err) {
+      console.warn('auto-tag on connect failed (map=%s):', guard.mapId.toString(), err);
+    }
+  }
 
   return Response.json(result, { status: result.ok ? 200 : 400 });
 }

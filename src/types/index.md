@@ -24,3 +24,5 @@ Stage 17.2 adds `ApStructure` / `ApStructureEvent` row types, `StructureEventKin
 The "add system manually" flow re-exports `SystemSearchResult` (`src/lib/map/systemSearch.ts`) — a solar-system search row used by `AddSystemDialog`.
 
 Stage 17.8 adds `UnderglowConfig` (directly defined, not a re-export) — the color/brightness/duration/speed knobs for the versatile map-node underglow (`src/components/map/SystemUnderglow.tsx`), keyed per notification kind in `underglowPresets.ts`.
+
+Stage 17.10 adds `TagScheme` (the `tag_scheme` pgEnum union: `none`/`abc`/`0121`) and the auto-tagging strategy contract from `src/lib/tagging/types.ts`: `ActiveScheme`, `TagSystem`, `TagEdge`, `TagContext`, `TagStrategy`, `AvailableTags`. `MapSettings` + `MapViewData.map` gain `tagScheme` + `homeMapSystemId`.

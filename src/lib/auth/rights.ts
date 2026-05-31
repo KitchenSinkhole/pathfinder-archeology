@@ -240,6 +240,28 @@ export async function canCreateMap(characterId: bigint): Promise<boolean> {
   return AUTHZ_ORDINAL[actor.authzLevel] >= AUTHZ_ORDINAL[grant.min];
 }
 
+/**
+ * Owner-or-admin gate, bypassing the corp-right matrix. Stage 17.10 uses this to
+ * restrict map-level auto-tagging config (scheme + Home) to the map owner or a
+ * global admin — strictly tighter than `map_update`, which a corp may grant to
+ * ordinary members. Returns false for non-existent / soft-deleted / unowned maps.
+ */
+export async function isMapOwnerOrAdmin(characterId: bigint, mapId: bigint): Promise<boolean> {
+  const actor = await loadActor(characterId);
+  if (!actor || actor.status !== 'active') return false;
+  if (actor.authzLevel === 'admin') return true;
+  const map = await loadMap(mapId);
+  if (!map) return false;
+  if (
+    map.ownerCharacterId === null &&
+    map.ownerCorporationId === null &&
+    map.ownerAllianceId === null
+  ) {
+    return false;
+  }
+  return isOwner(actor, map, characterId);
+}
+
 /** True iff the active character has `authz_level='admin'` and is `active`. */
 export async function isAdmin(session: Session | null | undefined): Promise<boolean> {
   if (!session?.characterId) return false;

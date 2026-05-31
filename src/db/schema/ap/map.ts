@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { bigint, bigserial, boolean, jsonb, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import { apCharacter } from './character';
-import { mapScope, mapType } from './enums';
+import { mapScope, mapType, tagScheme } from './enums';
 
 // SPEC §6.5. The owning entity for every per-map relation. Two-phase deletion
 // via `deleted_at` (30-day grace, then a cron hard-purge) — no `active` boolean.
@@ -40,6 +40,14 @@ export const apMap = pgTable('ap_map', {
   ),
   ownerCorporationId: bigint('owner_corporation_id', { mode: 'bigint' }),
   ownerAllianceId: bigint('owner_alliance_id', { mode: 'bigint' }),
+  // Stage 17.10 auto-tagging. `tag_scheme='none'` (default) leaves `ap_map_system.tag`
+  // manual-only. `home_map_system_id` is the central node both schemes tag from and
+  // cannot be deleted while designated (guard in `removeSystem`). Its FK →
+  // `ap_map_system.id` is declared in SQL only (migration 0024) — adding a Drizzle
+  // `.references()` here would close the `map.ts → map_system.ts → map.ts` import
+  // cycle. Mirrors the `ap_user.main_character_id` precedent (migration 0018).
+  tagScheme: tagScheme('tag_scheme').notNull().default('none'),
+  homeMapSystemId: bigint('home_map_system_id', { mode: 'bigint' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   // NULL = active; non-null = soft-deleted, awaiting hard purge.

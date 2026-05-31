@@ -11,6 +11,7 @@ Runs three steps in sequence, each its own `commitMapEvent` transaction:
 1. **`ensureSystemVisible(from)`** — if a `(map_id, system_id)` row already exists with `visible = true`, skip (no event). Otherwise upsert visible=true and emit `system.added` carrying the full node body via `buildSystemNode`.
 2. **`ensureSystemVisible(to)`** — same as #1.
 3. **`ensureConnection(fromMapSystemId, toMapSystemId)`** — if a connection already links the two endpoints in *either* direction, skip. Otherwise insert a new `scope='wh'`, `mass_status='fresh'`, `jump_mass_class=null` connection and emit `connection.create` with the full edge body.
+4. **`tagOnJump`** (Stage 17.10 auto-tagging) — calls `assignTagOnConnect`; on a `0121` map the destination is rooted as a child of the `from` system and the assigned tag is emitted as a separate `system.updated` event. No-op for ABC (tagged at add, in `ensureSystemVisible` via `assignTagOnAdd`) and unscheme'd maps. Best-effort: a tagging failure is logged and never fails the jump fold.
 
 Returns `{ mapId, fromSystemAdded, toSystemAdded, connectionCreated }` — the booleans surface in `ap_job_run.notes` so the operability sweep can tell "the poll detected jumps and they were fully novel" from "the poll detected jumps but everything was already on the map".
 

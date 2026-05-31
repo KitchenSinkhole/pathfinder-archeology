@@ -13,6 +13,7 @@ import {
   mapType,
   signatureGroupKey,
   systemStatus,
+  tagScheme,
   universeConstellation,
   universeRegion,
   universeSystem,
@@ -36,6 +37,7 @@ type WhJumpMass = (typeof whJumpMass.enumValues)[number];
 type MapScope = (typeof mapScope.enumValues)[number];
 type MapType = (typeof mapType.enumValues)[number];
 type SignatureGroupKey = (typeof signatureGroupKey.enumValues)[number];
+type TagScheme = (typeof tagScheme.enumValues)[number];
 
 /** A visible system on a map, flattened with its `universe_system` metadata. */
 export type MapSystemNode = {
@@ -124,7 +126,16 @@ export type MapPresenceEntry = {
 
 /** Everything the read-only map page needs to render one map. */
 export type MapViewData = {
-  map: { id: string; name: string; scope: MapScope; type: MapType };
+  map: {
+    id: string;
+    name: string;
+    scope: MapScope;
+    type: MapType;
+    /** Stage 17.10 auto-tagging scheme; drives the Tags panel. Config is load-time (not realtime). */
+    tagScheme: TagScheme;
+    /** `ap_map_system.id` of the designated Home (the 0121 root), or null. */
+    homeMapSystemId: string | null;
+  };
   systems: MapSystemNode[];
   connections: MapConnectionEdge[];
   signatures: MapSignature[];
@@ -153,6 +164,10 @@ export type MapSettings = {
   deleteEolConnections: boolean;
   trackAbyssalJumps: boolean;
   logActivity: boolean;
+  /** Stage 17.10 auto-tagging scheme (owner/admin-gated). */
+  tagScheme: TagScheme;
+  /** `ap_map_system.id` of the designated Home, or null. */
+  homeMapSystemId: string | null;
 };
 
 /**
@@ -191,7 +206,14 @@ export async function loadMapForView(
   if (!(await canViewMap(viewerCharacterId, mapId))) return null;
 
   const [map] = await db
-    .select({ id: apMap.id, name: apMap.name, scope: apMap.scope, type: apMap.type })
+    .select({
+      id: apMap.id,
+      name: apMap.name,
+      scope: apMap.scope,
+      type: apMap.type,
+      tagScheme: apMap.tagScheme,
+      homeMapSystemId: apMap.homeMapSystemId,
+    })
     .from(apMap)
     .where(and(eq(apMap.id, mapId), isNull(apMap.deletedAt)));
   if (!map) return null;
@@ -265,7 +287,14 @@ export async function loadMapForView(
   const presence = await loadMapPresence(mapId);
 
   return {
-    map: { id: map.id.toString(), name: map.name, scope: map.scope, type: map.type },
+    map: {
+      id: map.id.toString(),
+      name: map.name,
+      scope: map.scope,
+      type: map.type,
+      tagScheme: map.tagScheme,
+      homeMapSystemId: map.homeMapSystemId === null ? null : map.homeMapSystemId.toString(),
+    },
     systems: systemRows.map((s) => ({
       id: s.id.toString(),
       systemId: s.systemId,
@@ -336,10 +365,16 @@ export async function loadMapSettings(
       deleteEolConnections: apMap.deleteEolConnections,
       trackAbyssalJumps: apMap.trackAbyssalJumps,
       logActivity: apMap.logActivity,
+      tagScheme: apMap.tagScheme,
+      homeMapSystemId: apMap.homeMapSystemId,
     })
     .from(apMap)
     .where(and(eq(apMap.id, mapId), isNull(apMap.deletedAt)));
-  return row ?? null;
+  if (!row) return null;
+  return {
+    ...row,
+    homeMapSystemId: row.homeMapSystemId === null ? null : row.homeMapSystemId.toString(),
+  };
 }
 
 /**

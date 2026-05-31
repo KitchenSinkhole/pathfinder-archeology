@@ -13,9 +13,10 @@
 | structures | Record<number, StructureIntel[]> | yes | Manual structure intel keyed by EVE system id (page-loaded seed; not realtime-synced). |
 | settings | MapSettings | yes | Editable map metadata + behaviour toggles (from `loadMapSettings`), seeds the `MapSettingsDialog`. |
 | travelAnimation | boolean | yes | The viewer's per-account connection-travel-animation toggle. When true, mounts the `TravelBridge` that plays the moving-dot effect on pilot jumps. |
+| canConfigureTagging | boolean | yes | Owner/admin gate (Stage 17.10): passed to `MapSettingsDialog` to show the Tagging tab. |
 
 ### Renders
-An unbounded two-column layout (the page scrolls). The wide left column stacks a right-aligned toolbar row ("Add system" + "Map info" + "Settings" ghost buttons) above the `ReactFlow` canvas (pixel height, user-resizable via a drag handle), then a horizontal drag handle and then `SignatureModule` at its full natural height. The narrow right column (`w-80`, `self-start`) contains `InspectorModule`, `RouteModule`, `IntelModule`, `StructureModule`, and `KillStatsModule` and does not stretch to match the left column's height. A `MapInfoDialog` and an `AddSystemDialog` are mounted (closed by default) inside the presence provider.
+An unbounded two-column layout (the page scrolls). The wide left column stacks a right-aligned toolbar row ("Add system" + "Map info" + "Settings" ghost buttons) above the `ReactFlow` canvas (pixel height, user-resizable via a drag handle), then a horizontal drag handle and then `SignatureModule` at its full natural height. The narrow right column (`w-80`, `self-start`) contains `InspectorModule`, `RouteModule`, `IntelModule`, `StructureModule`, `KillStatsModule`, `SystemGraphModule`, `SystemKillboardModule`, and `TagsModule` (Stage 17.10 — auto-tag "next available", hidden when the map runs no scheme) and does not stretch to match the left column's height. A `MapInfoDialog` and an `AddSystemDialog` are mounted (closed by default) inside the presence provider.
 
 ### Behaviour & Interactions
 - `viewData` is seeded from `data` and mutated by both realtime events and local optimistic patches; the canvas is the single source of canvas-render state.

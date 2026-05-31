@@ -107,3 +107,15 @@ export const roleSource = pgEnum('role_source', ['builtin', 'corp_title', 'exter
  * single-source history.)
  */
 export const structureEventKind = pgEnum('structure_event_kind', ['create', 'update', 'delete']);
+
+/**
+ * Stage 17.10. The auto-tagging scheme a map runs (`ap_map.tag_scheme`).
+ * - `none` — no auto-tagging; the `tag` column is manual-only.
+ * - `abc` — per-WH-class sequential letters (A, B, C, … per class).
+ * - `0121` — positional chain numbering off the map's Home system.
+ *
+ * Adding a third scheme is additive: one `ALTER TYPE tag_scheme ADD VALUE`, a
+ * new strategy module under `src/lib/tagging/`, and one line in
+ * `src/lib/tagging/registry.ts`. The existing two schemes are never touched.
+ */
+export const tagScheme = pgEnum('tag_scheme', ['none', 'abc', '0121']);

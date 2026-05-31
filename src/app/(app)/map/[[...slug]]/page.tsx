@@ -6,6 +6,7 @@ import { routesForSystems } from '@/lib/map/route';
 import { statsForSystems } from '@/lib/map/stats';
 import { intelForSystems } from '@/lib/map/intel';
 import { structuresForSystems } from '@/lib/structures/read';
+import { isMapOwnerOrAdmin } from '@/lib/auth/rights';
 import { getConnectionTravelAnimation, requireSession } from '@/lib/session';
 
 function parseMapId(slug?: string[]): bigint | null {
@@ -40,14 +41,16 @@ export default async function MapPage({ params }: { params: Promise<{ slug?: str
   }
 
   const systemIds = data.systems.map((s) => s.systemId);
-  const [routes, stats, intel, structures, settings, travelAnimation] = await Promise.all([
-    routesForSystems(systemIds),
-    statsForSystems(systemIds),
-    intelForSystems(systemIds),
-    structuresForSystems(systemIds),
-    loadMapSettings(BigInt(session.characterId), mapId),
-    getConnectionTravelAnimation(session.userId),
-  ]);
+  const [routes, stats, intel, structures, settings, travelAnimation, canConfigureTagging] =
+    await Promise.all([
+      routesForSystems(systemIds),
+      statsForSystems(systemIds),
+      intelForSystems(systemIds),
+      structuresForSystems(systemIds),
+      loadMapSettings(BigInt(session.characterId), mapId),
+      getConnectionTravelAnimation(session.userId),
+      isMapOwnerOrAdmin(BigInt(session.characterId), mapId),
+    ]);
 
   // Non-null because `loadMapForView` already succeeded for the same viewer/map.
   if (!settings) {
@@ -72,6 +75,7 @@ export default async function MapPage({ params }: { params: Promise<{ slug?: str
         structures={structures}
         settings={settings}
         travelAnimation={travelAnimation}
+        canConfigureTagging={canConfigureTagging}
       />
     </div>
   );

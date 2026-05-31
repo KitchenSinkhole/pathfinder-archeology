@@ -4,12 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/db/client';
-import { apCharacter, apMap, mapScope, mapType } from '@/db/schema';
+import { apCharacter, apMap, apMapSystem, mapScope, mapType, tagScheme } from '@/db/schema';
 import { requireSession } from '@/lib/session';
 import type { InferInsertModel } from 'drizzle-orm';
 import { commitMapEvent, type ActionResult } from '@/lib/map/mutations/core';
 import type { MapEventPatch, MapEventPayload } from '@/lib/realtime/protocol';
-import { canCreateMap, requireMapRight } from '@/lib/auth/rights';
+import { canCreateMap, isMapOwnerOrAdmin, requireMapRight } from '@/lib/auth/rights';
 
 /**
  * Low-frequency, user-initiated map mutations via Server Actions (CLAUDE.md
@@ -42,6 +42,9 @@ const updateMapSettingsSchema = z.object({
   deleteEolConnections: z.boolean().optional(),
   trackAbyssalJumps: z.boolean().optional(),
   logActivity: z.boolean().optional(),
+  // Stage 17.10 auto-tagging (owner/admin-gated; see the action body).
+  tagScheme: z.enum(tagScheme.enumValues).optional(),
+  homeMapSystemId: z.string().regex(/^\d+$/, 'Invalid system id.').nullable().optional(),
 });
 
 export type CreateMapInput = z.input<typeof createMapSchema>;
@@ -174,12 +177,21 @@ export async function updateMapSettingsAction(
     return { ok: false, error: guard.error };
   }
 
+  // Auto-tagging config (scheme + Home) is owner/admin-only — strictly tighter
+  // than the corp-grantable `map_update` that gates the rest of the dialog.
+  const touchesTagging = 'tagScheme' in patch || 'homeMapSystemId' in patch;
+  if (touchesTagging && !(await isMapOwnerOrAdmin(guard.characterId, id))) {
+    return { ok: false, error: 'Only the map owner or an admin can change auto-tagging.' };
+  }
+
   const result = await commitMapEvent({
     mapId: id,
     characterId: guard.characterId,
     kind: 'map.update',
     mutate: async (tx) => {
       const set: Partial<InferInsertModel<typeof apMap>> = { updatedAt: new Date() };
+      // Tagging fields persist but are deliberately NOT echoed in the `map.update`
+      // payload — auto-tagging config propagates on next map load, not realtime.
       const out: MapEventPatch<'map.update'> = { id: id.toString() };
       if ('name' in patch) set.name = out.name = patch.name;
       if ('icon' in patch) set.icon = out.icon = patch.icon ?? null;
@@ -190,6 +202,26 @@ export async function updateMapSettingsAction(
       if ('trackAbyssalJumps' in patch)
         set.trackAbyssalJumps = out.trackAbyssalJumps = patch.trackAbyssalJumps;
       if ('logActivity' in patch) set.logActivity = out.logActivity = patch.logActivity;
+      if ('tagScheme' in patch) set.tagScheme = patch.tagScheme;
+      if ('homeMapSystemId' in patch) {
+        if (patch.homeMapSystemId != null) {
+          const homeId = BigInt(patch.homeMapSystemId);
+          const [home] = await tx
+            .select({ id: apMapSystem.id })
+            .from(apMapSystem)
+            .where(
+              and(
+                eq(apMapSystem.id, homeId),
+                eq(apMapSystem.mapId, id),
+                eq(apMapSystem.visible, true),
+              ),
+            );
+          if (!home) throw new Error('Home system is not on this map.');
+          set.homeMapSystemId = homeId;
+        } else {
+          set.homeMapSystemId = null;
+        }
+      }
 
       const [row] = await tx
         .update(apMap)

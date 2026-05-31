@@ -133,7 +133,7 @@ period split, unknown bucket, `hasNext` boundary).
 **Goal:** Thera eve-scout sync → connections (reuse Stage 13 `evescout`).
 **Done when:** Thera lists eve-scout connections with sync.
 
-## Stage 17.10 — Auto-tagging module (ABC + 0121)
+## Stage 17.10 — Auto-tagging module (ABC + 0121)  ✅
 **Mode:** Plan mode
 **Goal:** An **optional** per-map auto-tagging feature that assigns a tag to each newly discovered
 system on the map, using one of two pluggable tagging schemes. The architecture must be **extensible** —
@@ -182,6 +182,24 @@ Home-system delete guard (reject delete while designated Home); admin map-settin
 systems receive the correct `ABC` or `0121` tag; deleting a tagged system frees its tag/index for reuse;
 the Home system cannot be deleted while designated; the side panel shows the next available tags for the
 active scheme; adding a hypothetical third scheme requires only a new strategy module.
+
+**Built:** `tag_scheme` enum + `ap_map.tag_scheme`/`home_map_system_id` (migration `0024`; the Home FK is
+SQL-only to avoid the `map ↔ map_system` import cycle, per the `0018` precedent). Assigned tags reuse the
+existing `ap_map_system.tag`. **Reclaim is derived, not stored:** "next/available" is always computed from
+the live tags on `visible=true` systems, so a soft-deleted system frees its tag automatically — no free-list.
+Core is `src/lib/tagging/**`: a **two-hook** `TagStrategy` (`tagOnAdd` for ABC at discovery, `tagOnConnect`
+for 0121 once the parent edge lands) with pure, db-free `abc`/`scheme0121` strategies behind a `registry`
+(a third scheme = new module + enum value + one registry line), and a db-aware `service` seam
+(`loadTagContext`/`assignTagOnAdd`/`assignTagOnConnect`). Wired into the three add/connect pathways:
+`addSystem` (ABC tag rides in `system.added`; re-add recomputes), `foldWormholeJumpOntoMap` (the primary
+auto-discovery path — ABC on add, 0121 emitted as a follow-up `system.updated` after the edge), and the
+manual connections route. `removeSystem` rejects deleting the designated Home. **Decisions:** config
+(scheme + Home) is **owner/admin-only** (new `isMapOwnerOrAdmin`, tighter than corp-grantable `map_update`)
+and propagates **on next load** (no realtime payload change) — the `TagsModule` panel reads the active
+scheme from `MapViewData.map.tagScheme` and recomputes `availableTags` client-side from live `viewData`.
+ABC tags `Cn` wormhole classes only (k-space/Abyssal/Pochven untagged). Covered by `tests/unit/tagging.test.ts`
+(11 pure-strategy cases) + `tests/integration/auto-tagging.test.ts` (ABC sequence/reclaim/re-add, 0121
+chain/per-parent reclaim via the fold, Home-delete guard, scheme=none no-op, owner/admin gate).
 
 ## Stage 17.11 — Remaining dialogs + library swaps + Phase-4 gate
 **Mode:** Plan mode

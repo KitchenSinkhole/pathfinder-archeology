@@ -35,9 +35,9 @@ Stage 16.2. Maps an admin / manager can act on, **including soft-deleted rows** 
 - `MapConnectionEdge` — a connection with scope/mass/EOL/flag fields; endpoints are `ap_map_system.id` strings. `eolAt` (ISO or null) and `createdAt` (ISO) flow through so the canvas can compute the EOL countdown.
 - `MapSignature` — a scan signature inside a placed system. `groupKey` is one of the seven scanner-level keys (or null). `typeId` is non-null only when `groupKey === 'wormhole'` and points at a `universe_type` row also present in `universe_wormhole`; `wormholeCode` is the LEFT JOIN of `universe_wormhole.name` for display ("B274", "K162", …). `name` carries the user-typed site name for cosmic sigs, or a mirror of the wormhole code for wormhole sigs. `expiresAt` is an ISO string.
 - `MapPresenceEntry` — one online tracked pilot: `{ characterId, characterName, systemId, shipTypeId, shipTypeName, locationAt }`. `systemId` is the EVE solar-system id; `locationAt` is ISO.
-- `MapViewData` — `{ map, systems, connections, signatures, presence }`, the page's full payload.
+- `MapViewData` — `{ map, systems, connections, signatures, presence }`, the page's full payload. `map` carries `tagScheme` + `homeMapSystemId` (Stage 17.10) so the Tags panel knows the active scheme at load time (auto-tagging config propagates on next load, not via realtime).
 - `MapListItem` — a map row for the user-facing list.
-- `MapSettings` — editable map metadata + four behaviour toggles for the Stage 17.6 settings dialog; `scope`/`type` are immutable post-create (shown read-only).
+- `MapSettings` — editable map metadata + behaviour toggles for the settings dialog; `scope`/`type` are immutable post-create (shown read-only). Stage 17.10 adds `tagScheme` + `homeMapSystemId` (owner/admin-gated on save).
 - `AdminMapListItem` — a map row for `/admin/maps`: includes owner FKs (`ownerCharacterId`/`ownerCorporationId`/`ownerAllianceId` as nullable strings), `createdAt`/`updatedAt`/`deletedAt` ISO strings, and the same identity fields as `MapListItem`.
 
 These are re-exported from `src/types/index.ts`.

@@ -52,6 +52,7 @@ import { RouteModule } from '@/components/sidebar/RouteModule';
 import { KillStatsModule } from '@/components/sidebar/KillStatsModule';
 import { SystemGraphModule } from '@/components/sidebar/SystemGraphModule';
 import { SystemKillboardModule } from '@/components/sidebar/SystemKillboardModule';
+import { TagsModule } from '@/components/sidebar/TagsModule';
 import { IntelModule } from '@/components/sidebar/IntelModule';
 import { StructureModule } from '@/components/sidebar/StructureModule';
 import type { StructureFormValues } from '@/components/sidebar/StructureFormDialog';
@@ -80,6 +81,7 @@ export function MapCanvas({
   structures: initialStructures,
   settings,
   travelAnimation,
+  canConfigureTagging,
 }: {
   data: MapViewData;
   routes: Record<number, HubRoute[]>;
@@ -88,6 +90,8 @@ export function MapCanvas({
   structures: Record<number, StructureIntel[]>;
   settings: MapSettings;
   travelAnimation: boolean;
+  /** Owner/admin gate (Stage 17.10): shows the Map Settings "Tagging" tab. */
+  canConfigureTagging: boolean;
 }) {
   const [selected, setSelected] = useState<SelectionRef | null>(null);
   const [mapInfoOpen, setMapInfoOpen] = useState(false);
@@ -646,6 +650,7 @@ export function MapCanvas({
             />
             <SystemGraphModule system={selectedSystem} />
             <SystemKillboardModule system={selectedSystem} />
+            <TagsModule viewData={viewData} selectedSystemId={selectedSystem?.id ?? null} />
           </aside>
         </div>
 
@@ -656,6 +661,8 @@ export function MapCanvas({
           mapId={mapId}
           settings={settings}
           onImported={onBulkPaste}
+          canConfigureTagging={canConfigureTagging}
+          systems={viewData.systems}
         />
         <AddSystemDialog
           open={addSystemOpen}

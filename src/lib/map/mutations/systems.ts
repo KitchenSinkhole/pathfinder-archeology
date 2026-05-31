@@ -1,7 +1,8 @@
 import 'server-only';
 import { and, eq, type InferInsertModel } from 'drizzle-orm';
-import { apMapSystem, systemStatus } from '@/db/schema';
+import { apMap, apMapSystem, systemStatus } from '@/db/schema';
 import { buildSystemNode } from '../systemNode';
+import { assignTagOnAdd } from '@/lib/tagging/service';
 import { commitMapEvent, type ActionResult } from './core';
 import type { MapEventPatch, MapEventPayload } from '@/lib/realtime/protocol';
 
@@ -86,6 +87,11 @@ export function addSystem(input: AddSystemInput): Promise<ActionResult<MapEventP
         })
         .returning({ id: apMapSystem.id });
 
+      // Auto-tagging (Stage 17.10). ABC assigns here so the tag rides in the
+      // `system.added` payload; 0121 clears any tag preserved by the upsert and
+      // re-tags later on reconnect. No-op when the map runs no scheme.
+      await assignTagOnAdd(tx, input.mapId, row!.id);
+
       return buildSystemNode(tx, row!.id);
     },
   });
@@ -98,6 +104,17 @@ export function removeSystem(input: RemoveSystemInput): Promise<ActionResult<Map
     characterId: input.characterId,
     kind: 'system.removed',
     mutate: async (tx) => {
+      // Home-system delete guard (Stage 17.10): the auto-tagging Home is the
+      // node both schemes calculate from and must not be removable while
+      // designated. Clear it in map settings first.
+      const [map] = await tx
+        .select({ homeMapSystemId: apMap.homeMapSystemId })
+        .from(apMap)
+        .where(eq(apMap.id, input.mapId));
+      if (map?.homeMapSystemId === input.mapSystemId) {
+        throw new Error('Cannot remove the Home system while it is designated. Clear Home in map settings first.');
+      }
+
       const now = new Date();
       const [row] = await tx
         .update(apMapSystem)

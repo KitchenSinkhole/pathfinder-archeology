@@ -3,6 +3,7 @@ import { db } from '@/db/client';
 import { apMapConnection, apMapSystem } from '@/db/schema';
 import { commitMapEvent } from '@/lib/map/mutations/core';
 import { buildSystemNode } from '@/lib/map/systemNode';
+import { assignTagOnAdd, assignTagOnConnect } from '@/lib/tagging/service';
 
 /**
  * Stage 12.2. The per-map fold for a detected wormhole jump from the
@@ -46,6 +47,12 @@ export async function foldWormholeJumpOntoMap(args: FoldArgs): Promise<FoldResul
     toOutcome.mapSystemId,
     args.characterId,
   );
+  // Auto-tagging (Stage 17.10). On a 0121 map the jump roots the destination as
+  // a child of the system the pilot came from; tag it as a separate
+  // `system.updated`. Run whether or not the edge was newly created (a prior
+  // tick may have laid the edge before either side was tagged). No-op for ABC
+  // (already tagged at add) and unscheme'd maps.
+  await tagOnJump(args.mapId, fromOutcome.mapSystemId, toOutcome.mapSystemId, args.characterId);
   return {
     mapId: args.mapId,
     fromSystemAdded: fromOutcome.emitted,
@@ -89,6 +96,9 @@ async function ensureSystemVisible(
         })
         .returning({ id: apMapSystem.id });
       mapSystemId = row!.id;
+      // Auto-tagging (Stage 17.10): ABC tags here so it rides in `system.added`;
+      // 0121 clears any preserved tag and re-tags on the connection below.
+      await assignTagOnAdd(tx, mapId, row!.id);
       return buildSystemNode(tx, row!.id);
     },
   });
@@ -183,4 +193,37 @@ async function ensureConnection(
     );
   }
   return true;
+}
+
+/**
+ * Stage 17.10. After a jump's endpoints + edge are folded, assign the 0121 child
+ * tag (if any) as its own `system.updated` event. `systems.ts` carries
+ * `'server-only'` and can't be imported here, so the tag write goes through
+ * `commitMapEvent` directly. No-op for ABC / unscheme'd maps and when no tag is
+ * due. Tagging never blocks the jump fold — failures are logged and swallowed.
+ */
+async function tagOnJump(
+  mapId: bigint,
+  fromMapSystemId: bigint,
+  toMapSystemId: bigint,
+  characterId: bigint,
+): Promise<void> {
+  try {
+    const tagged = await assignTagOnConnect(mapId, fromMapSystemId, toMapSystemId);
+    if (!tagged) return;
+    await commitMapEvent({
+      mapId,
+      characterId,
+      kind: 'system.updated',
+      mutate: async (tx) => {
+        await tx
+          .update(apMapSystem)
+          .set({ tag: tagged.tag, updatedAt: new Date() })
+          .where(and(eq(apMapSystem.id, tagged.mapSystemId), eq(apMapSystem.mapId, mapId)));
+        return { id: tagged.mapSystemId.toString(), tag: tagged.tag };
+      },
+    });
+  } catch (err) {
+    console.warn('auto-tag on jump failed (map=%s):', mapId.toString(), err);
+  }
 }

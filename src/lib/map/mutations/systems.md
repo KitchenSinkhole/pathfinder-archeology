@@ -6,7 +6,7 @@
 ---
 
 ### addSystem(input: AddSystemInput): Promise<ActionResult<MapEventPayload>>
-Adds a solar system to a map. Inserts a new `visible = true` `ap_map_system` row, or — via the `(map_id, system_id)` unique index — flips a previously-removed row back to visible while leaving its alias/tag/status/intel intact (CLAUDE.md lifecycle rule: systems are never hard-deleted). Position is set only when provided (re-add keeps the prior position otherwise). Re-reads the placed row joined to its universe metadata + statics and emits `system.added` with the full node body.
+Adds a solar system to a map. Inserts a new `visible = true` `ap_map_system` row, or — via the `(map_id, system_id)` unique index — flips a previously-removed row back to visible while leaving its alias/tag/status/intel intact (CLAUDE.md lifecycle rule: systems are never hard-deleted). Position is set only when provided (re-add keeps the prior position otherwise). On auto-tagging maps (Stage 17.10) it calls `assignTagOnAdd` inside the same transaction (before re-reading the node) so an ABC tag rides in the payload and a re-add recomputes rather than preserving a stale tag. Re-reads the placed row joined to its universe metadata + statics and emits `system.added` with the full node body.
 
 **Parameters:**
 - `input.mapId` — `ap_map.id`.
@@ -19,7 +19,7 @@ Adds a solar system to a map. Inserts a new `visible = true` `ap_map_system` row
 ---
 
 ### removeSystem(input: RemoveSystemInput): Promise<ActionResult<MapEventPayload>>
-Flips `visible = false` (and stamps `last_visible_at`) on the `ap_map_system` row matching `(mapSystemId, mapId)`. The row persists. Throws (rolls back) if no matching row. Emits `system.removed` → `{ id }`.
+Flips `visible = false` (and stamps `last_visible_at`) on the `ap_map_system` row matching `(mapSystemId, mapId)`. The row persists. **Home guard (Stage 17.10):** throws (rolls back) if the target system is the map's `home_map_system_id` — the Home node can't be removed while designated. Throws if no matching row. Emits `system.removed` → `{ id }`.
 
 **Parameters:**
 - `input.mapSystemId` — `ap_map_system.id` (xyflow node id).
