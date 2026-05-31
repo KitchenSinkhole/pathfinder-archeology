@@ -26,6 +26,15 @@ vi.mock('@/lib/esi/client', async (importOriginal) => {
 
 import { esiCall } from '@/lib/esi/client';
 import { locationPoll } from '@/lib/jobs/tasks/locationPoll';
+import { SLOT_X, SLOT_Y, overlaps, snapToGrid } from '@/lib/map/placement';
+
+async function systemPos(mapId: bigint, systemId: number): Promise<{ x: number; y: number }> {
+  const [row] = await db
+    .select({ x: apMapSystem.positionX, y: apMapSystem.positionY })
+    .from(apMapSystem)
+    .where(and(eq(apMapSystem.mapId, mapId), eq(apMapSystem.systemId, systemId)));
+  return { x: row!.x, y: row!.y };
+}
 
 /**
  * Stage 12.2 gates per the sub-stage plan:
@@ -257,6 +266,36 @@ describe.skipIf(!run)('Stage 12.2 location-poll jump classification + fan-out (r
         }),
       ]),
     );
+
+    // Stage 2 placement: the destination (C) lands on its own grid-aligned slot,
+    // adjacent to the parent (B) it was reached through — not piled on top of it.
+    const posB = await systemPos(mapA, SYS_B);
+    const posC = await systemPos(mapA, SYS_C);
+    expect(snapToGrid(posC)).toEqual(posC);
+    expect(overlaps(posB, posC)).toBe(false);
+    // "Adjacent" = within the first placement ring of the parent on each axis.
+    expect(Math.abs(posC.x - posB.x)).toBeLessThanOrEqual(SLOT_X);
+    expect(Math.abs(posC.y - posB.y)).toBeLessThanOrEqual(SLOT_Y);
+  });
+
+  it('re-adding a previously-hidden system restores its old coordinates', async () => {
+    // Prime the map with a B→C jump, then nudge C to a hand-picked spot and hide it.
+    await db.update(apCharacter).set({ lastSystemId: SYS_B }).where(eq(apCharacter.id, CHAR_ID));
+    mockEsi({ online: true, systemId: SYS_C });
+    await locationPoll.run({ characterId: CHAR_ID.toString() }, makeHelpers().helpers);
+
+    const moved = { x: 1234, y: -5678 };
+    await db
+      .update(apMapSystem)
+      .set({ positionX: moved.x, positionY: moved.y, visible: false })
+      .where(and(eq(apMapSystem.mapId, mapA), eq(apMapSystem.systemId, SYS_C)));
+
+    // Re-fire the same jump; C re-adds through the onConflictDoUpdate path.
+    await db.update(apCharacter).set({ lastSystemId: SYS_B }).where(eq(apCharacter.id, CHAR_ID));
+    await locationPoll.run({ characterId: CHAR_ID.toString() }, makeHelpers().helpers);
+
+    const posC = await systemPos(mapA, SYS_C);
+    expect(posC).toEqual(moved);
   });
 
   it('repeated wormhole jump is idempotent (no new events)', async () => {

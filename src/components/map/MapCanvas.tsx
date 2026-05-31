@@ -27,6 +27,13 @@ import type { SystemStatsSummary } from '@/lib/map/stats';
 import type { SystemIntelSummary } from '@/lib/map/intel';
 import { applyEvent } from '@/lib/map/applyEvent';
 import {
+  GRID_SIZE,
+  findOpenPosition,
+  overlaps,
+  snapToGrid as snapPointToGrid,
+  type Point,
+} from '@/lib/map/placement';
+import {
   addSystemOnServer,
   createConnectionOnServer,
   createSignatureOnServer,
@@ -201,20 +208,25 @@ export function MapCanvas({
   const onNodeDragStop = useCallback(
     (_event: React.MouseEvent | unknown, node: Node) => {
       const existing = viewData.systems.find((s) => s.id === node.id);
-      if (
-        !existing ||
-        (existing.positionX === node.position.x && existing.positionY === node.position.y)
-      ) {
-        return;
-      }
-      const patch: UpdateSystemBody = { positionX: node.position.x, positionY: node.position.y };
+      if (!existing) return;
+      // Snap the drop, then nudge to the nearest free slot only if it landed on
+      // another node. Searching from the snapped drop keeps the nudge minimal.
+      const snapped = snapPointToGrid(node.position);
+      const occupiedOthers: Point[] = viewData.systems
+        .filter((s) => s.id !== node.id)
+        .map((s) => ({ x: s.positionX, y: s.positionY }));
+      const final = occupiedOthers.some((o) => overlaps(snapped, o))
+        ? findOpenPosition(snapped, occupiedOthers)
+        : snapped;
+      if (existing.positionX === final.x && existing.positionY === final.y) return;
+      const patch: UpdateSystemBody = { positionX: final.x, positionY: final.y };
       runOptimistic(
         {
           kind: 'system.updated',
           eventId: 0,
           id: node.id,
-          positionX: node.position.x,
-          positionY: node.position.y,
+          positionX: final.x,
+          positionY: final.y,
         },
         () => updateSystemOnServer({ mapId, mapSystemId: node.id, patch }),
       );
@@ -239,33 +251,42 @@ export function MapCanvas({
     [mapId, awaitServer],
   );
 
-  // Manually place a system on the map (no wormhole jump). Drop it at the
-  // current viewport centre with a little jitter so successive adds don't stack
-  // exactly on top of each other; fall back to (0,0) before the instance is
-  // ready. POST → await the server payload → apply (same path as onConnect).
+  // Manually place a system on the map (no wormhole jump). Anchor on the
+  // selected system's position when one is selected, else the viewport centre
+  // (falling back to (0,0) before the instance is ready), then settle into the
+  // nearest open, grid-aligned slot so adds never overlap existing nodes.
+  // POST → await the server payload → apply (same path as onConnect).
   const onAddSystem = useCallback(
     (systemId: number) => {
-      let base = { x: 0, y: 0 };
-      const inst = flowInstance.current;
-      const wrap = flowWrapperRef.current;
-      if (inst && wrap) {
-        const rect = wrap.getBoundingClientRect();
-        base = inst.screenToFlowPosition({
-          x: rect.left + rect.width / 2,
-          y: rect.top + rect.height / 2,
-        });
+      const occupied: Point[] = viewData.systems.map((s) => ({ x: s.positionX, y: s.positionY }));
+      let anchor: Point | null = null;
+      if (selected?.kind === 'system') {
+        const sel = viewData.systems.find((s) => s.id === selected.id);
+        if (sel) anchor = { x: sel.positionX, y: sel.positionY };
       }
-      const jitter = () => Math.round((Math.random() - 0.5) * 80);
+      if (!anchor) {
+        anchor = { x: 0, y: 0 };
+        const inst = flowInstance.current;
+        const wrap = flowWrapperRef.current;
+        if (inst && wrap) {
+          const rect = wrap.getBoundingClientRect();
+          anchor = inst.screenToFlowPosition({
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+          });
+        }
+      }
+      const pos = findOpenPosition(anchor, occupied);
       awaitServer(() =>
         addSystemOnServer({
           mapId,
           systemId,
-          positionX: Math.round(base.x) + jitter(),
-          positionY: Math.round(base.y) + jitter(),
+          positionX: pos.x,
+          positionY: pos.y,
         }),
       );
     },
-    [mapId, awaitServer],
+    [mapId, awaitServer, selected, viewData.systems],
   );
 
   // Selection is driven by direct click handlers rather than xyflow's
@@ -592,6 +613,8 @@ export function MapCanvas({
                 onNodesChange={onNodesChange}
                 onNodeDragStop={onNodeDragStop}
                 onConnect={onConnect}
+                snapToGrid
+                snapGrid={[GRID_SIZE, GRID_SIZE]}
                 nodesDraggable
                 nodesConnectable
                 connectionMode={ConnectionMode.Loose}

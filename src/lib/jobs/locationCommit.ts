@@ -3,6 +3,7 @@ import { db } from '@/db/client';
 import { apMapConnection, apMapSystem } from '@/db/schema';
 import { commitMapEvent } from '@/lib/map/mutations/core';
 import { buildSystemNode } from '@/lib/map/systemNode';
+import { findOpenPosition, type Point } from '@/lib/map/placement';
 import { assignTagOnAdd, assignTagOnConnect } from '@/lib/tagging/service';
 
 /**
@@ -40,7 +41,11 @@ export interface FoldResult {
 
 export async function foldWormholeJumpOntoMap(args: FoldArgs): Promise<FoldResult> {
   const fromOutcome = await ensureSystemVisible(args.mapId, args.fromSystemId, args.characterId);
-  const toOutcome = await ensureSystemVisible(args.mapId, args.toSystemId, args.characterId);
+  // Anchor the destination on the system the pilot came from so a fresh insert
+  // fans off the parent's real position instead of piling up at (0,0).
+  const toOutcome = await ensureSystemVisible(args.mapId, args.toSystemId, args.characterId, {
+    anchorSystemId: args.fromSystemId,
+  });
   const connectionCreated = await ensureConnection(
     args.mapId,
     fromOutcome.mapSystemId,
@@ -70,6 +75,7 @@ async function ensureSystemVisible(
   mapId: bigint,
   systemId: number,
   characterId: bigint,
+  opts?: { anchorSystemId?: number },
 ): Promise<EnsureSystemOutcome> {
   const [existing] = await db
     .select({ id: apMapSystem.id, visible: apMapSystem.visible })
@@ -78,6 +84,11 @@ async function ensureSystemVisible(
   if (existing?.visible) {
     return { mapSystemId: existing.id, emitted: false };
   }
+
+  // Only a truly fresh insert gets computed placement. A re-add of a hidden row
+  // takes the `onConflictDoUpdate` path below, whose `set` clause omits position
+  // and so preserves the system's prior coordinates.
+  const placement = existing ? null : await computePlacement(mapId, opts?.anchorSystemId);
 
   let mapSystemId: bigint | null = null;
   const result = await commitMapEvent({
@@ -88,7 +99,12 @@ async function ensureSystemVisible(
       const now = new Date();
       const [row] = await tx
         .insert(apMapSystem)
-        .values({ mapId, systemId, visible: true })
+        .values({
+          mapId,
+          systemId,
+          visible: true,
+          ...(placement ? { positionX: placement.x, positionY: placement.y } : {}),
+        })
         .onConflictDoUpdate({
           target: [apMapSystem.mapId, apMapSystem.systemId],
           // Preserve alias/tag/status/intel/position on a re-add.
@@ -105,6 +121,40 @@ async function ensureSystemVisible(
   if (!result.ok) throw new Error(`Failed to add system ${systemId} to map ${mapId}: ${result.error}`);
   if (mapSystemId === null) throw new Error('system.added returned without a map_system id');
   return { mapSystemId, emitted: true };
+}
+
+/**
+ * Pick a grid-aligned, non-overlapping slot for a brand-new system. Anchors on
+ * `anchorSystemId`'s position when it is visible (so the destination fans off the
+ * system the pilot came from), else on the centroid of the visible systems, else
+ * the origin for an empty map.
+ */
+async function computePlacement(
+  mapId: bigint,
+  anchorSystemId?: number,
+): Promise<Point> {
+  const visible = await db
+    .select({ systemId: apMapSystem.systemId, x: apMapSystem.positionX, y: apMapSystem.positionY })
+    .from(apMapSystem)
+    .where(and(eq(apMapSystem.mapId, mapId), eq(apMapSystem.visible, true)));
+
+  const occupied: Point[] = visible.map((r) => ({ x: r.x, y: r.y }));
+
+  let anchor: Point;
+  const anchorRow =
+    anchorSystemId !== undefined ? visible.find((r) => r.systemId === anchorSystemId) : undefined;
+  if (anchorRow) {
+    anchor = { x: anchorRow.x, y: anchorRow.y };
+  } else if (occupied.length > 0) {
+    anchor = {
+      x: occupied.reduce((sum, p) => sum + p.x, 0) / occupied.length,
+      y: occupied.reduce((sum, p) => sum + p.y, 0) / occupied.length,
+    };
+  } else {
+    anchor = { x: 0, y: 0 };
+  }
+
+  return findOpenPosition(anchor, occupied);
 }
 
 async function ensureConnection(

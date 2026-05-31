@@ -8,8 +8,8 @@
 ### foldWormholeJumpOntoMap({ mapId, characterId, fromSystemId, toSystemId }): FoldResult
 Runs three steps in sequence, each its own `commitMapEvent` transaction:
 
-1. **`ensureSystemVisible(from)`** — if a `(map_id, system_id)` row already exists with `visible = true`, skip (no event). Otherwise upsert visible=true and emit `system.added` carrying the full node body via `buildSystemNode`.
-2. **`ensureSystemVisible(to)`** — same as #1.
+1. **`ensureSystemVisible(from)`** — if a `(map_id, system_id)` row already exists with `visible = true`, skip (no event). Otherwise upsert visible=true and emit `system.added` carrying the full node body via `buildSystemNode`. A *fresh* insert gets a computed open slot (see Placement); a re-add of a hidden row keeps its prior position.
+2. **`ensureSystemVisible(to, { anchorSystemId: fromSystemId })`** — same as #1, but a fresh insert is anchored on the `from` system so the destination fans off the parent's real position instead of landing at (0,0).
 3. **`ensureConnection(fromMapSystemId, toMapSystemId)`** — if a connection already links the two endpoints in *either* direction, skip. Otherwise insert a new `scope='wh'`, `mass_status='fresh'`, `jump_mass_class=null` connection and emit `connection.create` with the full edge body.
 4. **`tagOnJump`** (Stage 17.10 auto-tagging) — calls `assignTagOnConnect`; on a `0121` map the destination is rooted as a child of the `from` system and the assigned tag is emitted as a separate `system.updated` event. No-op for ABC (tagged at add, in `ensureSystemVisible` via `assignTagOnAdd`) and unscheme'd maps. Best-effort: a tagging failure is logged and never fails the jump fold.
 
@@ -18,6 +18,11 @@ Returns `{ mapId, fromSystemAdded, toSystemAdded, connectionCreated }` — the b
 ### Idempotency rules (Stage 12.2 decision)
 - **`system.added` suppressed** when the row is already visible. A re-add by a manual click in the UI between poll ticks is a separate event from the poll's perspective.
 - **`connection.create` suppressed** when an A↔B link already exists in either direction. Mass/EOL/rolling state on the existing connection is left untouched — the poll observes movement, it doesn't reset operator state.
+
+### Placement (location-conscious, Stage 2 of `docs/plans/location-conscious-placement.md`)
+- `ensureSystemVisible` takes an optional `{ anchorSystemId?: number }`. Only a **fresh** insert (no existing row) computes a slot via `computePlacement`; the `onConflictDoUpdate` re-add path's `set` clause omits position, so a previously-hidden system restores its old coordinates untouched.
+- `computePlacement(mapId, anchorSystemId?)` reads all visible systems' `{positionX, positionY}` as the occupied set, picks an anchor (the `anchorSystemId` row's position if visible → else the centroid of visible systems → else origin), and returns `findOpenPosition(anchor, occupied)` from `@/lib/map/placement` — a grid-aligned point that overlaps no existing node.
+- The fold anchors the **to** system on the **from** system; the **from** system itself is placed unanchored (centroid/origin).
 
 ### Failure semantics
 Each step is its own transaction. A failure between steps leaves a consistent state and the next poll tick (5s later on the online cadence) skips the parts that succeeded and retries the parts that didn't. There is no compensation logic.
