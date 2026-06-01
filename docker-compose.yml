@@ -9,12 +9,13 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: aperture
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql
       - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d aperture"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d aperture']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -27,7 +28,7 @@ services:
   migrate:
     build: .
     image: aperture-app:dev
-    command: ["pnpm", "db:migrate"]
+    command: ['pnpm', 'db:migrate']
     env_file:
       - path: .env
         required: false
@@ -38,7 +39,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    restart: "no"
+    restart: 'no'
 
   app:
     build: .
@@ -50,9 +51,9 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgres://postgres:postgres@db:5432/aperture
       HOSTNAME: 0.0.0.0
-      PORT: "3003"
+      PORT: '3003'
     ports:
-      - "3003:3003"
+      - '3003:3003'
     depends_on:
       db:
         condition: service_healthy
