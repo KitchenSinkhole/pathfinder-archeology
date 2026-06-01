@@ -64,7 +64,7 @@ export const apertureConfig = {
   ZKB_FEED_MAX_CATCHUP: 200,
 
   /** Repository slug used by the changelog integration. Normalised from the legacy fork mismatch. */
-  GITHUB_CHANGELOG_REPO: 'exodus4d/pathfinder',
+  GITHUB_CHANGELOG_REPO: 'KitchenSink/aperture',
 
   /** ESI `datasource` query param. `tranquility` (live) vs `singularity` (test server). */
   ESI_DATASOURCE: 'tranquility',
