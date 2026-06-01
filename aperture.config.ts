@@ -1,3 +1,5 @@
+import { version } from './package.json';
+
 /**
  * Typed app-level constants. Knobs that the SPEC says must be hard-coded
  * (not runtime config) live here. Later stages append; nothing here is
@@ -37,7 +39,7 @@ export const apertureConfig = {
   INTEGRATION_REQUEST_TIMEOUT_MS: 5_000,
 
   /** `User-Agent` sent on read-side third-party integration requests. zKillboard rejects a blank UA with 403. */
-  INTEGRATION_USER_AGENT: 'Aperture/0.0.0',
+  INTEGRATION_USER_AGENT: `Aperture/${version}`,
 
   /**
    * Stage 17.8. zKillboard R2Z2 ephemeral feed base (the RedisQ replacement).

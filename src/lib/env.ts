@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { version } from '../../package.json';
 
 /**
  * System-boundary validation for `process.env`. Fails fast at import time.
@@ -21,7 +22,7 @@ const schema = z
     AUTH_EVE_CLIENT_SECRET: z.string().default(''),
     AUTH_EVE_SSO_BASE: z.string().url().default('https://login.eveonline.com'),
     ESI_BASE_URL: z.string().url().default('https://esi.evetech.net'),
-    EVE_USER_AGENT: z.string().default('Aperture/0.0.0 (contact@example.com)'),
+    EVE_USER_AGENT: z.string().default(`Aperture/${version} (contact@example.com)`),
     ESI_TOKEN_ENC_KEY: z.string().default(''),
     SETUP_PASSWORD: z.string().default(''),
     // Stage 17.8: master switch for the server-side zKillboard live feed
