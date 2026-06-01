@@ -163,6 +163,8 @@ const signatureBody = {
   name: z.string().nullable(),
   description: z.string().nullable(),
   expiresAt: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 };
 
 export const mapEventPayloadSchema = z.discriminatedUnion('kind', [
@@ -208,6 +210,7 @@ export const mapEventPayloadSchema = z.discriminatedUnion('kind', [
     name: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
     expiresAt: z.string().optional(),
+    updatedAt: z.string().optional(),
   }),
   z.object({ kind: z.literal('signature.delete'), eventId, id: z.string() }),
   z.object({

@@ -105,6 +105,7 @@ export function applyEvent(state: MapViewData, payload: MapEventPayload): MapVie
           if (payload.name !== undefined) next.name = payload.name;
           if (payload.description !== undefined) next.description = payload.description;
           if (payload.expiresAt !== undefined) next.expiresAt = payload.expiresAt;
+          if (payload.updatedAt !== undefined) next.updatedAt = payload.updatedAt;
           return next;
         }),
       };

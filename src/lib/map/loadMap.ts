@@ -102,6 +102,10 @@ export type MapSignature = {
   description: string | null;
   /** ISO timestamp; `Date` serialised over the Server→Client boundary. */
   expiresAt: string;
+  /** ISO timestamp the row was inserted. */
+  createdAt: string;
+  /** ISO timestamp of the last field change. */
+  updatedAt: string;
 };
 
 /**
@@ -277,6 +281,8 @@ export async function loadMapForView(
           name: apMapSignature.name,
           description: apMapSignature.description,
           expiresAt: apMapSignature.expiresAt,
+          createdAt: apMapSignature.createdAt,
+          updatedAt: apMapSignature.updatedAt,
         })
         .from(apMapSignature)
         .leftJoin(universeWormhole, eq(apMapSignature.typeId, universeWormhole.typeId))
@@ -337,6 +343,8 @@ export async function loadMapForView(
       name: r.name,
       description: r.description,
       expiresAt: r.expiresAt.toISOString(),
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
     })),
     presence,
   };

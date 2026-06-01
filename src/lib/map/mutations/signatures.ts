@@ -90,6 +90,8 @@ export function createSignature(
           name: apMapSignature.name,
           description: apMapSignature.description,
           expiresAt: apMapSignature.expiresAt,
+          createdAt: apMapSignature.createdAt,
+          updatedAt: apMapSignature.updatedAt,
         });
       const wormholeCode = row!.typeId !== null ? await resolveWormholeCode(tx, row!.typeId) : null;
       return {
@@ -103,6 +105,8 @@ export function createSignature(
         name: row!.name,
         description: row!.description,
         expiresAt: row!.expiresAt.toISOString(),
+        createdAt: row!.createdAt.toISOString(),
+        updatedAt: row!.updatedAt.toISOString(),
       };
     },
   });
@@ -158,10 +162,13 @@ export function updateSignature(
         .update(apMapSignature)
         .set(set)
         .where(eq(apMapSignature.id, input.signatureId))
-        .returning({ id: apMapSignature.id });
+        .returning({ id: apMapSignature.id, updatedAt: apMapSignature.updatedAt });
       if (!row) throw new Error('Signature not found.');
 
-      const out: MapEventPatch<'signature.update'> = { id: row.id.toString() };
+      const out: MapEventPatch<'signature.update'> = {
+        id: row.id.toString(),
+        updatedAt: row.updatedAt.toISOString(),
+      };
       if ('mapConnectionId' in patch)
         out.mapConnectionId = patch.mapConnectionId?.toString() ?? null;
       if ('sigId' in patch) out.sigId = patch.sigId;

@@ -6,7 +6,7 @@
 ---
 
 ### createSignature(input: CreateSignatureInput): Promise<ActionResult<MapEventPayload>>
-Inserts an `ap_map_signature` row and emits `signature.create` with the full body (all columns the canvas needs). Does not validate that `mapSystemId` belongs to `mapId` at this layer — the calling route handler is expected to have already confirmed map ownership.
+Inserts an `ap_map_signature` row and emits `signature.create` with the full body (all columns the canvas needs, including `createdAt`/`updatedAt`). Does not validate that `mapSystemId` belongs to `mapId` at this layer — the calling route handler is expected to have already confirmed map ownership.
 
 **Parameters:**
 - `input.mapId` — the owning map (for the event row).
@@ -20,7 +20,7 @@ Inserts an `ap_map_signature` row and emits `signature.create` with the full bod
 ---
 
 ### updateSignature(input: UpdateSignatureInput): Promise<ActionResult<MapEventPayload>>
-Patches only the keys present in `input.patch`. Validates ownership by joining through `apMapSystem.mapId` before the update — throws `"Signature does not belong to this map."` if mismatched. Emits `signature.update` with only the changed fields (plus `id`). Accepts optional `input.tx` for joined-batch commits.
+Patches only the keys present in `input.patch`. Validates ownership by joining through `apMapSystem.mapId` before the update — throws `"Signature does not belong to this map."` if mismatched. Emits `signature.update` with only the changed fields (plus `id` and `updatedAt`). Accepts optional `input.tx` for joined-batch commits.
 
 ---
 

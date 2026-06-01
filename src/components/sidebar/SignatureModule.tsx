@@ -21,7 +21,7 @@ import type {
   CreateSignatureBody,
   UpdateSignatureBody,
 } from '@/lib/map/client';
-import { formatRelativeFromMs } from '@/lib/map/relativeTime';
+import { formatAgoFromMs, formatRelativeFromMs } from '@/lib/map/relativeTime';
 import { apertureConfig } from '../../../aperture.config';
 
 function defaultExpiry(): string {
@@ -32,6 +32,12 @@ function formatRelativeIso(iso: string): string {
   const ts = new Date(iso).getTime();
   if (Number.isNaN(ts)) return iso;
   return formatRelativeFromMs(ts - Date.now());
+}
+
+function formatAgoIso(iso: string): string {
+  const ts = new Date(iso).getTime();
+  if (Number.isNaN(ts)) return iso;
+  return formatAgoFromMs(Date.now() - ts);
 }
 
 /**
@@ -221,13 +227,15 @@ function SignaturePanelBody({
               <th className="px-3 py-2 text-left">Description</th>
               <th className="w-44 px-3 py-2 text-left">Leads to</th>
               <th className="w-20 px-3 py-2 text-left">TTL</th>
+              <th className="w-24 px-3 py-2 text-left">Created</th>
+              <th className="w-24 px-3 py-2 text-left">Updated</th>
               <th className="w-10 px-3 py-2" />
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-3 text-center text-xs text-muted-foreground">
+                <td colSpan={9} className="px-3 py-3 text-center text-xs text-muted-foreground">
                   No signatures.
                 </td>
               </tr>
@@ -273,6 +281,12 @@ function SignaturePanelBody({
                 </td>
                 <td className="px-3 py-1.5 text-xs text-muted-foreground">
                   {formatRelativeIso(sig.expiresAt)}
+                </td>
+                <td className="px-3 py-1.5 text-xs text-muted-foreground">
+                  {formatAgoIso(sig.createdAt)}
+                </td>
+                <td className="px-3 py-1.5 text-xs text-muted-foreground">
+                  {formatAgoIso(sig.updatedAt)}
                 </td>
                 <td className="px-3 py-1.5 text-right">
                   <Button

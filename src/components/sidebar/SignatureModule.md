@@ -1,6 +1,6 @@
 ## SignatureModule
 
-**Purpose:** Standalone full-width signatures panel rendered below the map. Renders the legacy six-column table (Sig / Group / Type / Description / Leads to / TTL) for the selected system; placeholder when nothing is selected.
+**Purpose:** Standalone full-width signatures panel rendered below the map. Renders an eight-column table (Sig / Group / Type / Description / Leads to / TTL / Created / Updated) for the selected system; placeholder when nothing is selected.
 **File:** `src/components/sidebar/SignatureModule.tsx`
 
 ### Props
@@ -20,7 +20,7 @@
 ### Renders
 A `Card` with:
 - Header row: the title (`Signatures — <system alias or name>`) and, when a system is selected, a **Paste from scanner** button.
-- Body: when no system is selected, a placeholder message. When a system is selected, a six-column table and a draft-input row below it. TTL is rendered via `formatRelativeFromMs`.
+- Body: when no system is selected, a placeholder message. When a system is selected, an eight-column table and a draft-input row below it. TTL is a forward countdown (`formatRelativeFromMs`); Created and Updated are backward "time ago" strings (`formatAgoFromMs`).
 
 ### Behaviour & Interactions
 - The body re-mounts on system change (`key={system.id}`) so draft state for the add form resets cleanly when the selection changes.
@@ -42,6 +42,6 @@ A `Card` with:
 - `SignaturePasteDialog` (`@/components/dialogs/SignaturePasteDialog`)
 - `Card`, `Button`, `Input` from `@/components/ui/*`
 - `labelForSignatureGroupKey` from `@/lib/map/signatureGroups`
-- `formatRelativeFromMs` from `@/lib/map/relativeTime`
+- `formatRelativeFromMs`, `formatAgoFromMs` from `@/lib/map/relativeTime`
 - `apertureConfig` (`SIGNATURE_DEFAULT_TTL_MS`) from `aperture.config`
 - Types: `MapConnectionEdge`, `MapEventPayload`, `MapSignature`, `MapSystemNode`, `SignatureGroupKey` from `@/types`; body types from `@/lib/map/client`

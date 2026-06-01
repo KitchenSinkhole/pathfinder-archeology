@@ -251,6 +251,8 @@ const sig1: MapSignature = {
   name: null,
   description: null,
   expiresAt: '2026-12-31T00:00:00.000Z',
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
 describe('applyEvent — signature.create', () => {
