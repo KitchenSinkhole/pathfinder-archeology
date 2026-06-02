@@ -1,6 +1,6 @@
 ## CharacterPanel
 
-**Purpose:** Slide-in `Sheet` (opened from the header character chip) that lets the user choose which of their characters Aperture tracks on the map, add another character via OAuth, open Account settings, or sign out. (Stage 17.5 follow-up — replaced the old active-character *switcher*; switching was dropped.)
+**Purpose:** Slide-in `Sheet` (opened from the header character chip) that lets the user choose which of their characters Aperture tracks **on the currently-open map**, add another character via OAuth, open Account settings, or sign out. (per-map-character-tracking plan — tracking selection is per map, not a global flag.)
 **File:** `src/components/chrome/CharacterPanel.tsx`
 
 ### Props
@@ -8,22 +8,23 @@
 | Prop | Type | Required | Description |
 |---|---|---|---|
 | active | `{ id: string; name: string }` | yes | The session's identity character (account main); drives the trigger chip |
-| characters | `PanelCharacter[]` | yes | All characters on the account (`id`, `name`, `status`, `authzLevel`, `trackingEnabled`) |
+| characters | `PanelCharacter[]` | yes | All characters on the account (`id`, `name`, `status`, `authzLevel`) |
 | mainCharacterId | `string \| null` | yes | The account's main — rendered as a "main" tag and forwarded to Account settings |
 | travelAnimation | boolean | yes | The account's connection-travel-animation toggle, forwarded to Account settings |
 
 ### Renders
-A trigger button (active character's portrait + name) opening a right-anchored Sheet: one row per character with a tracking checkbox, then "Add character", "Account settings", and "Sign out". Also renders the (initially closed) `AccountSettingsDialog`.
+A trigger button (active character's portrait + name) opening a right-anchored Sheet: one row per character — with a per-map tracking checkbox **when on a map** (none off-map) — then "Add character", "Account settings", and "Sign out". The description names the open map. Also renders the (initially closed) `AccountSettingsDialog`.
 
 ### Behaviour & Interactions
-- Each **active** character row has a tracking checkbox bound to `trackingEnabled`. Toggling calls `setCharacterTrackingAction(id, next, currentMapId)` inside `useTransition`; the local state flips optimistically and reverts on `{ ok: false }` (with a `sonner` error toast).
-- `currentMapId` is derived from the `/map/[[...slug]]` route via `useParams()` (first numeric slug segment), or `null` when not on a map (e.g. `/maps`, admin pages). Enabling while off a map still flips the flag; tracking starts on the next map open.
+- `currentMapId` is derived from the `/map/[[...slug]]` route via `useParams()` (first numeric slug segment), or `null` when not on a map (e.g. `/maps`, admin pages).
+- **On a map:** when the Sheet opens, an effect lazy-fetches `getMapTrackingAction(currentMapId)` → `{ mapName, trackedIds }`, seeds `tracking` (checked iff the id is in `trackedIds`) and `mapName`, and sets `loaded`. Each **active** row shows a checkbox bound to `tracking[id]`, disabled until `loaded` (and while `pending`). Toggling flips local state optimistically and calls `setCharacterTrackingAction(id, currentMapId, next)` in `useTransition`, reverting on `{ ok: false }` with a `sonner` toast.
+- **Off a map:** no tracking checkboxes render at all (the roster still shows portraits/names); the description prompts the user to open a map.
 - Non-`active` (kicked/banned) characters show their status label instead of a checkbox and are dimmed.
 - The account's main is tagged "main" inline.
 - "Add character" / "Sign out" are `<form>`s posting `addCharacterAction` / `signOutAction` (both redirect). "Account settings" closes the Sheet and opens `AccountSettingsDialog`.
 
 ### Emits / Calls
-- `setCharacterTrackingAction(id, enabled, currentMapId)`, `addCharacterAction()`, `signOutAction()` from `src/app/(app)/actions/character.ts`.
+- `getMapTrackingAction(currentMapId)`, `setCharacterTrackingAction(id, currentMapId, enabled)`, `addCharacterAction()`, `signOutAction()` from `src/app/(app)/actions/character.ts`.
 
 ### Depends On
 - `Sheet`, `Avatar`, `Button` UI primitives; `sonner` toast; `useParams` (next/navigation).
@@ -32,7 +33,9 @@ A trigger button (active character's portrait + name) opening a right-anchored S
 ### Local State
 - `open: boolean` — Sheet visibility.
 - `settingsOpen: boolean` — Account settings dialog visibility.
-- `tracking: Record<string, boolean>` — optimistic per-character tracking toggle state.
+- `tracking: Record<string, boolean>` — per-map tracking selection, lazy-loaded on open.
+- `mapName: string | null` — the open map's display name for the description.
+- `loaded: boolean` — whether the per-map selection has been fetched (gates the checkboxes).
 - `pending` — transition state for an in-flight toggle.
 
 ### Notes

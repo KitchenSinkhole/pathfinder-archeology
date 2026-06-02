@@ -1,69 +1,96 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { signIn, signOut } from '@/lib/auth';
 import { db } from '@/db/client';
-import { apCharacter } from '@/db/schema';
+import { apCharacter, apMap, apMapCharacterTracking, apMapTrackingSeed } from '@/db/schema';
 import { requireSession, assertCharacterOwnership } from '@/lib/session';
 import { setLinkCookie } from '@/lib/auth/link-cookie';
 import { canViewMap } from '@/lib/auth/rights';
-import { startTrackingCharacter, stopAllTrackingForCharacter } from '@/lib/jobs/tracking';
+import { startTrackingCharacter, stopTrackingCharacter } from '@/lib/jobs/tracking';
 
 export type TrackingResult = { ok: true } | { ok: false; error: string };
+export type MapTracking = { mapName: string | null; trackedIds: string[] };
 
 /**
- * Enable or disable server-side location tracking for one of the account's
- * characters (Stage 17.5 follow-up — the Characters panel toggle). Validates
- * ownership, flips `ap_character.tracking_enabled`, then:
- *  - on **disable**, removes the character from tracking on every map (the poll
- *    self-terminates on its next tick);
- *  - on **enable**, if the user is currently viewing a map they can see, starts
- *    tracking that map immediately so the pilot appears without waiting for a
- *    re-subscribe; otherwise tracking resumes the next time a map is opened.
+ * Track or untrack one of the account's characters on a **specific map** (the
+ * Characters panel checkbox; per-map-character-tracking plan). Validates
+ * ownership of the character and that the acting user can view the map, then
+ * `startTrackingCharacter` (enable) / `stopTrackingCharacter` (disable) for that
+ * one map.
  *
- * `currentMapId` is the map the user has open (derived from the route), or null
- * when they aren't on a map.
+ * Before either, it ensures the `ap_map_tracking_seed` marker exists for this
+ * `(map, account)` — so deselecting the *last* character leaves an empty
+ * selection that the next `subscribe` won't mistake for a fresh map and
+ * re-seed. The marker normally already exists (the user is on the map, which
+ * seeds on subscribe); this is belt-and-braces.
  */
 export async function setCharacterTrackingAction(
   characterId: string,
+  mapId: string,
   enabled: boolean,
-  currentMapId: string | null,
 ): Promise<TrackingResult> {
   const session = await requireSession();
   let target: bigint;
+  let map: bigint;
   try {
     target = BigInt(characterId);
+    map = BigInt(mapId);
   } catch {
-    return { ok: false, error: 'Invalid character.' };
+    return { ok: false, error: 'Invalid character or map.' };
   }
   if (!(await assertCharacterOwnership(target, session.userId))) {
     return { ok: false, error: 'That character is not available on this account.' };
   }
-
-  await db
-    .update(apCharacter)
-    .set({ trackingEnabled: enabled, updatedAt: new Date() })
-    .where(eq(apCharacter.id, target));
-
-  if (!enabled) {
-    await stopAllTrackingForCharacter(target);
-  } else if (currentMapId !== null) {
-    let mapId: bigint | null = null;
-    try {
-      mapId = BigInt(currentMapId);
-    } catch {
-      mapId = null;
-    }
-    // View rights are the acting user's (they're the one looking at the map);
-    // the enabled character is just being folded onto it.
-    if (mapId !== null && (await canViewMap(BigInt(session.characterId), mapId))) {
-      await startTrackingCharacter({ mapId, characterId: target });
-    }
+  // View rights are the acting user's (they're the one looking at the map); the
+  // tracked character is just being folded onto it.
+  if (!(await canViewMap(BigInt(session.characterId), map))) {
+    return { ok: false, error: 'That map is not available.' };
   }
 
-  revalidatePath('/', 'layout');
+  // Mark the map configured so an intentional empty selection survives the next
+  // subscribe (the seed runs only when this marker is absent).
+  await db
+    .insert(apMapTrackingSeed)
+    .values({ mapId: map, userId: session.userId })
+    .onConflictDoNothing();
+
+  if (enabled) {
+    await startTrackingCharacter({ mapId: map, characterId: target });
+  } else {
+    await stopTrackingCharacter({ mapId: map, characterId: target });
+  }
+
   return { ok: true };
+}
+
+/**
+ * The account's tracked character ids on `mapId`, plus the map's display name,
+ * for the Characters panel to initialize its per-map checkboxes when opened on
+ * a map. Returns an empty selection if the acting user can't view the map or
+ * the id is malformed.
+ */
+export async function getMapTrackingAction(mapId: string): Promise<MapTracking> {
+  const session = await requireSession();
+  let map: bigint;
+  try {
+    map = BigInt(mapId);
+  } catch {
+    return { mapName: null, trackedIds: [] };
+  }
+  if (!(await canViewMap(BigInt(session.characterId), map))) {
+    return { mapName: null, trackedIds: [] };
+  }
+
+  const [mapRow] = await db.select({ name: apMap.name }).from(apMap).where(eq(apMap.id, map));
+
+  const rows = await db
+    .select({ characterId: apMapCharacterTracking.characterId })
+    .from(apMapCharacterTracking)
+    .innerJoin(apCharacter, eq(apCharacter.id, apMapCharacterTracking.characterId))
+    .where(and(eq(apMapCharacterTracking.mapId, map), eq(apCharacter.userId, session.userId)));
+
+  return { mapName: mapRow?.name ?? null, trackedIds: rows.map((r) => r.characterId.toString()) };
 }
 
 /**

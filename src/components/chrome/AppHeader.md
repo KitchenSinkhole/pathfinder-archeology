@@ -8,7 +8,7 @@
 | Prop | Type | Required | Description |
 |---|---|---|---|
 | active | `{ id: string; name: string }` | yes | Identity character (account main), forwarded to the panel chip |
-| characters | `PanelCharacter[]` | yes | Account roster (incl. `authzLevel`, `trackingEnabled`), forwarded to the panel |
+| characters | `PanelCharacter[]` | yes | Account roster (incl. `authzLevel`), forwarded to the panel |
 | mainCharacterId | `string \| null` | yes | The account's main, forwarded to the panel |
 | travelAnimation | boolean | yes | The account's connection-travel-animation toggle, forwarded to the panel |
 

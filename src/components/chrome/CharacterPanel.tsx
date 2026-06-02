@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useParams } from 'next/navigation';
 import { LogOut, Plus, Settings } from 'lucide-react';
 import { toast } from 'sonner';
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   addCharacterAction,
+  getMapTrackingAction,
   setCharacterTrackingAction,
   signOutAction,
 } from '@/app/(app)/actions/character';
@@ -27,7 +28,6 @@ export type PanelCharacter = {
   name: string;
   status: 'active' | 'kicked' | 'banned';
   authzLevel: 'member' | 'manager' | 'admin';
-  trackingEnabled: boolean;
 };
 
 function portraitUrl(characterId: string, size = 64): string {
@@ -53,20 +53,42 @@ export function CharacterPanel({
   travelAnimation: boolean;
 }) {
   const params = useParams();
+  const currentMapId = currentMapIdFromParams(params?.slug);
+  const onMap = currentMapId !== null;
   const [open, setOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [pending, startTransition] = useTransition();
-  // Optimistic per-character tracking state so a toggle flips immediately; the
-  // action's `revalidatePath('/', 'layout')` reconciles the server roster.
-  const [tracking, setTracking] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(characters.map((c) => [c.id, c.trackingEnabled])),
-  );
+  // Per-map tracking selection, lazy-loaded when the Sheet opens on a map.
+  // `loaded` gates the checkboxes until the server's selection arrives so we
+  // never render a stale all-on/all-off guess.
+  const [tracking, setTracking] = useState<Record<string, boolean>>({});
+  const [mapName, setMapName] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!open || currentMapId === null) {
+      setLoaded(false);
+      return;
+    }
+    let cancelled = false;
+    setLoaded(false);
+    void getMapTrackingAction(currentMapId).then((res) => {
+      if (cancelled) return;
+      const tracked = new Set(res.trackedIds);
+      setTracking(Object.fromEntries(characters.map((c) => [c.id, tracked.has(c.id)])));
+      setMapName(res.mapName);
+      setLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, currentMapId, characters]);
 
   function onToggle(id: string, next: boolean) {
-    const mapId = currentMapIdFromParams(params?.slug);
+    if (currentMapId === null) return;
     setTracking((t) => ({ ...t, [id]: next }));
     startTransition(async () => {
-      const result = await setCharacterTrackingAction(id, next, mapId);
+      const result = await setCharacterTrackingAction(id, currentMapId, next);
       if (!result.ok) {
         setTracking((t) => ({ ...t, [id]: !next }));
         toast.error(result.error);
@@ -91,7 +113,11 @@ export function CharacterPanel({
         <SheetHeader>
           <SheetTitle>Characters</SheetTitle>
           <SheetDescription>
-            Choose which of your characters Aperture tracks on your map.
+            {onMap
+              ? mapName
+                ? `Choose which characters Aperture tracks on ${mapName}.`
+                : 'Choose which characters Aperture tracks on this map.'
+              : 'Open a map to choose which characters Aperture tracks on it.'}
           </SheetDescription>
         </SheetHeader>
 
@@ -99,7 +125,6 @@ export function CharacterPanel({
           {characters.map((c) => {
             const isMain = c.id === mainCharacterId;
             const inactive = c.status !== 'active';
-            const checked = tracking[c.id] ?? c.trackingEnabled;
             return (
               <label
                 key={c.id}
@@ -118,16 +143,16 @@ export function CharacterPanel({
                 </span>
                 {inactive ? (
                   <span className="text-xs text-muted-foreground capitalize">{c.status}</span>
-                ) : (
+                ) : onMap ? (
                   <input
                     type="checkbox"
                     className="size-4 accent-primary"
-                    checked={checked}
-                    disabled={pending}
+                    checked={tracking[c.id] ?? false}
+                    disabled={pending || !loaded}
                     onChange={(e) => onToggle(c.id, e.target.checked)}
                     aria-label={`Track ${c.name}`}
                   />
-                )}
+                ) : null}
               </label>
             );
           })}
