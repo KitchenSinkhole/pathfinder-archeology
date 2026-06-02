@@ -27,6 +27,10 @@ vi.mock('@/lib/esi/client', async (importOriginal) => {
 import { esiCall } from '@/lib/esi/client';
 import { locationPoll } from '@/lib/jobs/tasks/locationPoll';
 import { SLOT_X, SLOT_Y, overlaps, snapToGrid } from '@/lib/map/placement';
+import {
+  acquireLocationPollSuiteLock,
+  releaseLocationPollSuiteLock,
+} from './locationPollSuiteLock';
 
 async function systemPos(mapId: bigint, systemId: number): Promise<{ x: number; y: number }> {
   const [row] = await db
@@ -122,6 +126,9 @@ describe.skipIf(!run)('Stage 12.2 location-poll jump classification + fan-out (r
   let mapB = 0n;
 
   beforeAll(async () => {
+    // Serialize against the other location-poll* files — they share the
+    // `location-poll` job-run name (see locationPollSuiteLock.ts).
+    await acquireLocationPollSuiteLock();
     await migrate(db, { migrationsFolder: 'src/db/migrations' });
     await cleanup();
 
@@ -164,10 +171,13 @@ describe.skipIf(!run)('Stage 12.2 location-poll jump classification + fan-out (r
       { mapId: mapA, characterId: CHAR_ID },
       { mapId: mapB, characterId: CHAR_ID },
     ]);
-  });
+    // Generous timeout: a waiting file blocks here until the lock holder's
+    // suite finishes and releases.
+  }, 120_000);
 
   afterAll(async () => {
     await cleanup();
+    await releaseLocationPollSuiteLock();
     await pool.end();
   });
 

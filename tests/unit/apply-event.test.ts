@@ -124,7 +124,7 @@ describe('applyEvent — system.updated', () => {
     expect(next.systems[0]).toMatchObject({ positionX: 500, positionY: 600 });
   });
 
-  it('ignores intelNotes and rallyAt (not in MapViewData)', () => {
+  it('applies rallyAt but ignores intelNotes (not in MapViewData)', () => {
     const state = makeState({ systems: [sys1] });
     const next = applyEvent(state, {
       kind: 'system.updated',
@@ -134,7 +134,7 @@ describe('applyEvent — system.updated', () => {
       rallyAt: '2026-01-01T00:00:00Z',
     });
     expect(next.systems[0]).not.toHaveProperty('intelNotes');
-    expect(next.systems[0]).not.toHaveProperty('rallyAt');
+    expect(next.systems[0]!.rallyAt).toBe('2026-01-01T00:00:00Z');
   });
 
   it('is a no-op for an unknown id', () => {

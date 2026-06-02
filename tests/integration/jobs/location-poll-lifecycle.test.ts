@@ -22,6 +22,10 @@ import { esiCall, EsiBreakerOpenError, EsiTokenError } from '@/lib/esi/client';
 import { locationPoll } from '@/lib/jobs/tasks/locationPoll';
 import { bus } from '@/lib/realtime/bus';
 import type { ServerToClientMessage } from '@/lib/realtime/protocol';
+import {
+  acquireLocationPollSuiteLock,
+  releaseLocationPollSuiteLock,
+} from './locationPollSuiteLock';
 
 /**
  * Stage 12.3 gates per sub-stage plan:
@@ -79,6 +83,9 @@ describe.skipIf(!run)('Stage 12.3 location-poll lifecycle (real Postgres)', () =
   let mapId = 0n;
 
   beforeAll(async () => {
+    // Serialize against the other location-poll* files — they share the
+    // `location-poll` job-run name (see locationPollSuiteLock.ts).
+    await acquireLocationPollSuiteLock();
     await migrate(db, { migrationsFolder: 'src/db/migrations' });
     await db.delete(apJobRun).where(eq(apJobRun.name, 'location-poll'));
     await db.delete(apCharacter).where(eq(apCharacter.id, CHAR_ID));
@@ -97,13 +104,16 @@ describe.skipIf(!run)('Stage 12.3 location-poll lifecycle (real Postgres)', () =
       .values({ scope: 'all', type: 'private', name: 'lifecycle-test-map' })
       .returning({ id: apMap.id });
     mapId = m!.id;
-  });
+    // Generous timeout: a waiting file blocks here until the lock holder's
+    // suite finishes and releases.
+  }, 120_000);
 
   afterAll(async () => {
     await db.delete(apJobRun).where(eq(apJobRun.name, 'location-poll'));
     await db.delete(apMapCharacterTracking).where(eq(apMapCharacterTracking.characterId, CHAR_ID));
     await db.delete(apCharacter).where(eq(apCharacter.id, CHAR_ID));
     await db.delete(apMap).where(eq(apMap.id, mapId));
+    await releaseLocationPollSuiteLock();
     await pool.end();
   });
 

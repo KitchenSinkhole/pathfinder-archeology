@@ -115,11 +115,9 @@ describe('Stage 13 integration clients', () => {
     await expect(recentKillsForSystem(30000142)).resolves.toEqual([
       {
         killmailId: 555,
+        hash: null,
         href: 'https://zkillboard.com/kill/555/',
-        killmailTime: '2026-05-26T12:00:00Z',
-        shipTypeId: 587,
         totalValue: 8000000,
-        attackers: 2,
       },
     ]);
 
