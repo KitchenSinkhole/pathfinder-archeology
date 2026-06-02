@@ -15,7 +15,6 @@ export type AccountCharacter = {
   name: string;
   status: (typeof apCharacter.$inferSelect)['status'];
   authzLevel: (typeof apCharacter.$inferSelect)['authzLevel'];
-  trackingEnabled: boolean;
 };
 
 /** The current Auth.js session, or `null` when logged out. */
@@ -62,7 +61,6 @@ export async function getAccountCharacters(userId: number): Promise<AccountChara
       name: apCharacter.name,
       status: apCharacter.status,
       authzLevel: apCharacter.authzLevel,
-      trackingEnabled: apCharacter.trackingEnabled,
     })
     .from(apCharacter)
     .where(eq(apCharacter.userId, userId))

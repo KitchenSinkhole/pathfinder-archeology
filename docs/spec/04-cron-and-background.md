@@ -94,6 +94,8 @@ Four jobs, all map / connection housekeeping.
 - **Side effects.** May refresh OAuth tokens via the `Lib\Api` ESI client; on a refresh failure the character is silently de-logged from the realtime view.
 - **Logging.** disabled.
 
+> **Aperture rebuild — `location-poll`.** The legacy model coupled tracking to the open tab (`updateUserData` writes a `character_log` row; `deleteLogData` ages it out when the pilot goes offline). The rebuild replaces both with a self-rescheduling `location-poll` graphile-worker job, one per tracked character, with an adaptive cadence (`LOCATION_POLL_ONLINE_MS` / `LOCATION_POLL_OFFLINE_MS`) — it runs server-side regardless of whether any tab is open. Tracking is an **explicit per-map selection** in `ap_map_character_tracking (map_id, character_id)`, not a global flag: the handler's first step is "does this character have any tracking row?" and it stops cleanly (`stopped: 'no-tracking'`) when the last row is removed. There is no `ap_character.tracking_enabled` flag (an early rebuild column, since removed) and therefore no `'tracking-disabled'` stop reason. First open of a map by an account seeds all its active characters, gated once per `(map, account)` by `ap_map_tracking_seed`. See `src/lib/jobs/tasks/locationPoll.ts`, `src/lib/jobs/tracking.ts`, and `docs/plans/per-map-character-tracking.md`.
+
 #### `cleanUpCharacterData` — `@hourly`
 - **Purpose.** Find characters where `active=1` and `kicked` timestamp has already elapsed, call `CharacterModel::kick()` + `save()` to flip them inactive.
 - **Logging.** generic envelope only.

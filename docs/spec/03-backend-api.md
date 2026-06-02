@@ -216,6 +216,8 @@ These power the admin "cron table" UI and the search-index build step. There is 
 
 References: `app/Controller/Api/Map.php` (large file); see also [04-cron-and-background.md](04-cron-and-background.md) (Stage D, pending) for the WebSocket transport and history NDJSON files.
 
+> **Aperture rebuild — location tracking is server-side and per-map.** The legacy `updateUserData` `mapTracking` flag drove location tracking from the open tab: a character was followed only while a tab was looking at a map, on whichever map the tab was last on. The rebuild moves this to a server-side `location-poll` job (one per tracked character, runs whether or not a tab is open) and makes tracking an **explicit per-map selection** stored in `ap_map_character_tracking (map_id, character_id)` — a row means "track this character on this map," and a character may be tracked on many maps at once with a different per-map selection. There is no global per-character tracking flag (an early rebuild `ap_character.tracking_enabled` column was removed once the join table became the single source of truth). The first time an account opens a map, all its **active** characters are seeded onto that map; a per-`(map, account)` marker `ap_map_tracking_seed` records that the seed has run so the auto-add fires exactly once — afterwards the user's exact selection stands, *including an intentional empty set*. The per-map checkboxes live in the header Characters panel (`setCharacterTrackingAction` / `getMapTrackingAction`). See `src/lib/jobs/tracking.ts` and `docs/plans/per-map-character-tracking.md`.
+
 ## REST API — `/api/rest/<Resource>[/<id>]`
 
 ### Abstract REST controller

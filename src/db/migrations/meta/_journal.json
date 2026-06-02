@@ -197,6 +197,13 @@
       "when": 1779620400000,
       "tag": "0028_map_tracking_seed",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1779621600000,
+      "tag": "0029_drop_tracking_enabled",
+      "breakpoints": true
     }
   ]
 }
