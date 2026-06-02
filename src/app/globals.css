@@ -148,3 +148,13 @@
     animation: underglow var(--underglow-speed, 1400ms) ease-in-out infinite;
   }
 }
+
+/* Suppress xyflow's persistent multi-select bounding box (the tight rectangle
+   it draws around nodes after a drag-box selection). We drive multi-selection
+   through our own controlled `selected` flags so a box selection ends up
+   identical to Ctrl+click — no overlay, and group drag goes through the normal
+   node drag (onNodeDragStop). The live drag-box rectangle (.react-flow__selection)
+   is a separate element and stays visible. See MapCanvas.tsx. */
+.react-flow__nodesselection {
+  display: none;
+}

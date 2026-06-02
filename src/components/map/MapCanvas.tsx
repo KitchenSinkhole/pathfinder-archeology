@@ -6,11 +6,13 @@ import {
   ConnectionMode,
   Controls,
   ReactFlow,
+  SelectionMode,
   applyNodeChanges,
   type Connection,
   type Edge,
   type Node,
   type NodeChange,
+  type OnSelectionChangeParams,
   type ReactFlowInstance,
   type Viewport,
 } from '@xyflow/react';
@@ -66,7 +68,7 @@ import { StructureModule } from '@/components/sidebar/StructureModule';
 import type { StructureFormValues } from '@/components/sidebar/StructureFormDialog';
 import { InspectorModule, type SelectionRef } from '@/components/sidebar/InspectorModule';
 import { SignatureModule } from '@/components/sidebar/SignatureModule';
-import { Info, Plus, Settings } from 'lucide-react';
+import { Info, Plus, Settings, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MapInfoDialog } from '@/components/dialogs/MapInfoDialog';
 import { MapSettingsDialog } from '@/components/dialogs/MapSettingsDialog';
@@ -106,6 +108,12 @@ export function MapCanvas({
   viewerCharacterIds: number[];
 }) {
   const [selected, setSelected] = useState<SelectionRef | null>(null);
+  // The multi-select set; `selected` (above) remains the primary anchor that
+  // drives the inspector and sidebar modules. Invariant: when
+  // `selected?.kind === 'system'`, this set contains `selected.id`. Always
+  // replaced with a fresh Set (never mutated) — the render-time sync block
+  // detects changes by reference equality.
+  const [selectedSystemIds, setSelectedSystemIds] = useState<Set<string>>(() => new Set());
   const [mapInfoOpen, setMapInfoOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [addSystemOpen, setAddSystemOpen] = useState(false);
@@ -117,6 +125,11 @@ export function MapCanvas({
     Edge<ConnectionEdgeData>
   > | null>(null);
   const flowWrapperRef = useRef<HTMLDivElement>(null);
+  // True only while a drag-box selection is in progress. `onSelectionChange`
+  // fires for our own click-driven selection echoes too; without this gate the
+  // reconciler would fight the click handlers and loop. Box drag is the only
+  // selection source we must adopt from xyflow.
+  const boxSelecting = useRef(false);
   // Structure intel is deployment-global and not realtime-synced; we manage it
   // as plain local state seeded from the page load and updated on our own CRUD.
   const [structures, setStructures] = useState(initialStructures);
@@ -205,8 +218,44 @@ export function MapCanvas({
     setNodes((nds) => applyNodeChanges(changes, nds));
   }, []);
 
+  // Commit the post-drag positions of every selected system. xyflow drags all
+  // selected nodes in unison (same delta, formation preserved), writing their
+  // live positions into `nodes` via onNodesChange; we read those back, snap
+  // each, and PATCH it. The collision nudge runs only against *non-selected*
+  // systems so an intra-group overlap never deforms the group. Unchanged
+  // positions are skipped.
+  const commitGroupMove = useCallback(() => {
+    // Read live positions from xyflow's store (authoritative + synchronous at
+    // dragStop) rather than the React `nodes` state, which can lag a frame.
+    const live = flowInstance.current?.getNodes() ?? [];
+    const occupiedOthers: Point[] = viewData.systems
+      .filter((s) => !selectedSystemIds.has(s.id))
+      .map((s) => ({ x: s.positionX, y: s.positionY }));
+    for (const id of selectedSystemIds) {
+      const node = live.find((n) => n.id === id);
+      const existing = viewData.systems.find((s) => s.id === id);
+      if (!node || !existing) continue;
+      const snapped = snapPointToGrid(node.position);
+      const final = occupiedOthers.some((o) => overlaps(snapped, o))
+        ? findOpenPosition(snapped, occupiedOthers)
+        : snapped;
+      if (existing.positionX === final.x && existing.positionY === final.y) continue;
+      const patch: UpdateSystemBody = { positionX: final.x, positionY: final.y };
+      runOptimistic(
+        { kind: 'system.updated', eventId: 0, id, positionX: final.x, positionY: final.y },
+        () => updateSystemOnServer({ mapId, mapSystemId: id, patch }),
+      );
+    }
+  }, [mapId, viewData.systems, selectedSystemIds, runOptimistic]);
+
   const onNodeDragStop = useCallback(
     (_event: React.MouseEvent | unknown, node: Node) => {
+      // Dragging any member of a multi-selection moves the whole group; commit
+      // every selected system's new position, not just the grabbed node.
+      if (selectedSystemIds.size > 1 && selectedSystemIds.has(node.id)) {
+        commitGroupMove();
+        return;
+      }
       const existing = viewData.systems.find((s) => s.id === node.id);
       if (!existing) return;
       // Snap the drop, then nudge to the nearest free slot only if it landed on
@@ -231,7 +280,7 @@ export function MapCanvas({
         () => updateSystemOnServer({ mapId, mapSystemId: node.id, patch }),
       );
     },
-    [mapId, viewData.systems, runOptimistic],
+    [mapId, viewData.systems, selectedSystemIds, commitGroupMove, runOptimistic],
   );
 
   const onConnect = useCallback(
@@ -289,22 +338,67 @@ export function MapCanvas({
     [mapId, awaitServer, selected, viewData.systems],
   );
 
-  // Selection is driven by direct click handlers rather than xyflow's
-  // `onSelectionChange`. In controlled mode without `onNodesChange`, xyflow's
-  // internal selection mutation never produces a store `set()`, so
-  // `onSelectionChange` only fires as a side effect of unrelated re-renders
-  // (e.g. drag) — which made selecting via a still click take two attempts.
-  const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
-    setSelected({ kind: 'system', id: node.id });
-  }, []);
+  // Click selection is driven by direct handlers (they own single + Ctrl+click
+  // toggle), while `onSelectionChange` is used only as a box-select reconciler
+  // (see below). The two don't fight because the reconciler ignores size<=1 and
+  // no-ops when xyflow's set already matches ours.
+  const onNodeClick = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      // Ctrl/Cmd+click toggles the node in the group. The inspector primary is
+      // cleared whenever 2+ are selected — a multi-select group drives no
+      // inspector / per-system module (which would otherwise thrash on refetch);
+      // a lone survivor re-populates it.
+      if (event.ctrlKey || event.metaKey) {
+        const next = new Set(selectedSystemIds);
+        if (next.has(node.id)) next.delete(node.id);
+        else next.add(node.id);
+        setSelectedSystemIds(next);
+        setSelected(next.size === 1 ? { kind: 'system', id: next.values().next().value! } : null);
+        return;
+      }
+      setSelected({ kind: 'system', id: node.id });
+      setSelectedSystemIds(new Set([node.id]));
+    },
+    [selectedSystemIds],
+  );
 
   const onEdgeClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
     setSelected({ kind: 'connection', id: edge.id });
+    setSelectedSystemIds(new Set());
   }, []);
 
   const onPaneClick = useCallback(() => {
     setSelected(null);
+    setSelectedSystemIds(new Set());
   }, []);
+
+  const onSelectionStart = useCallback(() => {
+    boxSelecting.current = true;
+  }, []);
+
+  const onSelectionEnd = useCallback(() => {
+    boxSelecting.current = false;
+  }, []);
+
+  // Box-select-only reconciler. xyflow fires `onSelectionChange` for *every*
+  // selection mutation — including the echoes of our own click handlers — so we
+  // adopt only while a drag box is active (`boxSelecting`). Adopting on click
+  // echoes would fight the click handlers and loop. Single/empty stay owned by
+  // the click/pane handlers; the diff check skips a no-op rebuild. The inspector
+  // primary is cleared (same rule as Ctrl+click) so the box drag doesn't thrash
+  // the per-system modules as nodes enter the rectangle.
+  const onSelectionChange = useCallback(
+    ({ nodes: selNodes }: OnSelectionChangeParams) => {
+      if (!boxSelecting.current || selNodes.length <= 1) return;
+      const ids = selNodes.map((n) => n.id);
+      if (ids.length === selectedSystemIds.size && ids.every((id) => selectedSystemIds.has(id))) {
+        return;
+      }
+      setSelectedSystemIds(new Set(ids));
+      setSelected(null);
+    },
+    [selectedSystemIds],
+  );
 
   // ---- Inspector callbacks -----------------------------------------------
   const onSystemPatch = useCallback(
@@ -326,9 +420,39 @@ export function MapCanvas({
         removeSystemOnServer({ mapId, mapSystemId }),
       );
       setSelected(null);
+      setSelectedSystemIds(new Set());
     },
     [mapId, runOptimistic],
   );
+
+  // Group delete — shared by the Delete/Backspace key handler and the floating
+  // "Remove N" button. Loops the existing single-item DELETE endpoint (the
+  // onBulkPaste precedent: small, hand-selected groups need no batch endpoint).
+  const removeSelectedSystems = useCallback(() => {
+    if (selectedSystemIds.size === 0) return;
+    for (const id of selectedSystemIds) {
+      runOptimistic({ kind: 'system.removed', eventId: 0, id }, () =>
+        removeSystemOnServer({ mapId, mapSystemId: id }),
+      );
+    }
+    setSelected(null);
+    setSelectedSystemIds(new Set());
+  }, [mapId, runOptimistic, selectedSystemIds]);
+
+  // Delete/Backspace removes the whole selection. Gated against text inputs so
+  // editing an alias / signature field never deletes systems.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if (selectedSystemIds.size === 0) return;
+      e.preventDefault();
+      removeSelectedSystems();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [selectedSystemIds, removeSelectedSystems]);
 
   const onConnectionPatch = useCallback(
     (connectionId: string, patch: UpdateConnectionBody) => {
@@ -443,7 +567,7 @@ export function MapCanvas({
   //
   // `nodes` is xyflow-managed via `applyNodeChanges` (so the visual drag is
   // smooth — without `onNodesChange` xyflow would emit position events with
-  // nowhere to land). When `viewData.systems` or `selected` change we
+  // nowhere to land). When `viewData.systems` or `selectedSystemIds` change we
   // reconcile xyflow's nodes state against them, preserving each node's
   // in-flight drag position (xyflow sets `dragging: true` mid-drag) and
   // xyflow-internal fields (`measured`, etc.) by spreading the existing node
@@ -455,10 +579,14 @@ export function MapCanvas({
   // with empty deps).
   const [lastSync, setLastSync] = useState<{
     systems: MapViewData['systems'];
-    selected: SelectionRef | null;
+    selectedSystemIds: Set<string>;
   } | null>(null);
-  if (!lastSync || lastSync.systems !== viewData.systems || lastSync.selected !== selected) {
-    setLastSync({ systems: viewData.systems, selected });
+  if (
+    !lastSync ||
+    lastSync.systems !== viewData.systems ||
+    lastSync.selectedSystemIds !== selectedSystemIds
+  ) {
+    setLastSync({ systems: viewData.systems, selectedSystemIds });
     setNodes((prev) => {
       const prevById = new Map(prev.map((n) => [n.id, n]));
       return viewData.systems.map((s) => {
@@ -472,7 +600,7 @@ export function MapCanvas({
           type: 'system' as const,
           position,
           data: { ...s, onAliasOrTagCommit },
-          selected: selected?.kind === 'system' && selected.id === s.id,
+          selected: selectedSystemIds.has(s.id),
         };
       });
     });
@@ -597,8 +725,19 @@ export function MapCanvas({
             <div
               ref={flowWrapperRef}
               style={{ height: canvasHeight }}
-              className="overflow-hidden rounded-lg ring-1 ring-foreground/10"
+              className="relative overflow-hidden rounded-lg ring-1 ring-foreground/10"
             >
+              {selectedSystemIds.size > 1 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={removeSelectedSystems}
+                  className="nodrag nopan absolute right-2 top-2 z-10"
+                >
+                  <Trash2 />
+                  Remove {selectedSystemIds.size}
+                </Button>
+              )}
               <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -607,6 +746,9 @@ export function MapCanvas({
                 onNodeClick={onNodeClick}
                 onEdgeClick={onEdgeClick}
                 onPaneClick={onPaneClick}
+                onSelectionStart={onSelectionStart}
+                onSelectionEnd={onSelectionEnd}
+                onSelectionChange={onSelectionChange}
                 onInit={(inst) => {
                   flowInstance.current = inst;
                 }}
@@ -617,6 +759,10 @@ export function MapCanvas({
                 snapGrid={[GRID_SIZE, GRID_SIZE]}
                 nodesDraggable
                 nodesConnectable
+                selectionKeyCode={['Control', 'Meta']}
+                multiSelectionKeyCode={['Control', 'Meta']}
+                selectionMode={SelectionMode.Partial}
+                deleteKeyCode={null}
                 connectionMode={ConnectionMode.Loose}
                 edgesFocusable
                 colorMode="dark"
