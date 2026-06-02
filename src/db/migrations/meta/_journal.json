@@ -190,6 +190,13 @@
       "when": 1779619200000,
       "tag": "0027_drop_structure_owner_name",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1779620400000,
+      "tag": "0028_map_tracking_seed",
+      "breakpoints": true
     }
   ]
 }

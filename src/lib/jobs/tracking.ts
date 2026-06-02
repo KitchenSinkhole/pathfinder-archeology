@@ -1,6 +1,6 @@
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { apMap, apMapCharacterTracking } from '@/db/schema';
+import { apCharacter, apMap, apMapCharacterTracking, apMapTrackingSeed } from '@/db/schema';
 import { locationPollJobKey } from './tasks/locationPoll';
 
 /**
@@ -124,6 +124,63 @@ export async function stopAllTrackingForCharacter(characterId: bigint): Promise<
  * its cadence. The caller is responsible for the map being viewable/live — this
  * is the realtime-subscribe seam, downstream of `canViewMap`.
  */
+export interface SeedTrackingArgs {
+  mapId: bigint;
+  userId: number;
+}
+
+/**
+ * The per-map default: the first time an account opens a map, track all its
+ * active characters (per-map-character-tracking plan, Stage 1). Idempotent and
+ * gated by the `ap_map_tracking_seed` marker so the auto-add fires exactly once
+ * per `(map, account)` — after that the user's explicit per-map selection
+ * stands, *including selecting zero* (an empty selection is no longer mistaken
+ * for a fresh map).
+ *
+ * In one transaction: `INSERT … ON CONFLICT DO NOTHING` the seed marker; if the
+ * marker was freshly inserted, select the account's `active` characters and
+ * upsert a `(mapId, characterId)` tracking row for each, then enqueue each
+ * character's poll with `preserve_run_at` (an already-running loop keeps its
+ * cadence). When the marker already exists this is a no-op — the join table is
+ * left exactly as the user configured it.
+ *
+ * The caller is responsible for the map being viewable/live (this is the
+ * realtime-subscribe seam, downstream of `canViewMap`).
+ */
+export async function seedTrackingForMap(args: SeedTrackingArgs): Promise<void> {
+  await db.transaction(async (tx) => {
+    const marker = await tx
+      .insert(apMapTrackingSeed)
+      .values({ mapId: args.mapId, userId: args.userId })
+      .onConflictDoNothing()
+      .returning({ mapId: apMapTrackingSeed.mapId });
+    // Marker already existed → this account has configured this map before.
+    // Leave the selection untouched (including an intentional empty set).
+    if (marker.length === 0) return;
+
+    const characters = await tx
+      .select({ id: apCharacter.id })
+      .from(apCharacter)
+      .where(and(eq(apCharacter.userId, args.userId), eq(apCharacter.status, 'active')));
+
+    for (const { id: characterId } of characters) {
+      await tx
+        .insert(apMapCharacterTracking)
+        .values({ mapId: args.mapId, characterId })
+        .onConflictDoNothing();
+      await tx.execute(
+        sql`SELECT graphile_worker.add_job(
+              'location-poll',
+              json_build_object('characterId', ${characterId.toString()}::text)::json,
+              job_key => ${locationPollJobKey(characterId)},
+              job_key_mode => 'preserve_run_at',
+              run_at => now()
+            )`,
+      );
+    }
+  });
+}
+
 export async function trackCharactersOnMap(
   characterIds: bigint[],
   mapId: bigint,

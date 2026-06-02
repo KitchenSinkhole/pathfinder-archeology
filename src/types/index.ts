@@ -11,6 +11,7 @@ import type {
   apMapRoleAccess,
   apMapSignature,
   apMapSystem,
+  apMapTrackingSeed,
   apRole,
   apStructure,
   apStructureEvent,
@@ -103,6 +104,9 @@ export type NewApMapSignature = InferInsertModel<typeof apMapSignature>;
 
 export type ApMapEvent = InferSelectModel<typeof apMapEvent>;
 export type NewApMapEvent = InferInsertModel<typeof apMapEvent>;
+
+export type ApMapTrackingSeed = InferSelectModel<typeof apMapTrackingSeed>;
+export type NewApMapTrackingSeed = InferInsertModel<typeof apMapTrackingSeed>;
 
 export type ApEventKind = InferSelectModel<typeof apEventKind>;
 export type NewApEventKind = InferInsertModel<typeof apEventKind>;

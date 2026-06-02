@@ -18,6 +18,9 @@ Returns `{ ok: true, alreadyTracked }`.
 ### stopAllTrackingForCharacter(characterId: bigint): Promise<void>
 `DELETE` every tracking row for the character, across all maps. Used by `setCharacterTrackingAction` when a user disables a character from the Characters panel (Stage 17.5 follow-up). Same race-free stop semantics as `stopTrackingCharacter` — the next poll tick exits cleanly.
 
+### seedTrackingForMap({ mapId, userId }): Promise<void>
+The per-map default (per-map-character-tracking plan, Stage 1): the first time an account opens a map, auto-track all its **active** characters. In one transaction: `INSERT … ON CONFLICT DO NOTHING` the `ap_map_tracking_seed` marker; if it was freshly inserted, select the account's `status='active'` characters, upsert a `(mapId, characterId)` row per character, and enqueue each poll with `preserve_run_at`. If the marker already existed, returns without touching the join table — so a deliberately-empty per-map selection survives and is never re-seeded. The marker gate makes the auto-add fire exactly once per `(map, account)`. Caller guarantees the map is viewable/live (realtime-subscribe seam, downstream of `canViewMap`).
+
 ### trackCharactersOnMap(characterIds: bigint[], mapId: bigint): Promise<void>
 Point each character's tracking at exactly `mapId` (the account's last-open map, Stage 17.5 follow-up). Per character, in one transaction: upsert the `(mapId, characterId)` row, delete its rows on **other** maps (one map at a time per character → switching maps moves tracking), and (re-)enqueue the poll with `preserve_run_at`. Called from the realtime `subscribe` handler with the account's **enabled** characters, downstream of `canViewMap` — the caller guarantees the map is viewable/live.
 
