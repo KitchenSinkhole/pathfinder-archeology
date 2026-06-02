@@ -65,8 +65,16 @@ export const apertureConfig = {
    */
   ZKB_FEED_MAX_CATCHUP: 200,
 
-  /** Repository slug used by the changelog integration. Normalised from the legacy fork mismatch. */
-  GITHUB_CHANGELOG_REPO: 'KitchenSink/aperture',
+  /** Repository slug used by the changelog integration. Must match the `origin` remote. */
+  GITHUB_CHANGELOG_REPO: 'KitchenSinkhole/aperture',
+
+  /**
+   * Server-side cache lifetime for the GitHub releases fetch, in seconds (Next
+   * `revalidate` unit). Releases change rarely; caching shields the shared,
+   * unauthenticated GitHub API quota from a per-client request fan-out (the
+   * documented legacy 403-on-forced-refresh footgun).
+   */
+  GITHUB_CHANGELOG_REVALIDATE_S: 3_600,
 
   /** ESI `datasource` query param. `tranquility` (live) vs `singularity` (test server). */
   ESI_DATASOURCE: 'tranquility',

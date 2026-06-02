@@ -36,6 +36,7 @@ export async function fetchChangelogReleases(limit = 4): Promise<ChangelogReleas
       'X-GitHub-Api-Version': '2022-11-28',
     },
     signal: AbortSignal.timeout(apertureConfig.INTEGRATION_REQUEST_TIMEOUT_MS),
+    next: { revalidate: apertureConfig.GITHUB_CHANGELOG_REVALIDATE_S },
   });
   if (!res.ok) throw new Error(`GitHub releases request failed: ${res.status}`);
 

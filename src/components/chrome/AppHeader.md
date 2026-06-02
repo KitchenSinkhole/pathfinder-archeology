@@ -13,9 +13,15 @@
 | travelAnimation | boolean | yes | The account's connection-travel-animation toggle, forwarded to the panel |
 
 ### Renders
-A bordered header bar: an "Aperture" link to `/maps` on the left; on the right, the `StatisticsButton` and `ReferenceMenu` info menu next to the `CharacterPanel`.
+A bordered header bar: on the left, an "Aperture" link to `/maps` with the `VersionChip` immediately beside it (reads as "Aperture v1.0.0-…"); on the right, the `StatisticsButton` and `ReferenceMenu` info menu next to the `CharacterPanel`.
+
+### Behaviour & Interactions
+- Async server component. Fetches the cached changelog releases (`fetchChangelogReleases`) and passes them to `VersionChip`. A fetch failure is swallowed (empty array) so a GitHub outage never breaks the header.
+- App version is read directly from `package.json` (same pattern as `AppFooter`).
 
 ### Depends On
+- `VersionChip` (client) — version label + changelog entry point.
 - `CharacterPanel` (client) — the data props are resolved server-side in `(app)/layout.tsx`.
 - `ReferenceMenu` (client) — header entry point for the static reference dialogs.
 - `StatisticsButton` (client) — launches the Stage 17.7 Statistics dialog.
+- `fetchChangelogReleases` — `@/lib/integrations/github` (server-side, cached).

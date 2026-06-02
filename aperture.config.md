@@ -49,7 +49,7 @@ Stage 11 (graphile-worker runtime) adds:
 ### ApertureConfig
 Inferred type alias for `typeof apertureConfig` so consumers don't need to import the runtime value just to type a parameter.
 
-Stage 13 adds `INTEGRATION_REQUEST_TIMEOUT_MS` for read-side third-party clients and `GITHUB_CHANGELOG_REPO` for the GitHub changelog feed.
+Stage 13 adds `INTEGRATION_REQUEST_TIMEOUT_MS` for read-side third-party clients and `GITHUB_CHANGELOG_REPO` for the GitHub changelog feed. Stage 17 adds `GITHUB_CHANGELOG_REVALIDATE_S` — the server-side cache lifetime (seconds) for the GitHub releases fetch.
 
 Stage 17.8 (zKillboard live feed → underglow) adds:
 - `INTEGRATION_USER_AGENT` — `User-Agent` for read-side integration requests (zKB rejects a blank UA with 403); now also used by `zkb.ts`.
